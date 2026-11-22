@@ -1,0 +1,177 @@
+import * as stylex from "@stylexjs/stylex";
+import { tokens } from "../../styles/tokens.stylex";
+
+export const toastStyles = stylex.create({
+  region: {
+    position: "fixed",
+    zIndex: 60,
+    width: "min(calc(100dvw - 2rem), 24rem)",
+    maxWidth: "calc(100dvw - 2rem)",
+    marginBlock: 0,
+    marginInline: 0,
+    padding: 0,
+    pointerEvents: "none",
+  },
+  regionTop: {
+    top: "calc(1rem + env(safe-area-inset-top, 0px))",
+  },
+  regionBottom: {
+    bottom: "calc(1rem + env(safe-area-inset-bottom, 0px))",
+  },
+  alignStart: {
+    insetInlineStart: {
+      default: "calc(1rem + env(safe-area-inset-left, 0px))",
+      ":dir(rtl)": "calc(1rem + env(safe-area-inset-right, 0px))",
+    },
+  },
+  alignCenter: {
+    insetInline: 0,
+    marginInline: "auto",
+  },
+  alignEnd: {
+    insetInlineEnd: {
+      default: "calc(1rem + env(safe-area-inset-right, 0px))",
+      ":dir(rtl)": "calc(1rem + env(safe-area-inset-left, 0px))",
+    },
+  },
+  list: {
+    display: "flex",
+    gap: "0.625rem",
+    width: "100%",
+    margin: 0,
+    padding: 0,
+    listStyle: "none",
+  },
+  listTop: {
+    flexDirection: "column",
+  },
+  listBottom: {
+    flexDirection: "column-reverse",
+  },
+  toast: {
+    pointerEvents: "auto",
+    listStyle: "none",
+    display: "flex",
+    alignItems: "flex-start",
+    gap: "0.75rem",
+    width: "100%",
+    minWidth: 0,
+    paddingBlock: "0.875rem",
+    paddingInline: "1rem",
+    borderRadius: tokens.cornerMedium,
+    borderWidth: 1,
+    borderStyle: "solid",
+    borderColor: tokens.outlineVariant,
+    boxShadow: tokens.shadow3,
+    transitionProperty: "opacity, transform",
+    transitionDuration: tokens.motionDuration,
+    transitionTimingFunction: tokens.motionEasing,
+    outline: { default: "none", ":focus-visible": `3px solid ${tokens.primary}` },
+    outlineOffset: 2,
+  },
+  toneDefault: {
+    backgroundColor: tokens.inverseSurface,
+    color: tokens.inverseOnSurface,
+  },
+  toneSuccess: {
+    backgroundColor: tokens.successContainer,
+    color: tokens.onSuccessContainer,
+  },
+  toneInfo: {
+    backgroundColor: tokens.tertiaryContainer,
+    color: tokens.onTertiaryContainer,
+  },
+  toneWarning: {
+    backgroundColor: tokens.warningContainer,
+    color: tokens.onWarningContainer,
+  },
+  toneError: {
+    backgroundColor: tokens.errorContainer,
+    color: tokens.onErrorContainer,
+  },
+  toastLeaving: {
+    opacity: 0,
+  },
+  body: {
+    flex: 1,
+    minWidth: 0,
+    display: "flex",
+    flexDirection: "column",
+    gap: "0.25rem",
+  },
+  title: {
+    fontSize: "0.9375rem",
+    lineHeight: 1.47,
+    fontWeight: 600,
+    overflowWrap: "anywhere",
+  },
+  description: {
+    fontSize: "0.875rem",
+    lineHeight: 1.55,
+    overflowWrap: "anywhere",
+  },
+  actions: {
+    display: "flex",
+    alignItems: "center",
+    gap: "0.375rem",
+    flexShrink: 0,
+  },
+  actionButton: {
+    appearance: "none",
+    display: "inline-flex",
+    alignItems: "center",
+    justifyContent: "center",
+    minHeight: "2.75rem",
+    paddingInline: "0.75rem",
+    borderWidth: 0,
+    borderRadius: tokens.cornerFull,
+    backgroundColor: "transparent",
+    color: "inherit",
+    fontFamily: "inherit",
+    fontSize: "0.8125rem",
+    fontWeight: 600,
+    textDecoration: "none",
+    cursor: "pointer",
+    outline: { default: "none", ":focus-visible": `3px solid ${tokens.primary}` },
+    outlineOffset: 2,
+    backgroundImage: {
+      default: "none",
+      ":focus-visible": tokens.stateFocus,
+      "@media (hover: hover)": { ":hover": tokens.stateHover },
+      ":active": tokens.statePress,
+    },
+  },
+  actionInverse: {
+    color: tokens.inversePrimary,
+  },
+  buttonFocusInverse: {
+    outline: { default: "none", ":focus-visible": `3px solid ${tokens.inverseOnSurface}` },
+  },
+  closeButton: {
+    appearance: "none",
+    display: "inline-flex",
+    alignItems: "center",
+    justifyContent: "center",
+    flexShrink: 0,
+    width: "2.75rem",
+    height: "2.75rem",
+    margin: "-0.375rem",
+    borderWidth: 0,
+    borderRadius: tokens.cornerFull,
+    backgroundColor: "transparent",
+    color: "inherit",
+    cursor: "pointer",
+    outline: { default: "none", ":focus-visible": `3px solid ${tokens.primary}` },
+    outlineOffset: 2,
+    backgroundImage: {
+      default: "none",
+      ":focus-visible": tokens.stateFocus,
+      "@media (hover: hover)": { ":hover": tokens.stateHover },
+      ":active": tokens.statePress,
+    },
+  },
+  closeIcon: {
+    width: "1.125rem",
+    height: "1.125rem",
+  },
+});

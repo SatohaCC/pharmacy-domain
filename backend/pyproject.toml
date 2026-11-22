@@ -1,0 +1,88 @@
+[project]
+name = "template-backend"
+version = "0.1.0"
+description = "FastAPI backend for nextjs-fastapi-template"
+requires-python = ">=3.14"
+dependencies = [
+    "alembic>=1.16,<2",
+    "fastapi>=0.115.0",
+    "pydantic>=2.7,<3",
+    "pydantic-settings>=2.8,<3",
+    "uvicorn[standard]>=0.32.0",
+    "sqlalchemy>=2.0.44,<3",
+]
+
+[dependency-groups]
+dev = [
+    "httpx>=0.28.0",
+    "import-linter>=2.1",
+    "mypy>=1.14.0",
+    "pytest>=8.3.0",
+    "ruff>=0.8.0",
+]
+
+[tool.ruff]
+line-length = 100
+target-version = "py314"
+cache-dir = "../.cache/ruff"
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "UP", "B", "SIM", "DTZ", "TID251"]
+
+[tool.ruff.lint.per-file-ignores]
+# 外部の値を取得するルーターやアダプターと、テストのセットアップを許可する。
+"!app/services/**" = ["TID251"]
+
+[tool.ruff.lint.flake8-tidy-imports.banned-api]
+"datetime.date.today".msg = "基準日をサービスの引数で受け取ってください。"
+"datetime.datetime.now".msg = "現在時刻をサービスの引数で受け取ってください。"
+"datetime.datetime.today".msg = "現在時刻をサービスの引数で受け取ってください。"
+"datetime.datetime.utcnow".msg = "現在時刻をサービスの引数で受け取ってください。"
+"os.environ".msg = "必要な設定値をサービスの引数で受け取ってください。"
+"os.getenv".msg = "必要な設定値をサービスの引数で受け取ってください。"
+"random.choice".msg = "選択結果か乱数生成器をサービスの引数で受け取ってください。"
+"random.randint".msg = "乱数値か乱数生成器をサービスの引数で受け取ってください。"
+"random.random".msg = "乱数値か乱数生成器をサービスの引数で受け取ってください。"
+"random.randrange".msg = "乱数値か乱数生成器をサービスの引数で受け取ってください。"
+"time.monotonic".msg = "計測値をサービスの引数で受け取ってください。"
+"time.perf_counter".msg = "計測値をサービスの引数で受け取ってください。"
+"time.time".msg = "現在時刻をサービスの引数で受け取ってください。"
+"uuid.uuid4".msg = "生成済みの ID をサービスの引数で受け取ってください。"
+
+[tool.ruff.format]
+quote-style = "double"
+indent-style = "space"
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+addopts = "-p no:cacheprovider"
+
+[tool.mypy]
+cache_dir = "../.cache/mypy"
+mypy_path = [".", "backend"]
+explicit_package_bases = true
+
+[tool.importlinter]
+root_package = "app"
+include_external_packages = true
+
+[[tool.importlinter.contracts]]
+name = "Backend layered architecture"
+type = "layers"
+layers = [
+    "app.routers",
+    "app.services",
+    "app.clients",
+]
+
+[[tool.importlinter.contracts]]
+name = "Business and adapter layers must not depend on FastAPI"
+type = "forbidden"
+source_modules = [
+    "app.services",
+    "app.clients",
+    "app.core",
+]
+forbidden_modules = [
+    "fastapi",
+]

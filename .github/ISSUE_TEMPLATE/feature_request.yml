@@ -1,0 +1,43 @@
+name: 機能追加・改善要望
+description: 新機能や改善の目的、実現したいこと、受入条件を共有します
+title: "feat: "
+labels: ["enhancement"]
+body:
+  - type: textarea
+    id: background
+    attributes:
+      label: 背景・課題
+      description: 誰がどの場面で何に困っているか、何が改善すると価値があるかを記載してください。
+    validations:
+      required: true
+  - type: textarea
+    id: proposal
+    attributes:
+      label: 提案内容
+      description: 利用者が何をできるようになってほしいかを記載してください。実現方法の案があれば添えてください。
+    validations:
+      required: true
+  - type: textarea
+    id: scope
+    attributes:
+      label: 対象範囲・制約
+      description: 対象にする利用者・業務・機能と、対象外や守るべき制約が分かれば記載してください。
+  - type: textarea
+    id: acceptance
+    attributes:
+      label: 受入条件
+      description: どの条件で何をしたときに、どのような結果が確認できればよいかを記載してください。合意前なら、現時点の期待結果を記載してください。
+      placeholder: |
+        - [ ] 対象データがある状態で検索すると、一致する項目だけが一覧に表示される。
+    validations:
+      required: true
+  - type: textarea
+    id: evidence
+    attributes:
+      label: 根拠・参照先
+      description: 提案の根拠になった事例、既存仕様、関連 Issue などがあれば記載してください。
+  - type: textarea
+    id: open_questions
+    attributes:
+      label: 未決事項
+      description: 確認したい事項と、その回答によって変わる範囲を記載してください。判断する人が分かっていれば添えてください。

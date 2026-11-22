@@ -1,0 +1,34 @@
+# Dependencies
+node_modules/
+backend/.venv
+
+# Centralized caches & build outputs
+.cache/
+frontend/.next/
+frontend/next-env.d.ts
+frontend/out/
+.vercel/
+*.tsbuildinfo
+
+# Python bytecode (fallback if run outside scripts)
+**/__pycache__/
+*.py[cod]
+*$py.class
+
+# SQLite local runtime databases
+backend/data/
+*.db-wal
+*.db-shm
+
+# Environment variables
+.env
+.env.*
+!.env.example
+
+# OS / Editor
+.DS_Store
+Thumbs.db
+frontend/debug-storybook.log
+
+graphify-out
+/docs/reference/

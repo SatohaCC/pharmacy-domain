@@ -1,0 +1,4 @@
+interface:
+  display_name: "Material Design 3 実装・レビュー"
+  short_description: "M3のトークン・状態・テーマを公式仕様に照合して実装・レビューする"
+  default_prompt: "$material-design-3 を使って、このUIをM3の仕様に沿って設計・レビューしてください。"

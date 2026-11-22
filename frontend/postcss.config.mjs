@@ -1,0 +1,22 @@
+import { createRequire } from "node:module";
+
+const require = createRequire(import.meta.url);
+const babelConfig = require("./babel.config.js");
+
+const config = {
+  plugins: {
+    "@stylexjs/postcss-plugin": {
+      include: ["src/**/*.{js,jsx,ts,tsx}"],
+      babelConfig: {
+        babelrc: false,
+        parserOpts: {
+          plugins: ["typescript", "jsx"],
+        },
+        plugins: babelConfig.plugins,
+      },
+      useCSSLayers: true,
+    },
+  },
+};
+
+export default config;

@@ -1,0 +1,43 @@
+{
+  "name": "nextjs-fastapi-template",
+  "version": "0.1.0",
+  "private": true,
+  "packageManager": "pnpm@12.18.0",
+  "engines": {
+    "node": "26.x",
+    "pnpm": "12.18.0"
+  },
+  "scripts": {
+    "prepare": "node scripts/install-git-hooks.mts",
+    "hooks:install": "node scripts/install-git-hooks.mts",
+    "dev": "concurrently -n frontend,backend -c cyan,magenta \"pnpm dev:frontend\" \"pnpm dev:backend\"",
+    "dev:frontend": "pnpm --filter frontend dev",
+    "dev:backend": "pnpm -C backend exec python -B -m uvicorn app.main:app --reload --host 127.0.0.1 --port 8000",
+    "build": "pnpm --filter frontend build",
+    "lint": "pnpm lint:frontend && pnpm lint:backend",
+    "lint:frontend": "pnpm --filter frontend lint",
+    "lint:backend": "pnpm -C backend exec ruff check . && pnpm -C backend exec lint-imports --no-cache",
+    "format": "pnpm format:frontend && pnpm format:backend",
+    "format:frontend": "pnpm --filter frontend format",
+    "format:backend": "pnpm -C backend exec ruff format .",
+    "check": "pnpm check:deps && pnpm check:paths && pnpm lint:frontend && pnpm check:frontend-boundaries && pnpm typecheck && pnpm lint:backend && pnpm -C backend exec ruff format --check . && pnpm check:api-types",
+    "check:deps": "node scripts/check-dependencies.mts",
+    "check:frontend-boundaries": "node frontend/scripts/check-source-boundaries.mts",
+    "check:paths": "node scripts/check-local-paths.mts",
+    "typecheck": "pnpm typecheck:scripts && pnpm --filter frontend typecheck && pnpm -C backend exec mypy .",
+    "typecheck:scripts": "pnpm --filter frontend exec tsc --project ../scripts/tsconfig.json",
+    "test": "pnpm test:scripts && pnpm test:frontend && pnpm test:backend",
+    "test:scripts": "node --test scripts/*.test.mts",
+    "test:frontend": "pnpm --filter frontend test",
+    "test:backend": "pnpm -C backend exec python -B -m pytest",
+    "test:e2e": "pnpm --filter frontend test:e2e",
+    "storybook": "pnpm --filter frontend storybook",
+    "build-storybook": "pnpm --filter frontend build-storybook",
+    "test:storybook": "pnpm --filter frontend test:storybook",
+    "gen:api-types": "node scripts/generate-api-types.mts",
+    "check:api-types": "node scripts/generate-api-types.mts --check"
+  },
+  "devDependencies": {
+    "concurrently": "^10.0.7"
+  }
+}

@@ -1,0 +1,86 @@
+@layer ui-sdk, reset;
+
+@layer ui-sdk {
+  :where([data-slot][hidden]:not([hidden="until-found"])) {
+    /* biome-ignore lint/complexity/noImportantStyles: ui-sdk のハイドレーション前 [hidden] 非表示契約に合わせるため */
+    display: none !important;
+  }
+}
+
+/* biome-ignore lint/suspicious/noUnknownAtRules: StyleX の CSS 注入ディレクティブ */
+@stylex;
+
+@layer reset {
+  *,
+  *::before,
+  *::after {
+    box-sizing: border-box;
+  }
+
+  :where(
+    body,
+    h1,
+    h2,
+    h3,
+    h4,
+    h5,
+    h6,
+    p,
+    ul,
+    ol,
+    dl,
+    dd,
+    pre,
+    figure,
+    blockquote,
+    button,
+    input,
+    select,
+    textarea,
+    fieldset
+  ) {
+    margin: 0;
+  }
+
+  :where(body, h1, h2, h3, h4, h5, h6, p, ul, ol, dl, dd, pre, figure, blockquote, fieldset) {
+    padding: 0;
+  }
+}
+:root {
+  color-scheme: light dark;
+}
+body {
+  font-family: system-ui, -apple-system, "Segoe UI", "Yu Gothic UI", "Hiragino Sans", sans-serif;
+  line-height: 1.6;
+  overflow-wrap: break-word;
+  text-align: start;
+}
+img,
+video {
+  max-inline-size: 100%;
+  block-size: auto;
+}
+:where(a, code) {
+  overflow-wrap: anywhere;
+}
+a,
+button,
+input,
+select,
+textarea,
+summary,
+[role="button"] {
+  touch-action: manipulation;
+}
+html {
+  scroll-behavior: smooth;
+}
+@media (prefers-reduced-motion: reduce) {
+  html {
+    scroll-behavior: auto;
+  }
+}
+::selection {
+  background: Highlight;
+  color: HighlightText;
+}

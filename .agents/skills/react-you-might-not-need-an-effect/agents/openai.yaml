@@ -1,0 +1,4 @@
+interface:
+  display_name: "React Effectの要否判断"
+  short_description: "不要なEffectを見直し、描画・操作・外部同期の責務を整理する"
+  default_prompt: "$react-you-might-not-need-an-effect を使い、このReactコードのEffectの要否を確認してください。"

@@ -1,0 +1,40 @@
+version: 2
+updates:
+  - package-ecosystem: "npm"
+    directory: "/"
+    schedule:
+      interval: "daily"
+    open-pull-requests-limit: 5
+    groups:
+      # @ui-sdk/core と @ui-sdk/react のバージョン不整合を防ぐため同一グループで更新する
+      ui-sdk:
+        patterns:
+          - "@ui-sdk/*"
+      minor-and-patch:
+        exclude-patterns:
+          - "@ui-sdk/*"
+        update-types:
+          - "minor"
+          - "patch"
+  - package-ecosystem: "pip"
+    directory: "/backend"
+    schedule:
+      interval: "daily"
+    open-pull-requests-limit: 5
+    # Dependabot は backend/pyproject.toml を更新するため、PR マージ前に
+    # `pnpm install --no-frozen-lockfile` で backend/pylock.toml を同期する
+    groups:
+      python-minor-and-patch:
+        update-types:
+          - "minor"
+          - "patch"
+  - package-ecosystem: "github-actions"
+    directory: "/"
+    schedule:
+      interval: "daily"
+    open-pull-requests-limit: 5
+    groups:
+      actions-minor-and-patch:
+        update-types:
+          - "minor"
+          - "patch"

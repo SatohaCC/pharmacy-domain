@@ -1,0 +1,43 @@
+name: バグ報告
+description: 不具合の報告と再現手順を共有します
+title: "fix: "
+labels: ["bug"]
+body:
+  - type: textarea
+    id: summary
+    attributes:
+      label: 概要
+      description: 発生している不具合の内容を簡潔に記載してください
+    validations:
+      required: true
+  - type: textarea
+    id: steps
+    attributes:
+      label: 再現手順
+      description: 不具合を再現する手順を順番に記載してください
+      placeholder: |
+        1. ...
+        2. ...
+    validations:
+      required: true
+  - type: textarea
+    id: expected
+    attributes:
+      label: 期待する動作
+    validations:
+      required: true
+  - type: textarea
+    id: actual
+    attributes:
+      label: 実際の動作
+      description: エラーメッセージや実際の挙動を記載してください
+    validations:
+      required: true
+  - type: textarea
+    id: environment
+    attributes:
+      label: 実行環境
+      description: OS・ブラウザ・Node.js / Python バージョンなど（任意）
+      placeholder: |
+        - OS:
+        - ブラウザ:

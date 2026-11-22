@@ -1,0 +1,188 @@
+{
+  "$schema": "https://biomejs.dev/schemas/2.6.7/schema.json",
+  "vcs": {
+    "enabled": true,
+    "clientKind": "git",
+    "useIgnoreFile": false
+  },
+  "files": {
+    "ignoreUnknown": false,
+    "includes": [
+      "**",
+      "!**/.next",
+      "!next-env.d.ts",
+      "!src/shared/lib/api/schema.d.ts",
+      "!**/node_modules",
+      "!**/storybook-static"
+    ]
+  },
+  "formatter": {
+    "enabled": true,
+    "indentStyle": "space",
+    "indentWidth": 2,
+    "lineWidth": 100
+  },
+  "linter": {
+    "enabled": true,
+    "domains": {
+      "next": "recommended",
+      "react": "recommended"
+    },
+    "rules": {
+      "preset": "recommended",
+      "style": {
+        "useConsistentMethodSignatures": {
+          "level": "error",
+          "options": {
+            "style": "property"
+          }
+        }
+      }
+    }
+  },
+  "javascript": {
+    "formatter": {
+      "quoteStyle": "double",
+      "semicolons": "always"
+    }
+  },
+  "assist": {
+    "actions": {
+      "source": {
+        "organizeImports": "on"
+      }
+    }
+  },
+  "plugins": [
+    {
+      "path": "./config/no-ambient-inputs.grit",
+      "includes": [
+        "src/shared/ui/**",
+        "src/shared/components/**",
+        "!**/*.test.*",
+        "!**/*.spec.*",
+        "!**/*.stories.*"
+      ]
+    }
+  ],
+  "overrides": [
+    {
+      "includes": ["src/shared/ui/**"],
+      "linter": {
+        "rules": {
+          "style": {
+            "noRestrictedImports": {
+              "level": "error",
+              "options": {
+                "patterns": [
+                  {
+                    "group": [
+                      "@/features/*",
+                      "@/app/*",
+                      "@/shared/components/*",
+                      "@/shared/lib/*",
+                      "@tanstack/react-query",
+                      "next/*"
+                    ],
+                    "message": "shared/ui must stay portable and Props-driven."
+                  }
+                ]
+              }
+            }
+          }
+        }
+      }
+    },
+    {
+      "includes": ["src/shared/components/**"],
+      "linter": {
+        "rules": {
+          "style": {
+            "noRestrictedImports": {
+              "level": "error",
+              "options": {
+                "patterns": [
+                  {
+                    "group": [
+                      "@/features/*",
+                      "@/app/*",
+                      "@/shared/lib/*",
+                      "@/shared/ui/internal/*",
+                      "@ui-sdk/*",
+                      "@tanstack/react-query",
+                      "next/*"
+                    ],
+                    "message": "shared/components must compose shared/ui only and stay Props-driven."
+                  }
+                ]
+              }
+            }
+          }
+        }
+      }
+    },
+    {
+      "includes": ["src/features/**", "src/app/**"],
+      "linter": {
+        "rules": {
+          "style": {
+            "noRestrictedImports": {
+              "level": "error",
+              "options": {
+                "patterns": [
+                  {
+                    "group": [
+                      "@ui-sdk/*",
+                      "@tanstack/react-query",
+                      "@/shared/ui/internal/*",
+                      "zod",
+                      "zod/**"
+                    ],
+                    "message": "Import UI primitives from @/shared/ui and non-UI library adapters from @/shared/lib."
+                  }
+                ]
+              }
+            }
+          }
+        }
+      }
+    },
+    {
+      "includes": [
+        "src/shared/ui/**",
+        "src/shared/components/**",
+        "!**/*.test.*",
+        "!**/*.spec.*",
+        "!**/*.stories.*"
+      ],
+      "linter": {
+        "rules": {
+          "style": {
+            "noProcessEnv": "error",
+            "noRestrictedGlobals": {
+              "level": "error",
+              "options": {
+                "deniedGlobals": {
+                  "fetch": "呼び出し側でデータを取得し、Props で渡してください。"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    {
+      "includes": ["**/*.test.ts", "**/*.test.tsx", "**/*.spec.ts", "**/*.spec.tsx"],
+      "linter": {
+        "rules": {
+          "suspicious": {
+            "noConditionalExpect": "error",
+            "noFocusedTests": "error",
+            "noPlaywrightWaitForTimeout": "error",
+            "useExpect": "error"
+          }
+        }
+      }
+    }
+  ]
+}

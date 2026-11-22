@@ -1,0 +1,25 @@
+or {
+  or {
+    `Date()`,
+    `Date.now()`,
+    `Date["now"]()`,
+    `new Date()`,
+    `Math.random()`,
+    `crypto.randomUUID()`,
+    `performance.now()`,
+    `globalThis.Date.now()`,
+    `new globalThis.Date()`,
+    `globalThis.Math.random()`,
+    `globalThis.crypto.randomUUID()`,
+    `globalThis.performance.now()`
+  } as $call where {
+    register_diagnostic(span=$call, message="時刻、乱数、ID は呼び出し側で取得し、Props で渡してください。")
+  },
+  or {
+    `globalThis.fetch($args)`,
+    `window.fetch($args)`,
+    `self.fetch($args)`
+  } as $call where {
+    register_diagnostic(span=$call, message="呼び出し側でデータを取得し、Props で渡してください。")
+  }
+}
