@@ -446,3 +446,14 @@
 - **法人の重複チェック**: 個人区分は1人で複数開設する可能性があるため、法人番号がない個人区分や確認前法人の重複チェックは不要とする。
 
 影響する文書: [01-organization/README.md](01-organization/README.md)、[corporate.md](01-organization/corporate.md)、[store.md](01-organization/store.md)、[facility-compliance.md](01-organization/facility-compliance.md)、[organization-contracts.md](01-organization/organization-contracts.md)、[cross-cutting-issues.md](01-organization/cross-cutting-issues.md)。
+
+
+## 施設基準・品質・アクセス管理・スタッフ・保存方針の確定（2026-11-23）
+
+`01-organization` 全体の残りの未決事項について、以下を合意した。
+
+- **施設基準・届出（[facility-compliance.md](01-organization/facility-compliance.md)）**: 調剤基本料（`GroupAssessment` 含む）・主要加算・年次報告（妥結率等）を同じ「基準・届出・報告」の枠組みで扱う。妥結率等の数値算出元は他領域に任せ、本領域では提出内容・提出日・確認状態を管理する。行政上の確認は担当者が手動登録する。導入直後・譲受時等の過去期間は外部実績サマリー（手入力＋出典メモ）を合算可能とし、算定領域へは指定日時点で確認済み・適用期間内の施設基準一覧を渡す。
+- **品質・インシデント（[quality.md](01-organization/quality.md)）**: 薬局ヒヤリ・ハット事例収集・分析事業への報告をベースとした登録フォーマットとする。緊急連絡機能と固定的な完了承認者は不要とし、起票店舗≠発生店舗時は発生店舗（開設法人）を管理主体とする。店舗譲渡前は原則旧法人が管理・完了させ、必要時のみデータ承継承認で引き継ぐ。訂正は履歴付きで保持し原則物理削除不可、保存年数は法人運用に委ねる。
+- **テナント・アクセス管理（[tenant-access.md](01-organization/tenant-access.md)）**: 認可モデルは「`Permission` の束である `Role` ＋ 対象範囲（法人全体 / 指定店舗）＋ 有効期間」をアカウントへ付与する形に統一する。外部委託者も1アカウント＝1スタッフ（契約区分：業務委託）で表現する。緊急時アクセスは不要、アカウント無効化・権限剥奪は即時反映、監査ログは原則削除不可とする。NSIPS変更時の法人設定は初期値「未完了へ戻す」、設定変更後の受信分から適用、法人（個人区分含む）で設定可能とする。
+- **スタッフ（[staff.md](01-organization/staff.md)）**: 勤務予定・実績は本システム内で直接管理でき、必要に応じ外部勤怠からの取込も許容する。本人照合・資格確認は管理者が目視確認のうえ手動で「確認済み」を登録する。
+- **保存方針（[cross-cutting-issues.md](01-organization/cross-cutting-issues.md)）**: 法定保存期間を下回らないよう記録種別ごとの保存ポリシーで保持し、具体的な年数表は実装・制度マスタ側へ委ねる。訂正は履歴付き・原則物理削除不可とする。
