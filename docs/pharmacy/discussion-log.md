@@ -690,3 +690,11 @@
 - **HTML 図解の完備（相互ナビゲーション付き）**:
   - 全体関係図: [diagram.html](diagram.html)（全8コンテキストマップ・受け渡し一覧・6フェーズ対応）
   - 各ドメイン図解: [01-organization/diagram.html](01-organization/diagram.html)、[02-reference/diagram.html](02-reference/diagram.html)、[03-patient-coverage/diagram.html](03-patient-coverage/diagram.html)、[04-prescription-dispensing/diagram.html](04-prescription-dispensing/diagram.html)、[05-pharmaceutical-care/diagram.html](05-pharmaceutical-care/diagram.html)、[06-home-care/diagram.html](06-home-care/diagram.html)、[07-reimbursement-billing/diagram.html](07-reimbursement-billing/diagram.html)、[08-inventory-retail/diagram.html](08-inventory-retail/diagram.html)
+
+
+## PR #6 レビュー指摘事項の修正（2026-11-23）
+
+PR #6 のコードレビューで指摘された以下の2点を修正した。
+
+- **薬局提出用形式（`RECEIPTY.CYO`）と機関・保険者向け情報ファイル形式（CSV）の分離（[billing-claim.md](07-reimbursement-billing/billing-claim.md)・[07-reimbursement-billing/diagram.html](07-reimbursement-billing/diagram.html)・[diagram.html](diagram.html)）**: 薬局からの提出用シリアライズを `RECEIPTY.CYO`（ファイル先頭に `YK` 1件、各レセプトは `RE`〜`ST`、末尾に `GO`）として明確に分離し、`14_RECODEINFO_PHA.CSV` / `24_RECODEINFO_PHA.CSV`（各レセプト先頭 `MN` → `YK`）は審査支払機関・保険者からの取込/突合用フォーマットとして位置づけた。
+- **在宅医療における末期悪性腫瘍等の医療保険例外の限定（[home-care.md](06-home-care/home-care.md)・[06-home-care/diagram.html](06-home-care/diagram.html)）**: 要介護・要支援認定患者が自宅等に居住している場合は末期悪性腫瘍等であっても計画的な訪問薬剤管理は介護保険（居宅療養管理指導）優先とし、末期悪性腫瘍の計画訪問特例は特別養護老人ホーム等の入所時に限定した上で、自宅患者の医療保険適用は緊急訪問（15の2）・退院時共同指導（15の4）等の個別サービスに限定する分岐・記述へ修正した。

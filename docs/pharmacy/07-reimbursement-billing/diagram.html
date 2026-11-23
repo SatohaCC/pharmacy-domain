@@ -140,8 +140,8 @@
             <div class="group-label">保険等の請求・審査支払 (billing-claim.md)</div>
             <div class="grid-3">
               <button type="button" class="node-box" data-node="monthly_receipt" aria-pressed="false">
-                <span class="node-header"><span class="node-title">月次レセプト &amp; 5大提出ゲート</span><span class="badge">MN〜ST 16順</span></span>
-                <span class="muted">支払基金(14)/国保連(24)・調剤録確定＋保険薬剤師承認薬歴ゲート</span>
+                <span class="node-header"><span class="node-title">月次レセプト &amp; 5大提出ゲート</span><span class="badge">CYO提出 / CSV取込分離</span></span>
+                <span class="muted">提出(RECEIPTY.CYO: YK→RE..ST→GO) と 取込(MN→YK→RE..ST)</span>
               </button>
               <button type="button" class="node-box" data-node="split_return" aria-pressed="false">
                 <span class="node-header"><span class="node-title">オン資振替分割・返戻再請求</span><span class="badge">データ識別1〜16</span></span>
@@ -241,12 +241,13 @@
         ]
       },
       monthly_receipt: {
-        title: "月次レセプト16レコード編成 & 5大提出ゲート (MonthlyReceipt)",
+        title: "月次レセプト編成 & 5大提出ゲート (MonthlyReceipt)",
         badge: "billing-claim.md / READY_TO_SUBMIT",
-        summary: "支払基金(14)・国保連(24)向けの16レコード順序と提出前の5大整合性検証。",
+        summary: "薬局提出用（RECEIPTY.CYO）と審査支払機関・保険者情報ファイル（CSV）を分離した編成・検証。",
         points: [
-          "16レコード順序: MN → YK → RE〜MF → SH → CZ → IY → TO → CO → TK → KI → ST",
-          "5大ゲート: ①レコード順序/文字モード、②HO/KO受付回数(分割2回目以降除外)とCZ=KI受付回数一致、③IY剤形別用量一致、④TK電算コード網羅、⑤全調剤録確定＋KI全項目の保険薬剤師承認済み薬歴存在"
+          "提出用シリアライズ（RECEIPTY.CYO）: ファイル先頭にYK（1件）、各レセプトはRE〜ST、末尾にGO（合計レコード）を出力",
+          "機関/保険者情報ファイル（14_RECODEINFO_PHA.CSV / 24_RECODEINFO_PHA.CSV）: 各レセプト先頭MN→YK〜STを事後取込・突合に利用",
+          "5大ゲート: ①提出/取込フォーマット順序・文字モード、②HO/KOとCZ=KI受付回数一致、③IY剤形別用量、④TK電算コード、⑤全調剤録確定＋保険薬剤師承認済み薬歴存在"
         ]
       },
       split_return: {
