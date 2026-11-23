@@ -714,5 +714,5 @@ PR #6 のコードレビューで指摘された以下の2点を修正した。
 
 - **組織・施設基準（[facility-compliance.md](01-organization/facility-compliance.md)・[store.md](01-organization/store.md)）**: 調剤基本料の受付回数（時間外等除外・リフィル加算）・処方箋集中率控除式・医療モール合算・都市部500mルール・門前薬局等立地依存減算、地域支援加算（1〜5）の同一グループ分譲/職員家族除外・加算1経過措置、および M&A・移転時の電子証明書インストール前の旧薬局コード変更禁止ガードを追記。
 - **電子処方箋・資格・手帳（[coverage.md](03-patient-coverage/coverage.md)・[reception-entry.md](04-prescription-dispensing/reception-entry.md)・[prescription-review.md](04-prescription-dispensing/prescription-review.md)・[medication-counseling.md](05-pharmaceutical-care/medication-counseling.md)）**: 健康保険証廃止前提（マイナ保険証・資格確認書）、調剤結果取消後のステータス「調剤済み」戻り、未調剤回収時の閲覧範囲、職域診療所・100日超登録、重複投薬等チェックの薬剤種類数表示（R9.3以降）、マイナポータルAPI専用アプリの非認定と「e薬 Link®」同意・紙手帳切替対応を追記。
-- **一次請求仕様（[billing-claim.md](07-reimbursement-billing/billing-claim.md)）**: `RECEIPTY.CYO` マルチボリューム分割識別、`GO` のレセプト件数・総合計点数合算ルール（公費のみ時は最初の `KO` のみ合算）、および一次請求時の `SN` 記録対象（`12` から始まる生活保護等のみ）を追記。
+- **一次請求仕様（[billing-claim.md](07-reimbursement-billing/billing-claim.md)）**: `RECEIPTY.CYO` マルチボリューム分割識別、`GO` のレセプト件数・総合計点数合算ルール（公費のみ時は最初の `KO` のみ合算）、および一次請求時の `SN` 記録対象（`HO` は対象、`KO` は公費負担者番号が `12` で始まる場合のみ対象）を追記。
 - **安全管理第7.0版差分（[tenant-access.md](01-organization/tenant-access.md)）**: サイバーセキュリティ基本法・保守委託機関編との整合、ID登録時の身元確認（IAL Level 2以上）、クラウド事業者セキュリティ認証確認・意図しない設定変更自動検知、BYOD端末規則・台帳管理を追記。
