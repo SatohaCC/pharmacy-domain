@@ -1,27 +1,27 @@
 # Backend 設計ルール
 
-`backend/app/` はシンプルなレイヤード構成（`routers` / `schemas` / `services` / `clients` / `core`）を採用し、外部 SDK の隔離と単体テストのしやすさを維持する。
+`backend/app/` は DDD・オニオンアーキテクチャ構成（`domain` / `application` / `infrastructure` / `presentation` + Composition Root `main.py`）を採用し、業務ルールと整合性境界を内層に閉じ込める。詳細は `.agents/skills/ddd-onion-bestpractices/` を参照する。
 
 ## 1. ディレクトリと責務
 
-- `app/main.py`: FastAPI アプリの生成・ミドルウェア・`lifespan`・ルーター登録のみ。
-- `app/core/`: 環境変数・設定（`config.py`）などの共通基盤。各モジュールで直接 `os.getenv` を散らさない。
-- `app/routers/`: HTTP / WebSocket エンドポイント定義。入力検証と `services/` 呼び出しのみを行い、業務ロジックを書かない。
-- `app/schemas/`: Pydantic の入出力モデル（API 契約）。
-- `app/services/`: ビジネスロジック・ユースケース。FastAPI（`Request` / `HTTPException` 等）に依存しない。
-- `app/clients/`: 音声・LLM・外部 API などの外部 SDK アダプタおよびライフサイクル管理（`ClientRegistry`）を閉じ込める層。`services/` から直接外部 SDK を import しない。
+- `app/main.py`: Composition Root。FastAPI アプリの生成・ミドルウェア・`lifespan`（共有資源の登録・解放とユースケース配線）・ルーター登録のみを行う。
+- `app/domain/`: Domain Primitive・Value Object・Entity / Aggregate Root・Domain 例外・Repository 抽象（Protocol）。標準ライブラリと `app.domain` 内の許可されたモジュールのみに依存する。
+- `app/application/`: ユースケース（Application Service）・Port（UnitOfWork / QueryPort / Clock / IdGenerator）・公開入出力契約（dataclass）・Application 例外。`app.domain` と標準ライブラリのみに依存し、Pydantic・FastAPI・SQLAlchemy に依存しない。
+- `app/infrastructure/`: Repository / QueryPort / UnitOfWork の具体実装、設定（`config.py`）、構造化ログ（`logging.py`）、共有資源管理（`resources.py`）、DB 接続と Alembic 用メタデータ。
+- `app/presentation/`: HTTP / WebSocket ルーター（`routes/`）、Pydantic DTO（`dto/`）、明示的変換（`mappers/`）、DI プロバイダー（`dependencies.py`）、例外変換（`error_handlers.py`）、ミドルウェア（`middleware.py`）。`app.domain` と `app.infrastructure` を直接 import しない。
 
-## 2. 依存方向と外部クライアントの DI
+## 2. 依存方向と資源寿命
 
-- `routers` → `services` / `schemas`
-- `services` → `clients` / `schemas` / `core`
-- `clients` → `core`（`routers` や `services` へ逆依存しない）
-- 接続プールや外部 SDK クライアントは `create_app(..., client_startup=...)` 経由で起動時に `app.state.clients`（`ClientRegistry`）へ登録し、終了時の `lifespan` で `aclose_all()` により確実にクローズする。
-- ルーターからは `app/routers/dependencies.py` の `get_client_registry` を `Depends(...)` で注入し、単体テスト時は `app.dependency_overrides[get_client_registry]` でモック用レジストリへ差し替える。
+- `presentation` → `application`（`domain` / `infrastructure` / `main` は禁止）
+- `application` → `domain`（`infrastructure` / `presentation` / `main` / Web・DB フレームワークは禁止）
+- `domain` → `domain` 内のみ（外層・フレームワークは禁止）
+- `infrastructure` → `application` / `domain`（`presentation` / `main` / `fastapi` は禁止）
+- Engine 等の共有資源は起動時に `app.state.resources`（`ResourceRegistry`）へ登録し、終了時の `lifespan` で `aclose_all()` により逆順で解放する。
+- DB 接続・トランザクション（`UnitOfWork`）は操作単位で生成し、並行操作間で共有しない。
 
 ## 3. 検証
 
 変更後は以下を実行して通過を確認する。
 
-- `pnpm check`（Ruff lint / format check + mypy）
+- `pnpm check`（Ruff lint / format check + import-linter + mypy + OpenAPI 型整合）
 - `pnpm test`（pytest）
