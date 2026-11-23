@@ -435,3 +435,14 @@
 - **配属とアクセス権限の分離**: 人事・シフト上の店舗配属（主配属・応援）とシステム上のアクセス権限付与は完全に別操作として管理し、配属変更による自動付与・自動剥奪は行わない。
 
 影響する文書: [01-organization/README.md](01-organization/README.md)、[corporate.md](01-organization/corporate.md)、[store.md](01-organization/store.md)、[staff.md](01-organization/staff.md)、[tenant-access.md](01-organization/tenant-access.md)、[organization-contracts.md](01-organization/organization-contracts.md)、[cross-cutting-issues.md](01-organization/cross-cutting-issues.md)、[quality.md](01-organization/quality.md)。
+
+
+## 報酬上のグループ判定と店舗例外・詳細属性の確定（2026-11-23）
+
+法人・法人グループ・店舗の残論点について、以下を合意した。
+
+- **報酬算定上の同一グループ判定と法人間関係の拡張**: 調剤基本料等の報酬算定上のグループ判定を対象とし、`CorporateRelation` として `親子（支配）`（最大1親）・`関連会社`・`FC契約` の3種別を期間・根拠メモ付きで管理する。判定結果（`GroupAssessment`）の正本は [施設基準・届出](01-organization/facility-compliance.md) で保持し、算定領域へ渡す。
+- **店舗の営業状態例外と営業日時・連絡先**: 営業状態に `準備中止` を追加し、過去店舗の取込（初期状態を `営業中` / `閉店` で登録可）および閉店後の同一店舗としての再開（`閉店 → 営業中` / `閉店 → 開設準備 → 営業中`）を対象とする。また、電話・FAX・メールおよび曜日別通常営業時間・日別の特別営業日・臨時休業・祝日例外をシフト・時間外加算判定にも使える粒度で店舗ドメインに持つ。
+- **法人の重複チェック**: 個人区分は1人で複数開設する可能性があるため、法人番号がない個人区分や確認前法人の重複チェックは不要とする。
+
+影響する文書: [01-organization/README.md](01-organization/README.md)、[corporate.md](01-organization/corporate.md)、[store.md](01-organization/store.md)、[facility-compliance.md](01-organization/facility-compliance.md)、[organization-contracts.md](01-organization/organization-contracts.md)、[cross-cutting-issues.md](01-organization/cross-cutting-issues.md)。
