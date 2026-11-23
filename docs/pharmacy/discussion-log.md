@@ -487,3 +487,12 @@
 調剤過誤や交付間違いなどの発生源・関連記録（処方・調剤・指導・薬歴）が患者・臨床・ケア領域に直結しているため、`quality.md` を `01-organization/` から `03-clinical/` へ移動した。`01-organization/` では管理主体（発生店舗の開設法人）およびテナント分離・RBAC の境界のみを扱う。
 
 影響する文書: [03-clinical/quality.md](03-clinical/quality.md)、[03-clinical/README.md](03-clinical/README.md)、[01-organization/README.md](01-organization/README.md)、[organization-contracts.md](01-organization/organization-contracts.md)、[domain-candidates.md](domain-candidates.md)、[diagram.html](01-organization/diagram.html)。
+
+
+## 制度通知（特掲診療料の施設基準等）との整合補強（2026-11-23）
+
+厚生労働省告示・施設基準通知の「同一グループ」要件に合わせ、以下を補強した。
+
+- **個人区分・役員兼任の考慮**: 個人区分であっても同一開設者や役員兼任・実質支配等がある場合は `CorporateRelation` への関係登録を許容し、根拠メモに役員兼任を含められるようにした。
+- **VC契約の包含**: `FC契約` を `FC・VC契約` に広げ、ボランタリーチェーン等の共同購入・一体運営契約も扱えるようにした。
+- **算定参照項目の明記**: `GroupAssessment` が調剤基本料だけでなく地域支援体制加算（グループ外連携判定）や後発医薬品調剤体制加算等でも参照されることを [facility-compliance.md](01-organization/facility-compliance.md) に明記した。
