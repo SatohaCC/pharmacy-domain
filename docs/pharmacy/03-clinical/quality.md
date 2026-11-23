@@ -72,4 +72,4 @@ A社の薬局Xで薬剤の取り違えを発見する。Xが初期対応と報�
 
 現時点で品質・インシデントに関する主要な未決事項は解消済み。
 
-関連: [店舗](store.md)、[スタッフ](staff.md)、[アクセス管理](tenant-access.md)。
+関連: [店舗](../01-organization/store.md)、[スタッフ](../01-organization/staff.md)、[アクセス管理](../01-organization/tenant-access.md)。

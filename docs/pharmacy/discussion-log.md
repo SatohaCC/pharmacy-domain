@@ -480,3 +480,10 @@
 - **保健所登録向けの常勤換算集計**: 保健所への届出・登録および施設基準の双方に対応できるよう、各店舗で期間別の勤務実績時間から常勤換算を集計できるようにする。
 
 影響する文書: [staff.md](01-organization/staff.md)、[diagram.html](01-organization/diagram.html)。
+
+
+## 品質・インシデント (`quality.md`) の臨床領域への移動（2026-11-23）
+
+調剤過誤や交付間違いなどの発生源・関連記録（処方・調剤・指導・薬歴）が患者・臨床・ケア領域に直結しているため、`quality.md` を `01-organization/` から `03-clinical/` へ移動した。`01-organization/` では管理主体（発生店舗の開設法人）およびテナント分離・RBAC の境界のみを扱う。
+
+影響する文書: [03-clinical/quality.md](03-clinical/quality.md)、[03-clinical/README.md](03-clinical/README.md)、[01-organization/README.md](01-organization/README.md)、[organization-contracts.md](01-organization/organization-contracts.md)、[domain-candidates.md](domain-candidates.md)、[diagram.html](01-organization/diagram.html)。
