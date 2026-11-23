@@ -435,3 +435,38 @@
 - **配属とアクセス権限の分離**: 人事・シフト上の店舗配属（主配属・応援）とシステム上のアクセス権限付与は完全に別操作として管理し、配属変更による自動付与・自動剥奪は行わない。
 
 影響する文書: [01-organization/README.md](01-organization/README.md)、[corporate.md](01-organization/corporate.md)、[store.md](01-organization/store.md)、[staff.md](01-organization/staff.md)、[tenant-access.md](01-organization/tenant-access.md)、[organization-contracts.md](01-organization/organization-contracts.md)、[cross-cutting-issues.md](01-organization/cross-cutting-issues.md)、[quality.md](01-organization/quality.md)。
+
+
+## 報酬上のグループ判定と店舗例外・詳細属性の確定（2026-11-23）
+
+法人・法人グループ・店舗の残論点について、以下を合意した。
+
+- **報酬算定上の同一グループ判定と法人間関係の拡張**: 調剤基本料等の報酬算定上のグループ判定を対象とし、`CorporateRelation` として `親子（支配）`（最大1親）・`関連会社`・`FC契約` の3種別を期間・根拠メモ付きで管理する。判定結果（`GroupAssessment`）の正本は [施設基準・届出](01-organization/facility-compliance.md) で保持し、算定領域へ渡す。
+- **店舗の営業状態例外と営業日時・連絡先**: 営業状態に `準備中止` を追加し、過去店舗の取込（初期状態を `営業中` / `閉店` で登録可）および閉店後の同一店舗としての再開（`閉店 → 営業中` / `閉店 → 開設準備 → 営業中`）を対象とする。また、電話・FAX・メールおよび曜日別通常営業時間・日別の特別営業日・臨時休業・祝日例外をシフト・時間外加算判定にも使える粒度で店舗ドメインに持つ。
+- **法人の重複チェック**: 個人区分は1人で複数開設する可能性があるため、法人番号がない個人区分や確認前法人の重複チェックは不要とする。
+
+影響する文書: [01-organization/README.md](01-organization/README.md)、[corporate.md](01-organization/corporate.md)、[store.md](01-organization/store.md)、[facility-compliance.md](01-organization/facility-compliance.md)、[organization-contracts.md](01-organization/organization-contracts.md)、[cross-cutting-issues.md](01-organization/cross-cutting-issues.md)。
+
+
+## 施設基準・品質・アクセス管理・スタッフ・保存方針の確定（2026-11-23）
+
+`01-organization` 全体の残りの未決事項について、以下を合意した。
+
+- **施設基準・届出（[facility-compliance.md](01-organization/facility-compliance.md)）**: 調剤基本料（`GroupAssessment` 含む）・主要加算・年次報告（妥結率等）を同じ「基準・届出・報告」の枠組みで扱う。妥結率等の数値算出元は他領域に任せ、本領域では提出内容・提出日・確認状態を管理する。行政上の確認は担当者が手動登録する。導入直後・譲受時等の過去期間は外部実績サマリー（手入力＋出典メモ）を合算可能とし、算定領域へは指定日時点で確認済み・適用期間内の施設基準一覧を渡す。
+- **品質・インシデント（[quality.md](01-organization/quality.md)）**: 薬局ヒヤリ・ハット事例収集・分析事業への報告をベースとした登録フォーマットとする。緊急連絡機能と固定的な完了承認者は不要とし、起票店舗≠発生店舗時は発生店舗（開設法人）を管理主体とする。店舗譲渡前は原則旧法人が管理・完了させ、必要時のみデータ承継承認で引き継ぐ。訂正は履歴付きで保持し原則物理削除不可、保存年数は法人運用に委ねる。
+- **テナント・アクセス管理（[tenant-access.md](01-organization/tenant-access.md)）**: 認可モデルは「`Permission` の束である `Role` ＋ 対象範囲（法人全体 / 指定店舗）＋ 有効期間」をアカウントへ付与する形に統一する。外部委託者も1アカウント＝1スタッフ（契約区分：業務委託）で表現する。緊急時アクセスは不要、アカウント無効化・権限剥奪は即時反映、監査ログは原則削除不可とする。NSIPS変更時の法人設定は初期値「未完了へ戻す」、設定変更後の受信分から適用、法人（個人区分含む）で設定可能とする。
+- **スタッフ（[staff.md](01-organization/staff.md)）**: 勤務予定・実績は本システム内で直接管理でき、必要に応じ外部勤怠からの取込も許容する。本人照合・資格確認は管理者が目視確認のうえ手動で「確認済み」を登録する。
+- **保存方針（[cross-cutting-issues.md](01-organization/cross-cutting-issues.md)）**: 法定保存期間を下回らないよう記録種別ごとの保存ポリシーで保持し、具体的な年数表は実装・制度マスタ側へ委ねる。訂正は履歴付き・原則物理削除不可とする。
+
+
+## `docs/tmp.md` 突合による不足要件の補完（2026-11-23）
+
+[tmp.md](../tmp.md) との突合により抽出した以下の5点を `01-organization/` の文書へ追記した。
+
+- 保険薬局指定コードの3要素（都道府県コード2桁・点数表区分1桁・機関コード7桁）および指定日
+- 薬局開設許可の発行者（都道府県知事等の許可権者）
+- 物理拠点の緯度経度
+- 事業譲渡前のレセプト・調剤実績に対する新法人側からの遡及変更・修正請求の禁止（参照のみ）、および薬歴承継時の患者同意・責任法人履歴の保持
+- 特定共同指導やレセプト電算出力（CZ/KI）に備えた、調剤実施日時点の「開設者・管理薬剤師・保険薬局コード・届出施設基準」のセット復元・適用要件
+
+影響する文書: [store.md](01-organization/store.md)、[cross-cutting-issues.md](01-organization/cross-cutting-issues.md)、[tenant-access.md](01-organization/tenant-access.md)。
