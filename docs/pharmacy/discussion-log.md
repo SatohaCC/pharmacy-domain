@@ -716,3 +716,7 @@ PR #6 のコードレビューで指摘された以下の2点を修正した。
 - **電子処方箋・資格・手帳（[coverage.md](03-patient-coverage/coverage.md)・[reception-entry.md](04-prescription-dispensing/reception-entry.md)・[prescription-review.md](04-prescription-dispensing/prescription-review.md)・[medication-counseling.md](05-pharmaceutical-care/medication-counseling.md)）**: 健康保険証廃止前提（マイナ保険証・資格確認書）、調剤結果取消後のステータス「調剤済み」戻り、未調剤回収時の閲覧範囲、職域診療所・100日超登録、重複投薬等チェックの薬剤種類数表示（R9.3以降）、マイナポータルAPI専用アプリの非認定と「e薬 Link®」同意・紙手帳切替対応を追記。
 - **一次請求仕様（[billing-claim.md](07-reimbursement-billing/billing-claim.md)）**: `RECEIPTY.CYO` マルチボリューム分割識別、`GO` のレセプト件数・総合計点数合算ルール（公費のみ時は最初の `KO` のみ合算）、および一次請求時の `SN` 記録対象（`HO` は対象、`KO` は公費負担者番号が `12` で始まる場合のみ対象）を追記。
 - **安全管理第7.0版差分（[tenant-access.md](01-organization/tenant-access.md)）**: サイバーセキュリティ基本法・保守委託機関編との整合、ID登録時の身元確認（IAL Level 2以上）、クラウド事業者セキュリティ認証確認・意図しない設定変更自動検知、BYOD端末規則・台帳管理を追記。
+
+## 2026-11-23 全体業務フロー・ドメイン関係図（1枚HTML）の追加
+
+- **新規作成（[overview.html](overview.html)）**: 非エンジニア（薬剤師・事務・PM）から開発者まで誰が見ても薬局全体の業務フローと8ドメイン（`01`〜`08`）の関わりを一目で把握できる1枚完結型HTML資料を作成。3層アーキテクチャSVG図、1日の業務フロー6ステップ（ドメイン別ハイライトフィルタ付き）、8ドメインの役割カード、およびシステム全体の5大絶対ルールを収録し、[README.md](README.md) と [diagram.html](diagram.html) から導線を追加した。

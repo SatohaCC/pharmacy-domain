@@ -21,4 +21,4 @@
 
 一連の業務フローは [レセコン入力 → 処方監査 → 調剤・鑑査 → 服薬指導・会計 → 薬歴記載 → フォローアップ](workflow.md) で定義する。
 
-あわせて [薬局ドメイン全体関係図 (HTML)](diagram.html)、[薬局全体のドメイン俯瞰](domain-overview.md)、[臨床・ケア横断図解 (HTML)](clinical-diagram.html)、[相談・決定記録](discussion-log.md) を参照。
+あわせて [全体業務フロー・ドメイン関係図 (1枚HTML)](overview.html)、[薬局ドメイン全体関係図 (HTML)](diagram.html)、[薬局全体のドメイン俯瞰](domain-overview.md)、[臨床・ケア横断図解 (HTML)](clinical-diagram.html)、[相談・決定記録](discussion-log.md) を参照。
