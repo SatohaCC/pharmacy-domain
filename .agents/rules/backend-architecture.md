@@ -1,6 +1,6 @@
 # Backend 設計ルール
 
-`backend/app/` は DDD・オニオンアーキテクチャ構成（`domain` / `application` / `infrastructure` / `presentation` + Composition Root `main.py`）を採用し、業務ルールと整合性境界を内層に閉じ込める。詳細は `.agents/skills/ddd-onion-bestpractices copy/` を参照する。
+`backend/app/` は DDD・オニオンアーキテクチャ構成（`domain` / `application` / `infrastructure` / `presentation` + Composition Root `main.py`）を採用し、業務ルールと整合性境界を内層に閉じ込める。詳細は `.agents/skills/ddd-onion-bestpractices/` を参照する。
 
 ## 1. ディレクトリと責務
 
