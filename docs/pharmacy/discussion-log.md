@@ -470,3 +470,13 @@
 - 特定共同指導やレセプト電算出力（CZ/KI）に備えた、調剤実施日時点の「開設者・管理薬剤師・保険薬局コード・届出施設基準」のセット復元・適用要件
 
 影響する文書: [store.md](01-organization/store.md)、[cross-cutting-issues.md](01-organization/cross-cutting-issues.md)、[tenant-access.md](01-organization/tenant-access.md)。
+
+
+## 複数店舗勤務・日替わりシフトと店舗別常勤換算（2026-11-23）
+
+スタッフの勤務形態と保健所登録要件について、以下を明確化した。
+
+- **常時複数店舗・日替わり店舗勤務**: 1人のスタッフについて、常時2店舗以上での兼務や毎日異なる店舗での勤務を許容し、各店舗でのシフト（予定）および勤務時間を時間帯が重複しない範囲で登録できるようにする。
+- **保健所登録向けの常勤換算集計**: 保健所への届出・登録および施設基準の双方に対応できるよう、各店舗で期間別の勤務実績時間から常勤換算を集計できるようにする。
+
+影響する文書: [staff.md](01-organization/staff.md)、[diagram.html](01-organization/diagram.html)。

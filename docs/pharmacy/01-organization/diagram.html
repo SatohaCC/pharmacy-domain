@@ -1,0 +1,555 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>薬局ドメイン 01-organization 図解</title>
+  <style>
+    :root {
+      --bg: #f8fafc;
+      --card: #ffffff;
+      --content: #f1f5f9;
+      --border: #cbd5e1;
+      --fg: #0f172a;
+      --muted: #475569;
+      --primary: #2563eb;
+      --primary-fg: #ffffff;
+      --success: #16a34a;
+      --warning: #d97706;
+      --error: #dc2626;
+    }
+    @media (prefers-color-scheme: dark) {
+      :root {
+        --bg: #0f172a;
+        --card: #1e293b;
+        --content: #0f172a;
+        --border: #334155;
+        --fg: #f8fafc;
+        --muted: #94a3b8;
+        --primary: #3b82f6;
+        --primary-fg: #ffffff;
+        --success: #22c55e;
+        --warning: #f59e0b;
+        --error: #ef4444;
+      }
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      padding: 24px;
+      background: var(--bg);
+      color: var(--fg);
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "Hiragino Kaku Gothic ProN", "Yu Gothic", sans-serif;
+      font-size: 14px;
+      line-height: 1.5;
+    }
+    .container { max-width: 1200px; margin: 0 auto; display: flex; flex-direction: column; gap: 20px; }
+    header {
+      display: flex; flex-wrap: wrap; justify-content: space-between; align-items: flex-end; gap: 16px;
+      padding-bottom: 16px; border-bottom: 1px solid var(--border);
+    }
+    .badge {
+      display: inline-block; padding: 2px 8px; border-radius: 6px; font-size: 12px;
+      background: var(--card); border: 1px solid var(--border); color: var(--muted);
+      font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+    }
+    h1 { margin: 6px 0 4px; font-size: 22px; font-weight: 700; }
+    h2 { margin: 0 0 12px; font-size: 16px; font-weight: 600; }
+    h3 { margin: 0 0 6px; font-size: 18px; font-weight: 700; }
+    p { margin: 0; }
+    .muted { color: var(--muted); font-size: 12px; }
+    .nav-tabs { display: flex; flex-wrap: wrap; gap: 8px; }
+    .btn {
+      padding: 6px 12px; border-radius: 8px; font-size: 12px; font-weight: 600; cursor: pointer;
+      border: 1px solid var(--border); background: var(--card); color: var(--fg);
+      transition: background 0.15s, border-color 0.15s;
+    }
+    .btn.active { background: var(--primary); color: var(--primary-fg); border-color: var(--primary); }
+    .hidden { display: none !important; }
+    .grid-overview { display: grid; grid-template-columns: 2fr 1fr; gap: 20px; }
+    @media (max-width: 900px) { .grid-overview { grid-template-columns: 1fr; } }
+    .card {
+      background: var(--card); border: 1px solid var(--border); border-radius: 12px; padding: 20px;
+    }
+    .group-box {
+      background: var(--content); border: 1px dashed var(--border); border-radius: 10px; padding: 12px;
+    }
+    .group-box-solid {
+      background: var(--content); border: 1px solid var(--border); border-radius: 10px; padding: 12px;
+    }
+    .grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+    .grid-3 { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; }
+    @media (max-width: 640px) { .grid-2, .grid-3 { grid-template-columns: 1fr; } }
+    .node-box {
+      background: var(--card); border: 1px solid var(--border); border-radius: 8px; padding: 12px;
+      cursor: pointer; transition: transform 0.15s, border-color 0.15s, box-shadow 0.15s;
+    }
+    .node-box:hover { transform: translateY(-2px); }
+    .node-box.active { border-color: var(--primary); box-shadow: 0 0 0 2px var(--primary); }
+    .node-header { display: flex; justify-content: space-between; align-items: center; gap: 8px; margin-bottom: 4px; }
+    .node-title { font-weight: 700; font-size: 13px; }
+    .arrow-row { display: grid; grid-template-columns: 1fr 1fr; text-align: center; color: var(--muted); font-size: 12px; font-weight: 600; padding: 4px 0; }
+    .detail-panel { display: flex; flex-direction: column; justify-content: space-between; }
+    ul.points { list-style: none; padding: 0; margin: 16px 0 0; display: flex; flex-direction: column; gap: 8px; font-size: 13px; }
+    ul.points li { display: flex; gap: 8px; align-items: flex-start; }
+    ul.points li::before { content: "•"; color: var(--primary); font-weight: 700; }
+    .detail-footer { margin-top: 16px; padding-top: 12px; border-top: 1px solid var(--border); font-size: 12px; color: var(--muted); }
+    table { width: 100%; border-collapse: collapse; font-size: 12px; }
+    th, td { text-align: left; padding: 10px 12px; border-bottom: 1px solid var(--border); vertical-align: top; }
+    th { color: var(--muted); font-weight: 600; }
+    .svg-wrap { overflow-x: auto; }
+    svg { width: 100%; min-width: 680px; height: auto; display: block; }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <header>
+      <div>
+        <div style="display:flex; gap:8px; align-items:center;">
+          <span class="badge">docs/pharmacy/01-organization</span>
+          <span class="muted">合意済みモデル図解</span>
+        </div>
+        <h1>組織・基盤ドメイン 構造図解</h1>
+        <p class="muted" style="font-size:13px;">法人（個人含む）・店舗・スタッフ・アカウント・施設基準・品質・テナント分離の関係と M&amp;A 時の振る舞い</p>
+      </div>
+      <nav class="nav-tabs" role="tablist">
+        <button class="btn tab-btn active" data-tab="overview">1. 全体関係図</button>
+        <button class="btn tab-btn" data-tab="lifecycle">2. 状態遷移・期間</button>
+        <button class="btn tab-btn" data-tab="ma">3. M&amp;A・異動ケース</button>
+        <button class="btn tab-btn" data-tab="contracts">4. 正本・責務一覧</button>
+      </nav>
+    </header>
+
+    <!-- Tab 1 -->
+    <section id="tab-overview" class="tab-panel grid-overview">
+      <div class="card">
+        <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:8px; margin-bottom:14px;">
+          <h2 style="margin:0;">エンティティ関係図（クリックで詳細表示）</h2>
+          <span class="muted">1法人 ＝ 1テナント / 1アカウント ＝ 1スタッフ</span>
+        </div>
+
+        <div style="display:flex; flex-direction:column; gap:12px;">
+          <div class="group-box">
+            <div class="muted" style="font-weight:600; margin-bottom:8px;">法人・テナント境界</div>
+            <div class="grid-2">
+              <div class="node-box active" data-node="corporation">
+                <div class="node-header">
+                  <span class="node-title">法人 (Corporation)</span>
+                  <span class="badge">＝テナント</span>
+                </div>
+                <p class="muted">区分: 法人 / 個人（個人開設者も統一）</p>
+                <p class="muted" style="margin-top:4px;">法人番号(法人のみ)・存続状態</p>
+              </div>
+              <div class="node-box" data-node="corporate_relation">
+                <div class="node-header">
+                  <span class="node-title">法人間関係</span>
+                  <span class="badge">CorporateRelation</span>
+                </div>
+                <p class="muted">種別: 親子(単一親・多段) / 関連会社 / FC契約</p>
+                <p class="muted" style="margin-top:4px;">手動登録・期間・根拠メモ（関係があっても別テナント）</p>
+              </div>
+            </div>
+          </div>
+
+          <div class="arrow-row">
+            <div>▼ 開設関係 [valid_from, valid_to)</div>
+            <div>▼ テナント内に所属（1対多）</div>
+          </div>
+
+          <div class="grid-2">
+            <div class="group-box-solid" style="display:flex; flex-direction:column; gap:10px;">
+              <div class="node-box" data-node="store">
+                <div class="node-header">
+                  <span class="node-title">薬局店舗 (PharmacyStore)</span>
+                  <span class="badge">不変ID</span>
+                </div>
+                <p class="muted">屋号・営業状態・連絡先・営業時間(日別例外含)</p>
+              </div>
+              <div class="grid-2">
+                <div class="node-box" data-node="location">
+                  <div class="node-title">物理拠点</div>
+                  <div class="muted">住所・区画・緯度経度</div>
+                </div>
+                <div class="node-box" data-node="license">
+                  <div class="node-title">許可・保険指定</div>
+                  <div class="muted">複数許可可 / 3要素コード</div>
+                </div>
+              </div>
+            </div>
+
+            <div class="group-box-solid" style="display:flex; flex-direction:column; gap:10px;">
+              <div class="node-box" data-node="staff_account">
+                <div class="node-header">
+                  <span class="node-title">アカウント 1 ── 1 スタッフ</span>
+                  <span class="badge">1:1厳守</span>
+                </div>
+                <p class="muted">契約区分: 雇用 / 派遣 / 業務委託（派遣会社マスタなし）</p>
+              </div>
+              <div class="grid-2">
+                <div class="node-box" data-node="assignment">
+                  <div class="node-title">配属・勤務・就任</div>
+                  <div class="muted">主配属/応援・管理薬剤師</div>
+                </div>
+                <div class="node-box" data-node="rbac">
+                  <div class="node-title">アクセス権限 (RBAC)</div>
+                  <div class="muted">Role＋範囲＋期間（別操作）</div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div class="grid-2">
+            <div class="node-box" data-node="compliance">
+              <div class="node-header">
+                <span class="node-title">施設基準・届出</span>
+                <span class="badge">GroupAssessment正本</span>
+              </div>
+              <p class="muted">調剤基本料・主要加算・妥結率報告・外部実績サマリー合算</p>
+            </div>
+            <div class="node-box" data-node="quality">
+              <div class="node-header">
+                <span class="node-title">品質・インシデント</span>
+                <span class="badge">ヒヤリハット準拠</span>
+              </div>
+              <p class="muted">発生店舗の法人が管理・緊急連絡/固定承認者なし</p>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <aside class="card detail-panel">
+        <div id="detail-content"></div>
+        <div class="detail-footer">ヒント: 左の図のボックスをクリックすると、正本・属性・確定ルールを確認できます。</div>
+      </aside>
+    </section>
+
+    <!-- Tab 2 -->
+    <section id="tab-lifecycle" class="tab-panel hidden">
+      <div class="card">
+        <h2>店舗の営業状態遷移（例外・取込・再開対応）</h2>
+        <div class="svg-wrap">
+          <svg viewBox="0 0 820 260">
+            <defs>
+              <marker id="arrow" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+                <path d="M 0 1 L 10 5 L 0 9 z" fill="currentColor" />
+              </marker>
+            </defs>
+            <circle cx="40" cy="120" r="10" fill="var(--primary)" />
+            <rect x="110" y="95" width="120" height="50" rx="10" fill="var(--content)" stroke="var(--border)" stroke-width="1.5" />
+            <text x="170" y="124" text-anchor="middle" fill="var(--fg)" font-weight="600" font-size="13">開設準備</text>
+
+            <rect x="110" y="195" width="120" height="46" rx="10" fill="var(--content)" stroke="var(--warning)" stroke-width="1.5" />
+            <text x="170" y="222" text-anchor="middle" fill="var(--fg)" font-weight="600" font-size="13">準備中止</text>
+
+            <rect x="330" y="95" width="120" height="50" rx="10" fill="var(--content)" stroke="var(--success)" stroke-width="2" />
+            <text x="390" y="124" text-anchor="middle" fill="var(--fg)" font-weight="700" font-size="13">営業中</text>
+
+            <rect x="330" y="195" width="120" height="46" rx="10" fill="var(--content)" stroke="var(--border)" stroke-width="1.5" />
+            <text x="390" y="222" text-anchor="middle" fill="var(--fg)" font-weight="600" font-size="13">休止中</text>
+
+            <rect x="570" y="95" width="120" height="50" rx="10" fill="var(--content)" stroke="var(--error)" stroke-width="1.5" />
+            <text x="630" y="124" text-anchor="middle" fill="var(--fg)" font-weight="600" font-size="13">閉店</text>
+
+            <g stroke="var(--muted)" stroke-width="1.5" fill="none" style="color:var(--muted);">
+              <path d="M 50 120 L 106 120" marker-end="url(#arrow)" />
+              <path d="M 40 110 Q 170 25 385 91" stroke-dasharray="4 3" marker-end="url(#arrow)" />
+              <path d="M 40 110 Q 330 5 625 91" stroke-dasharray="4 3" marker-end="url(#arrow)" />
+              <path d="M 230 120 L 326 120" marker-end="url(#arrow)" />
+              <path d="M 170 145 L 170 191" marker-end="url(#arrow)" />
+              <path d="M 375 145 L 375 191" marker-end="url(#arrow)" />
+              <path d="M 405 195 L 405 149" marker-end="url(#arrow)" />
+              <path d="M 450 120 L 566 120" marker-end="url(#arrow)" />
+              <path d="M 450 218 L 605 148" marker-end="url(#arrow)" />
+              <path d="M 570 105 Q 510 65 454 105" stroke="var(--primary)" style="color:var(--primary);" marker-end="url(#arrow)" />
+              <path d="M 630 145 Q 450 265 234 143" stroke="var(--primary)" stroke-dasharray="4 3" style="color:var(--primary);" marker-end="url(#arrow)" />
+            </g>
+
+            <text x="215" y="45" fill="var(--muted)" font-size="11">過去店舗取込</text>
+            <text x="480" y="30" fill="var(--muted)" font-size="11">過去店舗取込(閉店済み)</text>
+            <text x="510" y="75" fill="var(--primary)" font-size="11" text-anchor="middle">同一店舗として再開</text>
+            <text x="490" y="250" fill="var(--primary)" font-size="11" text-anchor="middle">準備を経て再開</text>
+          </svg>
+        </div>
+        <div class="grid-3" style="margin-top:16px;">
+          <div class="group-box-solid">
+            <div style="font-weight:700; font-size:13px; margin-bottom:4px;">半開区間 [valid_from, valid_to)</div>
+            <p class="muted">切替日 D では旧関係を D で終了（Dを含まない）、新関係を D で開始（Dを含む）とし重複・空白を防ぐ。</p>
+          </div>
+          <div class="group-box-solid">
+            <div style="font-weight:700; font-size:13px; margin-bottom:4px;">バイ・テンポラル管理</div>
+            <p class="muted">業務上の有効期間とシステム登録・訂正日時を分離。遡及指定や後日訂正でも当時の登録状態を追跡可能。</p>
+          </div>
+          <div class="group-box-solid">
+            <div style="font-weight:700; font-size:13px; margin-bottom:4px;">調剤実施日時点のセット復元</div>
+            <p class="muted">特定共同指導やレセプト電算(CZ/KI)出力時に、調剤日時点の開設者・管理薬剤師・指定コード・施設基準を復元。</p>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- Tab 3 -->
+    <section id="tab-ma" class="tab-panel hidden">
+      <div class="card">
+        <div style="display:flex; flex-wrap:wrap; justify-content:space-between; align-items:center; gap:12px; margin-bottom:16px;">
+          <h2 style="margin:0;">組織変更・M&amp;A ケース別影響ビュー</h2>
+          <div style="display:flex; flex-wrap:wrap; gap:8px;" id="ma-buttons">
+            <button class="btn ma-btn active" data-case="acquisition">株式買収</button>
+            <button class="btn ma-btn" data-case="transfer">事業譲渡 / 法人成り</button>
+            <button class="btn ma-btn" data-case="merger">吸収合併</button>
+            <button class="btn ma-btn" data-case="relocation">店舗移転</button>
+            <button class="btn ma-btn" data-case="secondment">応援 / 転籍</button>
+          </div>
+        </div>
+        <div id="ma-detail" class="grid-3"></div>
+      </div>
+    </section>
+
+    <!-- Tab 4 -->
+    <section id="tab-contracts" class="tab-panel hidden">
+      <div class="card" style="overflow-x:auto;">
+        <h2>領域別の正本・所有先と主要ルール</h2>
+        <table>
+          <thead>
+            <tr>
+              <th>情報</th>
+              <th>正本を持つ領域</th>
+              <th>主な参照先</th>
+              <th>確定ルール・割り切り</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td><strong>法人・法人間関係</strong></td>
+              <td>法人 (corporate)</td>
+              <td>店舗, 施設基準, アクセス管理</td>
+              <td>区分は法人/個人。1法人＝1テナント。親子(単一親)・関連会社・FCを手動登録。個人区分の重複チェック不要。</td>
+            </tr>
+            <tr>
+              <td><strong>店舗・拠点・営業日時・許可・指定</strong></td>
+              <td>店舗 (store)</td>
+              <td>処方箋, 調剤, 請求, 施設基準, 算定</td>
+              <td>運営担当の分離なし。1店舗に複数許可可。拠点は緯度経度含む。日別営業例外を保持。継続ID判断は運用に委ねる。</td>
+            </tr>
+            <tr>
+              <td><strong>人物・契約区分・配属・勤務・就任</strong></td>
+              <td>スタッフ (staff)</td>
+              <td>調剤実施者, 施設基準</td>
+              <td>テナント内エンティティ。アカウントと1:1。派遣会社マスタなし。勤務は直接入力＋外部取込可。資格は手動確認。</td>
+            </tr>
+            <tr>
+              <td><strong>基準評価・届出・GroupAssessment</strong></td>
+              <td>施設基準 (facility-compliance)</td>
+              <td>算定, 店舗運営</td>
+              <td>基本料・主要加算・妥結率報告を統一管理。外部実績サマリー合算可。算定へは指定日時点の有効基準一覧を渡す。</td>
+            </tr>
+            <tr>
+              <td><strong>報告・調査・改善</strong></td>
+              <td>品質 (quality)</td>
+              <td>店舗, 法人, 業務記録</td>
+              <td>ヒヤリハット収集事業ベース。緊急連絡・固定承認者なし。起票≠発生時は発生店舗の法人が管理。物理削除不可。</td>
+            </tr>
+            <tr>
+              <td><strong>利用設定・アカウント・権限・承継・監査</strong></td>
+              <td>テナント・アクセス管理</td>
+              <td>全領域の利用認可</td>
+              <td>Role(Permission束)＋範囲＋期間。配属とは完全別操作。緊急アクセスなし。即時失効。譲渡前の新法人遡及修正禁止。</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </section>
+  </div>
+
+  <script>
+    const nodeDetails = {
+      corporation: {
+        title: "法人 (Corporation)",
+        badge: "正本: 法人 / 1法人＝1テナント",
+        summary: "薬局を開設・管理する基本単位。個人開設者もモデル上は「法人」（区分：個人）として統一的に扱う。",
+        points: [
+          "区分: 法人 / 個人（店舗を持たない持株会社も登録可）",
+          "法人番号は法人区分のみ（個人区分の重複チェックは行わない）",
+          "存続状態（存続 / 解散 / 合併消滅）を管理し、過去記録参照のため削除しない",
+          "NSIPS変更設定（初期値：未完了へ戻す）や薬歴必須条件を保持"
+        ]
+      },
+      corporate_relation: {
+        title: "法人間関係 (CorporateRelation)",
+        badge: "正本: 法人",
+        summary: "実質的な法人グループの表現および調剤基本料等の同一グループ判定材料として管理。",
+        points: [
+          "種別: 親子（支配：最大1親・多段可）/ 関連会社 / FC契約",
+          "管理者が確認して手動登録・終了し、根拠メモ（議決権比率・契約等）を保持",
+          "親子・関連・FC関係があっても別テナント（自動閲覧許可はしない）",
+          "業務提携など報酬グループ判定に関わらない関係は対象外"
+        ]
+      },
+      store: {
+        title: "薬局店舗 (PharmacyStore)",
+        badge: "正本: 店舗",
+        summary: "業務上継続して扱う薬局単位。物理拠点・許可・保険指定とは分離して識別。",
+        points: [
+          "営業状態: 開設準備 / 準備中止 / 営業中 / 休止中 / 閉店（取込・再開可）",
+          "連絡先（電話・FAX・メール）および曜日別営業時間＋日別例外（祝日・臨時休業）",
+          "開設者（法人）との関係は半開区間で履歴管理（運営担当の分離は想定しない）",
+          "移転・譲渡時に店舗IDを維持するか新規にするかは運用判断に委ねる"
+        ]
+      },
+      location: {
+        title: "物理拠点 (StoreLocation)",
+        badge: "正本: 店舗",
+        summary: "店舗が業務を行う住所・区画・緯度経度と利用期間。",
+        points: [
+          "移転時は新拠点を登録し、店舗との利用期間を切り替える",
+          "緯度経度を保持し、在宅距離要件や店舗検索に利用可能",
+          "同じ場所への別法人の再出店を自動的に同じ店舗とみなさない"
+        ]
+      },
+      license: {
+        title: "許可・保険指定",
+        badge: "正本: 店舗",
+        summary: "薬機法上の許可（複数紐づけ可）と健康保険法上の保険薬局指定。",
+        points: [
+          "1つの店舗に薬局開設許可と店舗販売業許可など複数許可を紐づけ可能",
+          "許可情報: 種別、名義人、発行者（都道府県知事等）、番号、有効期間",
+          "保険指定: 都道府県コード(2桁)・点数表区分(1桁)・機関コード(7桁)、指定日、適用期間"
+        ]
+      },
+      staff_account: {
+        title: "アカウント 1 ── 1 スタッフ",
+        badge: "正本: テナント管理 / スタッフ",
+        summary: "セキュリティ・監査ログの整合性のため、テナント内で必ず1対1対応とする。",
+        points: [
+          "スタッフはテナント内エンティティ（他法人で働く場合は別アカウント＋別スタッフ）",
+          "ログイン不要スタッフ（配送員等）はアカウント無効状態で登録",
+          "店舗に配属されない本部管理者・外部委託者も1対1で登録（契約区分：業務委託）",
+          "本人照合・資格（薬剤師免許等）は管理者が目視確認し手動登録"
+        ]
+      },
+      assignment: {
+        title: "配属・勤務・就任",
+        badge: "正本: スタッフ",
+        summary: "人事・シフト・法的役割を期間・日時で厳密に区別して管理。",
+        points: [
+          "店舗配属: 主配属 / 兼務(副配属) / 応援、期間（常時複数店舗・毎日別店舗の勤務も可）",
+          "勤務予定・実績: 1人の各店舗でのシフト・勤務時間を日別/時間帯別に登録可（直接管理＋外部勤怠取込可）",
+          "常勤換算: 保健所の届出・登録および施設基準向けに、各店舗で期間別の勤務実績を集計可能",
+          "就任: 管理薬剤師等の対象施設・就任期間・根拠（許可切替による見かけ上の重複は兼務としない）"
+        ]
+      },
+      rbac: {
+        title: "アクセス権限 (RBAC)",
+        badge: "正本: テナント・アクセス管理",
+        summary: "店舗配属とは完全に別操作として管理する認可モデル。",
+        points: [
+          "Role（Permissionの束）＋ 対象範囲（法人全体 / 指定店舗）＋ 有効期間をアカウントへ付与",
+          "配属変更だけで権限は自動付与・自動剥奪されない",
+          "同じテナント内なら閲覧権限を持つ別店舗の同一患者薬歴を閲覧可（追記は記録元店舗限定）",
+          "アカウント無効化・権限剥奪は即時反映。緊急時アクセス機能は不要"
+        ]
+      },
+      compliance: {
+        title: "施設基準・届出",
+        badge: "正本: 施設基準・届出",
+        summary: "調剤基本料（GroupAssessment含む）・主要加算・妥結率等報告を統一管理。",
+        points: [
+          "法人間関係から算定する同一グループ判定（GroupAssessment）の正本を保持",
+          "導入直後・譲受時は外部実績サマリー（手入力＋出典メモ）を自システム実績と合算可",
+          "行政確認は受理通知等をもとに担当者が手動登録",
+          "算定側へは調剤日時点で「確認済み・適用期間内」の基準一覧を渡す"
+        ]
+      },
+      quality: {
+        title: "品質・インシデント",
+        badge: "正本: 品質",
+        summary: "薬局ヒヤリ・ハット事例収集・分析事業への報告をベースに構造化。",
+        points: [
+          "起票店舗≠発生店舗の場合は発生店舗（およびその開設法人）が管理",
+          "店舗譲渡前の案件は原則旧法人が管理・完了（必要時のみ承継承認）",
+          "緊急連絡機能・法人側の固定完了承認者は設けない",
+          "訂正は履歴付き・原則物理削除不可（保存年数は法人運用に委ねる）"
+        ]
+      }
+    };
+
+    const maCases = {
+      acquisition: [
+        { title: "法人・店舗ID・許可・コード", body: "法人ID・テナント・店舗ID・薬局開設許可・保険薬局コードはすべて変更なし。現場業務はシームレスに継続。" },
+        { title: "法人間関係・グループ判定", body: "CorporateRelation（親子）の切替日を記録し、施設基準側の GroupAssessment を再評価（買収日から即時合算とは断定しない）。" },
+        { title: "アクセス権限・データ", body: "親子関係を理由に親法人へ薬歴閲覧権限を自動付与しない。別テナントのまま分離維持。" }
+      ],
+      transfer: [
+        { title: "開設者・許可・指定コード", body: "切替日 D で旧関係を終了し新関係を開始。保険指定コードは原則新コード取得（遡及指定日とシステム移行日を分けて管理）。" },
+        { title: "店舗IDとスタッフ転籍", body: "店舗ID維持は運用判断。転籍スタッフは新法人テナント側で別アカウント＋別スタッフを新規作成。" },
+        { title: "データ承継と遡及修正禁止", body: "譲渡前のレセプト・調剤実績に対する新法人の遡及修正・再請求は禁止（参照のみ）。薬歴は患者同意に基づき承継し記載者履歴を保持。" }
+      ],
+      merger: [
+        { title: "消滅法人と存続法人", body: "消滅法人の存続状態を「合併消滅」とし、削除せず過去記録の参照先を保持。店舗の開設者を存続法人へ切替。" },
+        { title: "データ・責任の包括承継", body: "保存責任・返戻対応・閲覧権限は個別確認して移行記録を残す（包括承継＝全職員への一律閲覧許可と混同しない）。" },
+        { title: "保険薬局コード", body: "地方厚生局の取扱いに従い、原則再発番（特例継続含め履歴で管理）。" }
+      ],
+      relocation: [
+        { title: "物理拠点と店舗ID", body: "新しい StoreLocation（住所・緯度経度）を登録して利用期間を切替。店舗IDを維持するかは運用判断に委ねる。" },
+        { title: "許可・指定・届出", body: "移転に伴う許可・保険指定・施設基準の再確認・届出履歴を記録。" },
+        { title: "過去記録", body: "移転前の調剤・指導記録は当時の所在地・指定コードを参照可能な状態を維持。" }
+      ],
+      secondment: [
+        { title: "同一法人内の応援", body: "主配属を上書きせず、応援店舗への配属期間・勤務予定実績を記録。アクセス権限はRBAC側で期間限定付与（別操作）。" },
+        { title: "別法人への兼務・転籍", body: "法人をまたぐ共通スタッフIDは持たないため、相手先法人のテナントで別スタッフ＋別アカウントを発行。" },
+        { title: "退職・終了時", body: "配属・所属を終了し、アカウント無効化または権限剥奪を即時反映。過去の調剤実施者名は保持。" }
+      ]
+    };
+
+    function renderNodeDetail(key) {
+      const d = nodeDetails[key];
+      if (!d) return;
+      document.getElementById("detail-content").innerHTML = `
+        <span class="badge" style="margin-bottom:8px;">${d.badge}</span>
+        <h3>${d.title}</h3>
+        <p class="muted" style="font-size:13px;">${d.summary}</p>
+        <ul class="points">
+          ${d.points.map(p => `<li><span>${p}</span></li>`).join("")}
+        </ul>
+      `;
+    }
+
+    function renderMaCase(key) {
+      const items = maCases[key] || [];
+      document.getElementById("ma-detail").innerHTML = items.map(item => `
+        <div class="group-box-solid">
+          <div style="font-weight:700; font-size:13px; margin-bottom:6px;">${item.title}</div>
+          <p class="muted" style="font-size:12px; line-height:1.6;">${item.body}</p>
+        </div>
+      `).join("");
+    }
+
+    document.querySelectorAll(".tab-btn").forEach(btn => {
+      btn.addEventListener("click", () => {
+        document.querySelectorAll(".tab-btn").forEach(b => b.classList.remove("active"));
+        btn.classList.add("active");
+        document.querySelectorAll(".tab-panel").forEach(p => p.classList.add("hidden"));
+        document.getElementById("tab-" + btn.dataset.tab).classList.remove("hidden");
+      });
+    });
+
+    document.querySelectorAll(".node-box").forEach(box => {
+      box.addEventListener("click", () => {
+        document.querySelectorAll(".node-box").forEach(b => b.classList.remove("active"));
+        box.classList.add("active");
+        renderNodeDetail(box.dataset.node);
+      });
+    });
+
+    document.querySelectorAll(".ma-btn").forEach(btn => {
+      btn.addEventListener("click", () => {
+        document.querySelectorAll(".ma-btn").forEach(b => b.classList.remove("active"));
+        btn.classList.add("active");
+        renderMaCase(btn.dataset.case);
+      });
+    });
+
+    renderNodeDetail("corporation");
+    renderMaCase("acquisition");
+  </script>
+</body>
+</html>
