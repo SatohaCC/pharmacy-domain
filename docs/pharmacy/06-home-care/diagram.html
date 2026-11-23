@@ -1,0 +1,286 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="color-scheme" content="light dark" />
+  <title>06 在宅医療・訪問契約 ドメイン図解</title>
+  <style>
+    :root {
+      color-scheme: light dark;
+      --bg-light: #f8fafc; --bg-dark: #0f172a;
+      --surface-light: #ffffff; --surface-dark: #1e293b;
+      --surface-muted-light: #f1f5f9; --surface-muted-dark: #0f172a;
+      --fg-light: #0f172a; --fg-dark: #f8fafc;
+      --muted-light: #475569; --muted-dark: #94a3b8;
+      --border-light: #cbd5e1; --border-dark: #334155;
+      --primary-light: #0284c7; --primary-dark: #38bdf8;
+      --primary-soft-light: #e0f2fe; --primary-soft-dark: #082f49;
+      --bg: var(--bg-light); --surface: var(--surface-light); --surface-muted: var(--surface-muted-light);
+      --fg: var(--fg-light); --muted: var(--muted-light); --border: var(--border-light);
+      --primary: var(--primary-light); --primary-soft: var(--primary-soft-light);
+      @media (prefers-color-scheme: dark) {
+        --bg: var(--bg-dark); --surface: var(--surface-dark); --surface-muted: var(--surface-muted-dark);
+        --fg: var(--fg-dark); --muted: var(--muted-dark); --border: var(--border-dark);
+        --primary: var(--primary-dark); --primary-soft: var(--primary-soft-dark);
+      }
+      @supports (color: light-dark(white, black)) {
+        --bg: light-dark(var(--bg-light), var(--bg-dark));
+        --surface: light-dark(var(--surface-light), var(--surface-dark));
+        --surface-muted: light-dark(var(--surface-muted-light), var(--surface-muted-dark));
+        --fg: light-dark(var(--fg-light), var(--fg-dark));
+        --muted: light-dark(var(--muted-light), var(--muted-dark));
+        --border: light-dark(var(--border-light), var(--border-dark));
+        --primary: light-dark(var(--primary-light), var(--primary-dark));
+        --primary-soft: light-dark(var(--primary-soft-light), var(--primary-soft-dark));
+      }
+    }
+    * { box-sizing: border-box; }
+    body { margin: 0; background: var(--bg); color: var(--fg); font-family: "Hiragino Kaku Gothic ProN", "Yu Gothic UI", "Meiryo", system-ui, sans-serif; line-height: 1.6; }
+    .container { max-width: 1280px; margin: 0 auto; padding: 24px 16px 48px; }
+    h1 { font-size: 22px; margin: 0 0 6px; }
+    h2 { font-size: 16px; margin: 0 0 12px; }
+    h3 { font-size: 15px; margin: 0 0 8px; }
+    p { margin: 0; }
+    .muted { color: var(--muted); font-size: 13px; }
+    .badge { display: inline-flex; align-items: center; padding: 2px 8px; border-radius: 999px; font-size: 11px; font-weight: 700; background: var(--primary-soft); color: var(--primary); }
+    .domain-nav { display: flex; flex-wrap: wrap; gap: 6px; margin: 14px 0 16px; padding: 10px 12px; background: var(--surface); border: 1px solid var(--border); border-radius: 10px; font-size: 12px; }
+    .domain-nav a { color: var(--fg); text-decoration: none; padding: 4px 10px; border-radius: 6px; border: 1px solid var(--border); background: var(--surface-muted); font-weight: 600; }
+    .domain-nav a:hover, .domain-nav a[aria-current="page"] { border-color: var(--primary); color: var(--primary); background: var(--primary-soft); }
+    [role="tablist"] { display: flex; overflow-x: auto; scroll-snap-type: inline proximity; gap: 4px; border-bottom: 1px solid var(--border); margin-bottom: 16px; }
+    [role="tab"] { flex: none; scroll-snap-align: start; position: relative; padding: 10px 16px; border: none; background: transparent; color: var(--muted); font: inherit; font-size: 13px; font-weight: 600; cursor: pointer; }
+    [role="tab"][aria-selected="true"] { color: var(--primary); }
+    [role="tab"][aria-selected="true"]::after { content: ""; position: absolute; inset: auto 0 0; border-block-end: 3px solid var(--primary); }
+    .panel-inner { background: var(--surface); border: 1px solid var(--border); border-radius: 12px; padding: 18px; }
+    .layout-main { display: grid; grid-template-columns: 1fr 360px; gap: 16px; align-items: start; }
+    @media (max-width: 960px) { .layout-main { grid-template-columns: 1fr; } }
+    .group-box { border: 1px dashed var(--border); border-radius: 10px; padding: 12px; background: var(--surface-muted); margin-bottom: 12px; }
+    .group-label { font-size: 12px; font-weight: 700; color: var(--primary); margin-bottom: 8px; }
+    .grid-2 { display: grid; grid-template-columns: repeat(2, 1fr); gap: 10px; }
+    .grid-3 { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; }
+    @media (max-width: 700px) { .grid-2, .grid-3 { grid-template-columns: 1fr; } }
+    .node-box { width: 100%; text-align: left; background: var(--surface); border: 1.5px solid var(--border); border-radius: 10px; padding: 12px; color: var(--fg); font: inherit; cursor: pointer; }
+    .node-box:hover { border-color: var(--primary); }
+    .node-box[aria-pressed="true"] { border-color: var(--primary); background: var(--primary-soft); }
+    .node-header { display: flex; justify-content: space-between; align-items: center; gap: 6px; margin-bottom: 4px; }
+    .node-title { font-weight: 700; font-size: 14px; }
+    .detail-box { position: sticky; top: 16px; background: var(--surface-muted); border: 1px solid var(--border); border-radius: 10px; padding: 16px; }
+    .points { margin: 10px 0 0; padding-left: 18px; font-size: 13px; }
+    .points li { margin-bottom: 6px; }
+    .table-wrapper { overflow: auto; max-inline-size: 100%; max-block-size: min(500px, 80vh); container-type: inline-size; border: 1px solid var(--border); border-radius: 8px; }
+    table { width: 100%; border-collapse: separate; border-spacing: 0; font-size: 13px; }
+    thead { position: sticky; inset-block-start: 0; z-index: 1; background: var(--surface-muted); }
+    th, td { padding: 10px 12px; text-align: left; border-bottom: 1px solid var(--border); vertical-align: top; }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <header>
+      <div style="display:flex; align-items:center; gap:10px; flex-wrap:wrap; margin-bottom:4px;">
+        <span class="badge">06-home-care / diagram.html</span>
+        <span class="muted">在宅医療・訪問薬剤管理 (`home_care`)</span>
+      </div>
+      <h1>06 在宅医療・訪問契約 ドメイン図解</h1>
+      <p class="muted">在宅療養契約のライフサイクル、介護保険優先原則、医師訪問指示、単一建物診療患者数・16km・回数上限、多職種・在宅協力薬局連携を可視化します。</p>
+    </header>
+
+    <nav class="domain-nav" aria-label="ドメイン別図解ナビゲーション">
+      <a href="../diagram.html">全体関係図 (01〜08)</a>
+      <a href="../01-organization/diagram.html">01 組織・基盤</a>
+      <a href="../02-reference/diagram.html">02 マスタ・外部参照</a>
+      <a href="../03-patient-coverage/diagram.html">03 患者・受給資格</a>
+      <a href="../04-prescription-dispensing/diagram.html">04 処方・調剤</a>
+      <a href="../05-pharmaceutical-care/diagram.html">05 服薬指導・薬歴・継続ケア</a>
+      <a href="diagram.html" aria-current="page">06 在宅医療・訪問契約</a>
+      <a href="../07-reimbursement-billing/diagram.html">07 算定・会計・請求</a>
+      <a href="../08-inventory-retail/diagram.html">08 在庫・物販</a>
+    </nav>
+
+    <div role="tablist" aria-label="06 在宅医療・訪問契約ビュー切替">
+      <button type="button" role="tab" id="tab-model" aria-selected="true">1. 在宅療養契約・訪問実績モデル</button>
+      <button type="button" role="tab" id="tab-rules" aria-selected="false">2. 算定区分・併用制限・レセ電TK連携ルール</button>
+    </div>
+
+    <div role="tabpanel" id="panel-model" aria-labelledby="tab-model">
+      <div class="panel-inner layout-main">
+        <div>
+          <div class="group-box">
+            <div class="group-label">在宅療養契約と事前条件 (home-care.md)：契約準備 → ACTIVE → TERMINATED</div>
+            <div class="grid-3">
+              <button type="button" class="node-box" data-node="agreement" aria-pressed="true">
+                <span class="node-header"><span class="node-title">在宅療養契約・制度区分</span><span class="badge">介護保険優先</span></span>
+                <span class="muted">HomeCareAgreement・医療/介護切り分け・患者同意・交通費説明</span>
+              </button>
+              <button type="button" class="node-box" data-node="order" aria-pressed="false">
+                <span class="node-header"><span class="node-title">医師の訪問指示</span><span class="badge">事前必須条件</span></span>
+                <span class="muted">HomeCareOrder・指示期間・頻度・急変時緊急訪問指示有無</span>
+              </button>
+              <button type="button" class="node-box" data-node="plan" aria-pressed="false">
+                <span class="node-header"><span class="node-title">薬学的管理指導計画</span><span class="badge">多職種共有</span></span>
+                <span class="muted">PharmaceuticalCarePlan・服薬管理目標・訪問頻度・配薬方法</span>
+              </button>
+            </div>
+          </div>
+
+          <div class="group-box" style="margin-bottom:0;">
+            <div class="group-label">居住建物判定・訪問実施記録・多職種連携</div>
+            <div class="grid-3">
+              <button type="button" class="node-box" data-node="residence" aria-pressed="false">
+                <span class="node-header"><span class="node-title">居住建物・単一建物・距離</span><span class="badge">1 / 2〜9 / 10+</span></span>
+                <span class="muted">ResidenceContext・単一建物診療患者人数・直線16km制限</span>
+              </button>
+              <button type="button" class="node-box" data-node="visit" aria-pressed="false">
+                <span class="node-header"><span class="node-title">訪問実施記録 &amp; 原本受領</span><span class="badge">回数上限管理</span></span>
+                <span class="muted">定期/緊急/同時/複数名/初期管理・訪問時処方箋原本受領突合</span>
+              </button>
+              <button type="button" class="node-box" data-node="report" aria-pressed="false">
+                <span class="node-header"><span class="node-title">多職種報告 &amp; 協力薬局連携</span><span class="badge">調管/調時/支B</span></span>
+                <span class="muted">医師・ケアマネ情報提供・退院時/緊急時共同指導・在宅協力薬局</span>
+              </button>
+            </div>
+          </div>
+        </div>
+
+        <aside class="detail-box" id="node-detail" aria-live="polite"></aside>
+      </div>
+    </div>
+
+    <div role="tabpanel" id="panel-rules" aria-labelledby="tab-rules" hidden="until-found">
+      <div class="panel-inner">
+        <h2>在宅医療における算定区分・上限・併用整合ルール（R8対応）</h2>
+        <div tabindex="0" role="region" aria-label="在宅医療算定整合ルール一覧" class="table-wrapper">
+          <table>
+            <thead>
+              <tr>
+                <th>項目</th>
+                <th>ドメイン不変条件・算定ガード</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <th>介護保険優先と重複禁止</th>
+                <td>要介護・要支援認定患者は原則として介護保険（居宅療養管理指導費）を適用し、同一月・同一定期訪問で医療保険の在宅患者訪問薬剤管理指導料を重複算定させない（末期悪性腫瘍や急性増悪時の緊急訪問等の法令例外のみ許可）。</td>
+              </tr>
+              <tr>
+                <th>介護保険併用時のレセ電 <code>TK</code> 記載</th>
+                <td>医療保険レセプトにおいて介護保険相当サービス（居宅療養管理指導費）を併用している場合、訪問指導を行った<strong>訪問日</strong>および当該請求月の最終算定時の<strong>要支援度または要介護度</strong>を摘要欄（<code>TK</code>）へ出力する。</td>
+              </tr>
+              <tr>
+                <th>単一建物診療患者人数</th>
+                <td>同一建物・同一月内の訪問対象患者数に応じて <code>1</code>（1人）、<code>2</code>（2〜9人）、<code>3</code>（10人以上）を導出する（同居する同一世帯の複数患者等の特例は家族管理 <code>PatientFamilyRelation</code> を参照）。</td>
+              </tr>
+              <tr>
+                <th>回数上限（患者月次・薬剤師週次）</th>
+                <td>・患者単位：計画訪問＋オンライン在宅指導は原則<strong>月4回</strong>（末期悪性腫瘍・注射用麻薬・中心静脈栄養は<strong>週2回かつ月8回</strong>）。<br/>・薬剤師単位：保険薬剤師1人につき<strong>週40回</strong>を上限として集計・警告する。</td>
+              </tr>
+              <tr>
+                <th>在宅移行初期管理料・複数名訪問料</th>
+                <td>・<strong>在宅移行初期管理料（15の8、1回まで）</strong>：在宅患者訪問薬剤管理指導料 <code>1</code> の算定時のみ許可し、同日の外来服薬支援料1は算定不可。<br/>・<strong>複数名薬剤管理指導訪問料（15の10）</strong>：訪問薬剤管理指導料 <code>1</code> または緊急訪問 <code>1/2</code> の算定時のみ許可。</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    const details = {
+      agreement: {
+        title: "在宅療養契約・制度区分 (HomeCareAgreement)",
+        badge: "home-care.md / 集約ルート",
+        summary: "患者×薬局×適用制度（医療保険 / 介護保険）単位で管理する契約集約。",
+        points: [
+          "ライフサイクル: 契約準備・退院時共同指導 → 在宅管理中(ACTIVE) → 終了(TERMINATED)",
+          "03-patient-coverage の要介護認定情報と連動し、介護保険優先原則と医療保険例外を排他制御",
+          "患者・家族の同意取得日、署名同意書参照、患家負担となる交通費実費の説明同意を保持"
+        ]
+      },
+      order: {
+        title: "医師の訪問指示 (HomeCareOrder)",
+        badge: "home-care.md / 事前条件",
+        summary: "在宅訪問薬剤管理指導を実施・算定するための法的前提となる医師指示。",
+        points: [
+          "指示医療機関・指示医師、指示日、対象期間・訪問頻度、急変時の緊急訪問指示有無を保持",
+          "有効な医師訪問指示（および患者同意・指導計画）が存在しない状態での定期訪問確定・算定を禁止",
+          "平成24年3月31日以前指示の経過措置該当フラグを管理"
+        ]
+      },
+      plan: {
+        title: "薬学的管理指導計画 (PharmaceuticalCarePlan)",
+        badge: "home-care.md / 計画策定",
+        summary: "訪問前に策定・見直しを行い、処方医・ケアマネジャー等と共有する指導計画。",
+        points: [
+          "担当保険薬剤師、策定日・見直し日、対象疾患・服薬管理目標、訪問予定頻度、配薬方法（一包化・カレンダー等）",
+          "計画的な在宅訪問と、別疾病による臨時投薬（外来服薬管理指導料注15例外）を区別"
+        ]
+      },
+      residence: {
+        title: "居住建物・単一建物人数・16km距離判定 (ResidenceContext)",
+        badge: "home-care.md / 点数区分決定",
+        summary: "訪問点数区分（1/2/3）と算定適格性（16km以内）を決定する居住コンテキスト。",
+        points: [
+          "居住形態（自宅 / 特別養護老人ホーム等 / 有料老人ホーム・サ高住等）を 02-reference の施設種別と連携",
+          "同一建物内の当月訪問対象患者数から単一建物診療患者人数（1人 / 2〜9人 / 10人以上）を導出",
+          "店舗拠点の緯度経度（01-organization）と患家住所から直線16km以内を検証（特殊事情例外を除く）"
+        ]
+      },
+      visit: {
+        title: "訪問実施記録 & 処方箋原本受領 (HomeVisitRecord)",
+        badge: "home-care.md / 実績・上限管理",
+        summary: "定期・緊急・共同指導等の訪問実績と、特殊在宅管理要件を記録する。",
+        points: [
+          "FAX等で事前に処方内容を受領して調製し訪問した場合、訪問時に必ず処方箋原本を受領し同一性を確認",
+          "訪問区分（定期 / 緊急1［処方医求め］・2［それ以外］ / 医師同時指導 / 複数名訪問 / 退院時・緊急時共同指導 / 在宅移行初期管理）",
+          "医療用麻薬持続注射療法、在宅中心静脈栄養法（IVH）、経管投薬、乳幼児・小児特定、感染症対応（注10）、夜間休日深夜区分を記録"
+        ]
+      },
+      report: {
+        title: "多職種情報提供 & 在宅協力薬局連携",
+        badge: "home-care.md / 地域連携",
+        summary: "処方医・ケアマネジャーへの結果報告と、在宅基幹薬局・協力薬局間の連携管理。",
+        points: [
+          "訪問の都度、処方医およびケアマネジャー（居宅療養管理指導時）へ情報提供文書を作成・共有",
+          "在宅協力薬局が訪問・指導を実施し在宅基幹薬局が算定する場合は、連携区分（調管 / 調時 / 支B 等）を明示記録"
+        ]
+      }
+    };
+
+    function renderNode(key) {
+      const d = details[key];
+      if (!d) return;
+      document.getElementById("node-detail").innerHTML = `
+        <span class="badge" style="margin-bottom:8px;">${d.badge}</span>
+        <h3>${d.title}</h3>
+        <p class="muted">${d.summary}</p>
+        <ul class="points">${d.points.map(p => `<li>${p}</li>`).join("")}</ul>
+      `;
+    }
+
+    document.querySelectorAll(".node-box").forEach(btn => {
+      btn.addEventListener("click", () => {
+        document.querySelectorAll(".node-box").forEach(b => b.setAttribute("aria-pressed", "false"));
+        btn.setAttribute("aria-pressed", "true");
+        renderNode(btn.dataset.node);
+      });
+    });
+
+    const tabs = Array.from(document.querySelectorAll('[role="tab"]'));
+    const panels = Array.from(document.querySelectorAll('[role="tabpanel"]'));
+    function activateTab(selectedTab) {
+      for (const tab of tabs) tab.setAttribute("aria-selected", String(tab === selectedTab));
+      for (const panel of panels) {
+        if (panel.getAttribute("aria-labelledby") === selectedTab.id) panel.removeAttribute("hidden");
+        else panel.setAttribute("hidden", "until-found");
+      }
+      selectedTab.scrollIntoView({ block: "nearest", inline: "nearest" });
+    }
+    tabs.forEach(tab => tab.addEventListener("click", () => activateTab(tab)));
+    panels.forEach(panel => panel.addEventListener("beforematch", () => {
+      const tab = document.getElementById(panel.getAttribute("aria-labelledby"));
+      if (tab) activateTab(tab);
+    }));
+    renderNode("agreement");
+  </script>
+</body>
+</html>

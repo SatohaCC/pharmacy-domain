@@ -1,0 +1,310 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="color-scheme" content="light dark" />
+  <title>07 算定・会計・請求 ドメイン図解</title>
+  <style>
+    :root {
+      color-scheme: light dark;
+      --bg-light: #f8fafc; --bg-dark: #0f172a;
+      --surface-light: #ffffff; --surface-dark: #1e293b;
+      --surface-muted-light: #f1f5f9; --surface-muted-dark: #0f172a;
+      --fg-light: #0f172a; --fg-dark: #f8fafc;
+      --muted-light: #475569; --muted-dark: #94a3b8;
+      --border-light: #cbd5e1; --border-dark: #334155;
+      --primary-light: #0284c7; --primary-dark: #38bdf8;
+      --primary-soft-light: #e0f2fe; --primary-soft-dark: #082f49;
+      --bg: var(--bg-light); --surface: var(--surface-light); --surface-muted: var(--surface-muted-light);
+      --fg: var(--fg-light); --muted: var(--muted-light); --border: var(--border-light);
+      --primary: var(--primary-light); --primary-soft: var(--primary-soft-light);
+      @media (prefers-color-scheme: dark) {
+        --bg: var(--bg-dark); --surface: var(--surface-dark); --surface-muted: var(--surface-muted-dark);
+        --fg: var(--fg-dark); --muted: var(--muted-dark); --border: var(--border-dark);
+        --primary: var(--primary-dark); --primary-soft: var(--primary-soft-dark);
+      }
+      @supports (color: light-dark(white, black)) {
+        --bg: light-dark(var(--bg-light), var(--bg-dark));
+        --surface: light-dark(var(--surface-light), var(--surface-dark));
+        --surface-muted: light-dark(var(--surface-muted-light), var(--surface-muted-dark));
+        --fg: light-dark(var(--fg-light), var(--fg-dark));
+        --muted: light-dark(var(--muted-light), var(--muted-dark));
+        --border: light-dark(var(--border-light), var(--border-dark));
+        --primary: light-dark(var(--primary-light), var(--primary-dark));
+        --primary-soft: light-dark(var(--primary-soft-light), var(--primary-soft-dark));
+      }
+    }
+    * { box-sizing: border-box; }
+    body { margin: 0; background: var(--bg); color: var(--fg); font-family: "Hiragino Kaku Gothic ProN", "Yu Gothic UI", "Meiryo", system-ui, sans-serif; line-height: 1.6; }
+    .container { max-width: 1280px; margin: 0 auto; padding: 24px 16px 48px; }
+    h1 { font-size: 22px; margin: 0 0 6px; }
+    h2 { font-size: 16px; margin: 0 0 12px; }
+    h3 { font-size: 15px; margin: 0 0 8px; }
+    p { margin: 0; }
+    .muted { color: var(--muted); font-size: 13px; }
+    .badge { display: inline-flex; align-items: center; padding: 2px 8px; border-radius: 999px; font-size: 11px; font-weight: 700; background: var(--primary-soft); color: var(--primary); }
+    .domain-nav { display: flex; flex-wrap: wrap; gap: 6px; margin: 14px 0 16px; padding: 10px 12px; background: var(--surface); border: 1px solid var(--border); border-radius: 10px; font-size: 12px; }
+    .domain-nav a { color: var(--fg); text-decoration: none; padding: 4px 10px; border-radius: 6px; border: 1px solid var(--border); background: var(--surface-muted); font-weight: 600; }
+    .domain-nav a:hover, .domain-nav a[aria-current="page"] { border-color: var(--primary); color: var(--primary); background: var(--primary-soft); }
+    [role="tablist"] { display: flex; overflow-x: auto; scroll-snap-type: inline proximity; gap: 4px; border-bottom: 1px solid var(--border); margin-bottom: 16px; }
+    [role="tab"] { flex: none; scroll-snap-align: start; position: relative; padding: 10px 16px; border: none; background: transparent; color: var(--muted); font: inherit; font-size: 13px; font-weight: 600; cursor: pointer; }
+    [role="tab"][aria-selected="true"] { color: var(--primary); }
+    [role="tab"][aria-selected="true"]::after { content: ""; position: absolute; inset: auto 0 0; border-block-end: 3px solid var(--primary); }
+    .panel-inner { background: var(--surface); border: 1px solid var(--border); border-radius: 12px; padding: 18px; }
+    .layout-main { display: grid; grid-template-columns: 1fr 360px; gap: 16px; align-items: start; }
+    @media (max-width: 960px) { .layout-main { grid-template-columns: 1fr; } }
+    .group-box { border: 1px dashed var(--border); border-radius: 10px; padding: 12px; background: var(--surface-muted); margin-bottom: 12px; }
+    .group-label { font-size: 12px; font-weight: 700; color: var(--primary); margin-bottom: 8px; }
+    .grid-2 { display: grid; grid-template-columns: repeat(2, 1fr); gap: 10px; }
+    .grid-3 { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; }
+    @media (max-width: 700px) { .grid-2, .grid-3 { grid-template-columns: 1fr; } }
+    .node-box { width: 100%; text-align: left; background: var(--surface); border: 1.5px solid var(--border); border-radius: 10px; padding: 12px; color: var(--fg); font: inherit; cursor: pointer; }
+    .node-box:hover { border-color: var(--primary); }
+    .node-box[aria-pressed="true"] { border-color: var(--primary); background: var(--primary-soft); }
+    .node-header { display: flex; justify-content: space-between; align-items: center; gap: 6px; margin-bottom: 4px; }
+    .node-title { font-weight: 700; font-size: 14px; }
+    .detail-box { position: sticky; top: 16px; background: var(--surface-muted); border: 1px solid var(--border); border-radius: 10px; padding: 16px; }
+    .points { margin: 10px 0 0; padding-left: 18px; font-size: 13px; }
+    .points li { margin-bottom: 6px; }
+    .table-wrapper { overflow: auto; max-inline-size: 100%; max-block-size: min(500px, 80vh); container-type: inline-size; border: 1px solid var(--border); border-radius: 8px; }
+    table { width: 100%; border-collapse: separate; border-spacing: 0; font-size: 13px; }
+    thead { position: sticky; inset-block-start: 0; z-index: 1; background: var(--surface-muted); }
+    th, td { padding: 10px 12px; text-align: left; border-bottom: 1px solid var(--border); vertical-align: top; }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <header>
+      <div style="display:flex; align-items:center; gap:10px; flex-wrap:wrap; margin-bottom:4px;">
+        <span class="badge">07-reimbursement-billing / diagram.html</span>
+        <span class="muted">調剤報酬算定 (`reimbursement`) ・ 窓口会計 (`payment`) ・ 保険等の請求 (`billing_claim`)</span>
+      </div>
+      <h1>07 算定・会計・請求 ドメイン図解</h1>
+      <p class="muted">無状態点数計算（基本料3段階・時間外基礎額・TK選択式コメント10類型）、窓口会計、月次レセプト16レコード・5大提出ゲート・返戻再請求を可視化します。</p>
+    </header>
+
+    <nav class="domain-nav" aria-label="ドメイン別図解ナビゲーション">
+      <a href="../diagram.html">全体関係図 (01〜08)</a>
+      <a href="../01-organization/diagram.html">01 組織・基盤</a>
+      <a href="../02-reference/diagram.html">02 マスタ・外部参照</a>
+      <a href="../03-patient-coverage/diagram.html">03 患者・受給資格</a>
+      <a href="../04-prescription-dispensing/diagram.html">04 処方・調剤</a>
+      <a href="../05-pharmaceutical-care/diagram.html">05 服薬指導・薬歴・継続ケア</a>
+      <a href="../06-home-care/diagram.html">06 在宅医療・訪問契約</a>
+      <a href="diagram.html" aria-current="page">07 算定・会計・請求</a>
+      <a href="../08-inventory-retail/diagram.html">08 在庫・物販</a>
+    </nav>
+
+    <div role="tablist" aria-label="07 算定・会計・請求ビュー切替">
+      <button type="button" role="tab" id="tab-model" aria-selected="true">1. 算定・会計・レセプト請求モデル</button>
+      <button type="button" role="tab" id="tab-tk" aria-selected="false">2. 摘要欄(TK)10類型とレセ電16レコード・5大ゲート</button>
+    </div>
+
+    <div role="tabpanel" id="panel-model" aria-labelledby="tab-model">
+      <div class="panel-inner layout-main">
+        <div>
+          <div class="group-box">
+            <div class="group-label">調剤報酬算定 (reimbursement.md)：無状態（Stateless）純粋計算サービス</div>
+            <div class="grid-3">
+              <button type="button" class="node-box" data-node="basic_fee" aria-pressed="true">
+                <span class="node-header"><span class="node-title">調剤基本料3段階 &amp; 時間外基礎額</span><span class="badge">下限3点ガード</span></span>
+                <span class="muted">注3/注4乗算四捨五入→加減算(特別A/B制約)→下限3点、基礎額算出</span>
+              </button>
+              <button type="button" class="node-box" data-node="matrix" aria-pressed="false">
+                <span class="node-header"><span class="node-title">別表1マトリクス &amp; 多剤減算</span><span class="badge">初期値自動算定禁止</span></span>
+                <span class="muted">承認済み薬歴根拠連動・7種以上内服90/100・区分40/41・KI/ST分離</span>
+              </button>
+              <button type="button" class="node-box" data-node="tk_gen" aria-pressed="false">
+                <span class="node-header"><span class="node-title">必須摘要欄(TK)自動導出</span><span class="badge">電算コード必須</span></span>
+                <span class="muted">選択式コメントコード10類型自動抽出（フリーテキスト単独不可）</span>
+              </button>
+            </div>
+          </div>
+
+          <div class="group-box">
+            <div class="group-label">窓口会計 (payment.md)：一部負担金・選定療養・自費・物販の精算と法定交付</div>
+            <div class="grid-2">
+              <button type="button" class="node-box" data-node="statement" aria-pressed="false">
+                <span class="node-header"><span class="node-title">精算伝票 &amp; 適正徴収義務</span><span class="badge">減免・値引禁止</span></span>
+                <span class="muted">10円未満四捨五入・選定療養費・容器/薬袋徴収ルール・物販合算</span>
+              </button>
+              <button type="button" class="node-box" data-node="receipt_doc" aria-pressed="false">
+                <span class="node-header"><span class="node-title">領収証・明細書無償交付 &amp; 未収</span><span class="badge">0円患者も交付</span></span>
+                <span class="muted">薬担規則第4条の2（0円患者無償交付）・差額再精算・M&amp;A債権帰属</span>
+              </button>
+            </div>
+          </div>
+
+          <div class="group-box" style="margin-bottom:0;">
+            <div class="group-label">保険等の請求・審査支払 (billing-claim.md)</div>
+            <div class="grid-3">
+              <button type="button" class="node-box" data-node="monthly_receipt" aria-pressed="false">
+                <span class="node-header"><span class="node-title">月次レセプト &amp; 5大提出ゲート</span><span class="badge">MN〜ST 16順</span></span>
+                <span class="muted">支払基金(14)/国保連(24)・調剤録確定＋保険薬剤師承認薬歴ゲート</span>
+              </button>
+              <button type="button" class="node-box" data-node="split_return" aria-pressed="false">
+                <span class="node-header"><span class="node-title">オン資振替分割・返戻再請求</span><span class="badge">データ識別1〜16</span></span>
+                <span class="muted">非破壊世代保持(1,2,5,6,11〜16)・JY補正区分1〜5・HR返戻是正ゲート</span>
+              </button>
+              <button type="button" class="node-box" data-node="reconciliation" aria-pressed="false">
+                <span class="node-header"><span class="node-title">請求前3者突合 &amp; 増減通知管理</span><span class="badge">指導対策証跡</span></span>
+                <span class="muted">PreClaimReconciliation・AssessmentAdjustmentNotice翌月是正</span>
+              </button>
+            </div>
+          </div>
+        </div>
+
+        <aside class="detail-box" id="node-detail" aria-live="polite"></aside>
+      </div>
+    </div>
+
+    <div role="tabpanel" id="panel-tk" aria-labelledby="tab-tk" hidden="until-found">
+      <div class="panel-inner">
+        <h2>摘要欄（`TK`）必須記載10類型と提出前5大整合性チェック</h2>
+        <div tabindex="0" role="region" aria-label="摘要欄TK必須記載10類型一覧" class="table-wrapper">
+          <table>
+            <thead>
+              <tr>
+                <th>算定・発生事象</th>
+                <th>摘要欄（<code>TK</code>）に選択式コメントコード等で必ず出力すべき内容</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr><th>1. レセプト分割（資格確認）</th><td>電子資格確認によりレセプト分割が行われた場合、最終行に<strong>分割後のレセプトである旨</strong>を記録。</td></tr>
+              <tr><th>2. 麻薬の調剤</th><td>有効期限内の<strong>麻薬小売業者免許番号</strong>を記録。</td></tr>
+              <tr><th>3. 外来服薬支援料2（一包化）</th><td>一包化を行った<strong>すべての剤</strong>の加算料欄／摘要欄に「<strong><code>(支B)</code></strong>」を記録。</td></tr>
+              <tr><th>4. 自家製剤加算（供給不足特例）</th><td>薬価収載品でありながら供給問題で算定する場合、<strong>必要数量が確保できなかった薬剤名</strong>と<strong>やむを得ない事情</strong>を記録。</td></tr>
+              <tr><th>5. 重複投薬・相互作用等防止加算</th><td>処方医に連絡・確認を行った<strong>内容の要点</strong>を記録。</td></tr>
+              <tr><th>6. 一般名処方での先発品調剤</th><td>一般名処方で後発医薬品を調剤しなかった場合、<strong>その合理的理由</strong>を記録。</td></tr>
+              <tr><th>7. 特定薬剤管理指導加算2</th><td>医療機関への確認・指導内容等の所定記載事項を記録。</td></tr>
+              <tr><th>8. 特定薬剤管理指導加算3「ロ」</th><td>供給不足等により患者へ説明等を行った<strong>該当医薬品の名称</strong>を記録。</td></tr>
+              <tr><th>9. 介護保険相当サービスの併用</th><td>居宅療養管理指導費により訪問指導を行った<strong>訪問日</strong>、および当月最終算定時の<strong>要支援度または要介護度</strong>を記録。</td></tr>
+              <tr><th>10. 14日超投与の特別事情</th><td>投与日数制限のある医薬品を長期旅行等の特別事情により投薬した場合、<strong>その理由</strong>を記録。</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    const details = {
+      basic_fee: {
+        title: "調剤基本料3段階 & 時間外等加算の基礎額",
+        badge: "reimbursement.md / 区分00・01",
+        summary: "端数処理順序と基礎額対象項目を厳密に定義した純粋計算ルール。",
+        points: [
+          "第1段階: 所定点数に注3（同時受付80/100）・注4（未報告等50/100）を乗じ小数点以下第一位を四捨五入",
+          "第2段階: 地域支援(1〜5)・連携強化・バイオ・後発品減算(-5)・在宅総合・電子連携・立地依存減算を適用（特別Aは10/100、特別Bは不可）",
+          "第3段階: 計算後の調剤基本料が3点未満となった場合は下限 3点 とする",
+          "時間外・休日・深夜の基礎額 ＝ 調剤基本料＋薬剤調製料＋無菌製剤処理加算＋調剤管理料（麻薬・自家製剤・計量混合・残薬調整・有害事象防止は基礎額から除外）"
+        ]
+      },
+      matrix: {
+        title: "別表1併算定マトリクス・多剤減算・KI/STルール",
+        badge: "reimbursement.md / 初期設定自動算定禁止",
+        summary: "承認済み薬歴根拠との連動と、併算定・頻度制限・重複記載防止。",
+        points: [
+          "レセコン初期設定のまま指導未実施で服薬管理指導料等を自動算定することを禁止（保険薬剤師確定薬歴と連動必須）",
+          "特別調剤基本料A/Bで同一処方7種類以上の内服薬調剤時は薬剤料を90/100に減算し、IYに「薬剤料逓減（90/100）（内服薬）」を表示",
+          "KIレコードでは調剤管理料・外来服薬支援料2を所定の欄に記録し薬学管理料欄に重複記載しない。医師指示分割調剤の分割技術料はSTへ記録"
+        ]
+      },
+      tk_gen: {
+        title: "必須摘要欄コメント（TK）の自動導出",
+        badge: "reimbursement.md / 選択式コメントコード必須",
+        summary: "算定項目と上流実績からレセ電選択式コメントコードを漏れなく生成する。",
+        points: [
+          "フリーテキスト単独での摘要記載を禁止し、レセプト電算処理システム用コード（選択式コメントコード）を出力",
+          "麻薬免許番号、一包化(支B)、自家製剤供給不足特例、重複防止要点、一般名先発理由、特定指導2/3ロ、介護訪問日・要介護度、14日超理由、分割後レセプト旨の10類型を自動抽出"
+        ]
+      },
+      statement: {
+        title: "精算伝票 & 一部負担金の適正徴収義務 (PaymentStatement)",
+        badge: "payment.md / 減免・値引き禁止",
+        summary: "保険一部負担金・選定療養費・自費実費・物販を区分して精算する。",
+        points: [
+          "保険一部負担金（1点＝10円×負担割合、10円未満四捨五入）は適正に徴収し、恣意的な減免・値引き・端数切り捨てを禁止",
+          "薬包紙・薬袋や使い捨て投薬容器の費用徴収は不可（小型吸入器・散粉器は返還時に実費返金）",
+          "保険調剤（非課税）と選定療養・自費・物販（課税10%/8%）を明細レベルで区分"
+        ]
+      },
+      receipt_doc: {
+        title: "領収証・明細書の無償交付義務 & 未収債権管理",
+        badge: "payment.md / 薬担規則第4条の2",
+        summary: "0円患者を含む明細書無償交付の証跡と、M&A時の債権境界を管理する。",
+        points: [
+          "電子請求義務薬局では、公費負担医療等で患者負担が0円の場合でも明細書を無償交付する（不要申出時除く）",
+          "返戻・資格変更による再算定時は、元の入金履歴を消さずに差額返金または追徴の取引を追加",
+          "未収金（Receivable）は発生時点の開設法人を保持し、M&A事業譲渡前の債権帰属を明確化"
+        ]
+      },
+      monthly_receipt: {
+        title: "月次レセプト16レコード編成 & 5大提出ゲート (MonthlyReceipt)",
+        badge: "billing-claim.md / READY_TO_SUBMIT",
+        summary: "支払基金(14)・国保連(24)向けの16レコード順序と提出前の5大整合性検証。",
+        points: [
+          "16レコード順序: MN → YK → RE〜MF → SH → CZ → IY → TO → CO → TK → KI → ST",
+          "5大ゲート: ①レコード順序/文字モード、②HO/KO受付回数(分割2回目以降除外)とCZ=KI受付回数一致、③IY剤形別用量一致、④TK電算コード網羅、⑤全調剤録確定＋KI全項目の保険薬剤師承認済み薬歴存在"
+        ]
+      },
+      split_return: {
+        title: "オン資振替・分割と返戻・再請求・再審査ライフサイクル",
+        badge: "billing-claim.md / データ識別1〜16",
+        summary: "提出原本スナップショットを消去せず世代管理する事後ライフサイクル。",
+        points: [
+          "オン資振替・分割時は資格確認前(5)・置換後(1)・資格確認補正(6)と事由(JY: 補正区分1〜5)・運用(ON)を保持（変更後HOに証明書番号は入れない）",
+          "返戻(HR: 識別14)受領時は上流（資格・調剤・算定）での原因是正完了まで再請求不可とし、旧データを再請求前(11〜16)へ退避",
+          "保険者からの再審査申し出（MD/RT/JR: 識別3,13）および結果（MK: 識別4,14）を連結管理"
+        ]
+      },
+      reconciliation: {
+        title: "請求前3者突合点検 & 増減通知フィードバック",
+        badge: "billing-claim.md / 特定共同指導対策",
+        summary: "個別指導・特定共同指導で必ず確認される突合点検と査定分析の業務記録。",
+        points: [
+          "PreClaimReconciliation: 保険薬剤師による「処方箋・調剤録・レセプト3者突合点検」の完了日時・確認者を記録",
+          "AssessmentAdjustmentNotice: 審査支払機関からの増減点通知書を保管し、減点理由の分析と「翌月以降の算定・摘要欄・薬歴記載への是正アクション」を紐づけて管理"
+        ]
+      }
+    };
+
+    function renderNode(key) {
+      const d = details[key];
+      if (!d) return;
+      document.getElementById("node-detail").innerHTML = `
+        <span class="badge" style="margin-bottom:8px;">${d.badge}</span>
+        <h3>${d.title}</h3>
+        <p class="muted">${d.summary}</p>
+        <ul class="points">${d.points.map(p => `<li>${p}</li>`).join("")}</ul>
+      `;
+    }
+
+    document.querySelectorAll(".node-box").forEach(btn => {
+      btn.addEventListener("click", () => {
+        document.querySelectorAll(".node-box").forEach(b => b.setAttribute("aria-pressed", "false"));
+        btn.setAttribute("aria-pressed", "true");
+        renderNode(btn.dataset.node);
+      });
+    });
+
+    const tabs = Array.from(document.querySelectorAll('[role="tab"]'));
+    const panels = Array.from(document.querySelectorAll('[role="tabpanel"]'));
+    function activateTab(selectedTab) {
+      for (const tab of tabs) tab.setAttribute("aria-selected", String(tab === selectedTab));
+      for (const panel of panels) {
+        if (panel.getAttribute("aria-labelledby") === selectedTab.id) panel.removeAttribute("hidden");
+        else panel.setAttribute("hidden", "until-found");
+      }
+      selectedTab.scrollIntoView({ block: "nearest", inline: "nearest" });
+    }
+    tabs.forEach(tab => tab.addEventListener("click", () => activateTab(tab)));
+    panels.forEach(panel => panel.addEventListener("beforematch", () => {
+      const tab = document.getElementById(panel.getAttribute("aria-labelledby"));
+      if (tab) activateTab(tab);
+    }));
+    renderNode("basic_fee");
+  </script>
+</body>
+</html>

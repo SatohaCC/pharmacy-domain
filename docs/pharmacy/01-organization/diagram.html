@@ -3,9 +3,11 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>薬局ドメイン 01-organization 図解</title>
+  <meta name="color-scheme" content="light dark" />
+  <title>01 組織・基盤 ドメイン図解</title>
   <style>
     :root {
+      color-scheme: light dark;
       --bg: #f8fafc;
       --card: #ffffff;
       --content: #f1f5f9;
@@ -101,17 +103,31 @@
     th { color: var(--muted); font-weight: 600; }
     .svg-wrap { overflow-x: auto; }
     svg { width: 100%; min-width: 680px; height: auto; display: block; }
+    .domain-nav { display: flex; flex-wrap: wrap; gap: 6px; padding: 10px 12px; background: var(--card); border: 1px solid var(--border); border-radius: 10px; font-size: 12px; }
+    .domain-nav a { color: var(--fg); text-decoration: none; padding: 4px 10px; border-radius: 6px; border: 1px solid var(--border); background: var(--content); font-weight: 600; }
+    .domain-nav a:hover, .domain-nav a[aria-current="page"] { border-color: var(--primary); color: var(--primary); }
   </style>
 </head>
 <body>
   <div class="container">
+    <nav class="domain-nav" aria-label="ドメイン別図解ナビゲーション">
+      <a href="../diagram.html">全体関係図 (01〜08)</a>
+      <a href="diagram.html" aria-current="page">01 組織・基盤</a>
+      <a href="../02-reference/diagram.html">02 マスタ・外部参照</a>
+      <a href="../03-patient-coverage/diagram.html">03 患者・受給資格</a>
+      <a href="../04-prescription-dispensing/diagram.html">04 処方・調剤</a>
+      <a href="../05-pharmaceutical-care/diagram.html">05 服薬指導・薬歴・継続ケア</a>
+      <a href="../06-home-care/diagram.html">06 在宅医療・訪問契約</a>
+      <a href="../07-reimbursement-billing/diagram.html">07 算定・会計・請求</a>
+      <a href="../08-inventory-retail/diagram.html">08 在庫・物販</a>
+    </nav>
     <header>
       <div>
         <div style="display:flex; gap:8px; align-items:center;">
-          <span class="badge">docs/pharmacy/01-organization</span>
-          <span class="muted">合意済みモデル図解</span>
+          <span class="badge">01-organization / diagram.html</span>
+          <span class="muted">組織・基盤ドメインモデル図解</span>
         </div>
-        <h1>組織・基盤ドメイン 構造図解</h1>
+        <h1>01 組織・基盤 ドメイン図解</h1>
         <p class="muted" style="font-size:13px;">法人（個人含む）・店舗・スタッフ・アカウント・施設基準・品質・テナント分離の関係と M&amp;A 時の振る舞い</p>
       </div>
       <nav class="nav-tabs" role="tablist">
@@ -211,7 +227,7 @@
             <button type="button" class="node-box" data-node="quality" aria-pressed="false">
               <span class="node-header">
                 <span class="node-title">品質・インシデント</span>
-                <span class="badge">03-clinical 領域</span>
+                <span class="badge">05-pharmaceutical-care</span>
               </span>
               <span class="muted" style="display:block;">発生店舗の法人が管理・緊急連絡/固定承認者なし</span>
             </button>
@@ -400,21 +416,23 @@
       location: {
         title: "物理拠点 (StoreLocation)",
         badge: "正本: 店舗",
-        summary: "店舗が業務を行う住所・区画・緯度経度と利用期間。",
+        summary: "店舗が業務を行う住所・区画・緯度経度・設備と利用期間。",
         points: [
           "移転時は新拠点を登録し、店舗との利用期間を切り替える",
-          "緯度経度を保持し、在宅距離要件や店舗検索に利用可能",
+          "緯度経度およびプライバシー配慮設備（独立カウンター等）を保持",
+          "休日輪番スケジュール、薬局内外・ウェブサイト掲示確認フラグと連携",
           "同じ場所への別法人の再出店を自動的に同じ店舗とみなさない"
         ]
       },
       license: {
         title: "許可・保険指定",
         badge: "正本: 店舗",
-        summary: "薬機法上の許可（複数紐づけ可）と健康保険法上の保険薬局指定。",
+        summary: "薬機法等上の許可（複数紐づけ可）と健康保険法上の保険薬局指定。",
         points: [
-          "1つの店舗に薬局開設許可と店舗販売業許可など複数許可を紐づけ可能",
-          "許可情報: 種別、名義人、発行者（都道府県知事等）、番号、有効期間",
-          "保険指定: 都道府県コード(2桁)・点数表区分(1桁)・機関コード(7桁)、指定日、適用期間"
+          "1つの店舗に薬局開設許可・麻薬小売業免許・店舗販売業許可など複数許可を紐づけ可能",
+          "麻薬小売業免許の有効期限ガード（期限切れ・未登録時は麻薬調剤・摘要欄記載をブロック）",
+          "保険指定: 都道府県コード(2桁)・点数表区分(1桁)・機関コード(7桁)、指定日、適用期間",
+          "M&A・移転時の遡及指定・債権分離のため承継元指定ID（predecessor_id）を保持"
         ]
       },
       staff_account: {
@@ -425,7 +443,7 @@
           "スタッフはテナント内エンティティ（他法人で働く場合は別アカウント＋別スタッフ）",
           "ログイン不要スタッフ（配送員等）はアカウント無効状態で登録",
           "店舗に配属されない本部管理者・外部委託者も1対1で登録（契約区分：業務委託）",
-          "本人照合・資格（薬剤師免許等）は管理者が目視確認し手動登録"
+          "本人照合・資格（保険薬剤師登録番号・薬局勤務経験年数等）は管理者が目視確認し手動登録"
         ]
       },
       assignment: {
@@ -436,7 +454,7 @@
           "店舗配属: 主配属 / 兼務(副配属) / 応援、期間（常時複数店舗・毎日別店舗の勤務も可）",
           "勤務予定・実績: 1人の各店舗でのシフト・勤務時間を日別/時間帯別に登録可（直接管理＋外部勤怠取込可）",
           "常勤換算: 保健所の届出・登録および施設基準向けに、各店舗で期間別の勤務実績を集計可能",
-          "就任: 管理薬剤師等の対象施設・就任期間・根拠（許可切替による見かけ上の重複は兼務としない）"
+          "管理薬剤師専任ルール: 他店舗との管理薬剤師兼務は禁止（同一時点1店舗のみ）。地域支援加算届出店舗は薬局経験5年以上・週32h以上・在籍1年以上を検証"
         ]
       },
       rbac: {
@@ -456,13 +474,13 @@
         summary: "調剤基本料（GroupAssessment含む）・主要加算・妥結率等報告を統一管理。",
         points: [
           "法人間関係から算定する同一グループ判定（GroupAssessment）の正本を保持",
-          "導入直後・譲受時は外部実績サマリー（手入力＋出典メモ）を自システム実績と合算可",
-          "行政確認は受理通知等をもとに担当者が手動登録",
+          "R8連動制約: 特別調剤基本料Bでの主要加算不可、特別Aでの10/100減算・連携強化加算制限、注4(50/100)・注8(後発品5点減算)・ベースアップ評価料使途制限",
+          "地域支援加算維持要件（PMDAメディナビ・プレアボイド・副作用手順書・48薬効群/緊急避妊薬備蓄・掲示義務）を管理",
           "算定側へは調剤日時点で「確認済み・適用期間内」の基準一覧を渡す"
         ]
       },
       quality: {
-        title: "品質・インシデント (03-clinical)",
+        title: "品質・インシデント (05-pharmaceutical-care)",
         badge: "正本: 臨床ケア領域 / 管理主体: 発生店舗の法人",
         summary: "薬局ヒヤリ・ハット事例収集・分析事業への報告をベースに構造化。",
         points: [

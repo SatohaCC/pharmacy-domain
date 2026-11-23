@@ -50,13 +50,13 @@
 
 ## 品質管理の運用方針（2026-11-23）
 
-ユーザー指定により、インシデント・ヒヤリハットは店舗が起票し、企業が管理する。[品質・インシデント](03-clinical/quality.md) に反映した。企業内の担当・承認手順や案件引継ぎの詳細はモデル案として検討する。
+ユーザー指定により、インシデント・ヒヤリハットは店舗が起票し、企業が管理する。[品質・インシデント](05-pharmaceutical-care/quality.md) に反映した。企業内の担当・承認手順や案件引継ぎの詳細はモデル案として検討する。
 
 ## 在庫・物販の分離と業務順序
 
 2026-11-23 のユーザー指示により、在庫・物販を算定・会計・請求から分離し、5番目のレイヤーとした。先の4分類を更新する。
 
-業務を考える順番は「レセコン入力 → 服薬指導 → 薬歴記載 → フォローアップ」とする。先の法人活動から進める相談順を更新し、[ドメイン一覧](domain-candidates.md) と [業務フロー](03-clinical/workflow.md) を入口にする。個々のドメインの境界や外部レセコンとの分担は未確定。
+業務を考える順番は「レセコン入力 → 服薬指導 → 薬歴記載 → フォローアップ」とする。先の法人活動から進める相談順を更新し、[ドメイン一覧](domain-candidates.md) と [業務フロー](workflow.md) を入口にする。個々のドメインの境界や外部レセコンとの分担は未確定。
 
 ## 組織・基盤の用語統一と構成見直し（2026-11-23）
 
@@ -434,7 +434,7 @@
 - **派遣・業務委託の所属**: 派遣会社等の外部法人は法人マスタに登録せず、自法人との契約区分（雇用・派遣・業務委託等）として表現する。
 - **配属とアクセス権限の分離**: 人事・シフト上の店舗配属（主配属・応援）とシステム上のアクセス権限付与は完全に別操作として管理し、配属変更による自動付与・自動剥奪は行わない。
 
-影響する文書: [01-organization/README.md](01-organization/README.md)、[corporate.md](01-organization/corporate.md)、[store.md](01-organization/store.md)、[staff.md](01-organization/staff.md)、[tenant-access.md](01-organization/tenant-access.md)、[organization-contracts.md](01-organization/organization-contracts.md)、[cross-cutting-issues.md](01-organization/cross-cutting-issues.md)、[quality.md](03-clinical/quality.md)。
+影響する文書: [01-organization/README.md](01-organization/README.md)、[corporate.md](01-organization/corporate.md)、[store.md](01-organization/store.md)、[staff.md](01-organization/staff.md)、[tenant-access.md](01-organization/tenant-access.md)、[organization-contracts.md](01-organization/organization-contracts.md)、[cross-cutting-issues.md](01-organization/cross-cutting-issues.md)、[quality.md](05-pharmaceutical-care/quality.md)。
 
 
 ## 報酬上のグループ判定と店舗例外・詳細属性の確定（2026-11-23）
@@ -453,7 +453,7 @@
 `01-organization` 全体の残りの未決事項について、以下を合意した。
 
 - **施設基準・届出（[facility-compliance.md](01-organization/facility-compliance.md)）**: 調剤基本料（`GroupAssessment` 含む）・主要加算・年次報告（妥結率等）を同じ「基準・届出・報告」の枠組みで扱う。妥結率等の数値算出元は他領域に任せ、本領域では提出内容・提出日・確認状態を管理する。行政上の確認は担当者が手動登録する。導入直後・譲受時等の過去期間は外部実績サマリー（手入力＋出典メモ）を合算可能とし、算定領域へは指定日時点で確認済み・適用期間内の施設基準一覧を渡す。
-- **品質・インシデント（[quality.md](03-clinical/quality.md)）**: 薬局ヒヤリ・ハット事例収集・分析事業への報告をベースとした登録フォーマットとする。緊急連絡機能と固定的な完了承認者は不要とし、起票店舗≠発生店舗時は発生店舗（開設法人）を管理主体とする。店舗譲渡前は原則旧法人が管理・完了させ、必要時のみデータ承継承認で引き継ぐ。訂正は履歴付きで保持し原則物理削除不可、保存年数は法人運用に委ねる。
+- **品質・インシデント（[quality.md](05-pharmaceutical-care/quality.md)）**: 薬局ヒヤリ・ハット事例収集・分析事業への報告をベースとした登録フォーマットとする。緊急連絡機能と固定的な完了承認者は不要とし、起票店舗≠発生店舗時は発生店舗（開設法人）を管理主体とする。店舗譲渡前は原則旧法人が管理・完了させ、必要時のみデータ承継承認で引き継ぐ。訂正は履歴付きで保持し原則物理削除不可、保存年数は法人運用に委ねる。
 - **テナント・アクセス管理（[tenant-access.md](01-organization/tenant-access.md)）**: 認可モデルは「`Permission` の束である `Role` ＋ 対象範囲（法人全体 / 指定店舗）＋ 有効期間」をアカウントへ付与する形に統一する。外部委託者も1アカウント＝1スタッフ（契約区分：業務委託）で表現する。緊急時アクセスは不要、アカウント無効化・権限剥奪は即時反映、監査ログは原則削除不可とする。NSIPS変更時の法人設定は初期値「未完了へ戻す」、設定変更後の受信分から適用、法人（個人区分含む）で設定可能とする。
 - **スタッフ（[staff.md](01-organization/staff.md)）**: 勤務予定・実績は本システム内で直接管理でき、必要に応じ外部勤怠からの取込も許容する。本人照合・資格確認は管理者が目視確認のうえ手動で「確認済み」を登録する。
 - **保存方針（[cross-cutting-issues.md](01-organization/cross-cutting-issues.md)）**: 法定保存期間を下回らないよう記録種別ごとの保存ポリシーで保持し、具体的な年数表は実装・制度マスタ側へ委ねる。訂正は履歴付き・原則物理削除不可とする。
@@ -461,7 +461,7 @@
 
 ## `docs/tmp.md` 突合による不足要件の補完（2026-11-23）
 
-[tmp.md](../tmp.md) との突合により抽出した以下の5点を `01-organization/` の文書へ追記した。
+`docs/tmp.md`（一時作業メモ）との突合により抽出した以下の5点を `01-organization/` の文書へ追記した。
 
 - 保険薬局指定コードの3要素（都道府県コード2桁・点数表区分1桁・機関コード7桁）および指定日
 - 薬局開設許可の発行者（都道府県知事等の許可権者）
@@ -486,7 +486,7 @@
 
 調剤過誤や交付間違いなどの発生源・関連記録（処方・調剤・指導・薬歴）が患者・臨床・ケア領域に直結しているため、`quality.md` を `01-organization/` から `03-clinical/` へ移動した。`01-organization/` では管理主体（発生店舗の開設法人）およびテナント分離・RBAC の境界のみを扱う。
 
-影響する文書: [03-clinical/quality.md](03-clinical/quality.md)、[03-clinical/README.md](03-clinical/README.md)、[01-organization/README.md](01-organization/README.md)、[organization-contracts.md](01-organization/organization-contracts.md)、[domain-candidates.md](domain-candidates.md)、[diagram.html](01-organization/diagram.html)。
+影響する文書: [03-clinical/quality.md](05-pharmaceutical-care/quality.md)、[03-clinical/README.md](05-pharmaceutical-care/README.md)、[01-organization/README.md](01-organization/README.md)、[organization-contracts.md](01-organization/organization-contracts.md)、[domain-candidates.md](domain-candidates.md)、[diagram.html](01-organization/diagram.html)。
 
 
 ## 制度通知（特掲診療料の施設基準等）との整合補強（2026-11-23）
@@ -496,3 +496,197 @@
 - **個人区分・役員兼任の考慮**: 個人区分であっても同一開設者や役員兼任・実質支配等がある場合は `CorporateRelation` への関係登録を許容し、根拠メモに役員兼任を含められるようにした。
 - **VC契約の包含**: `FC契約` を `FC・VC契約` に広げ、ボランタリーチェーン等の共同購入・一体運営契約も扱えるようにした。
 - **算定参照項目の明記**: `GroupAssessment` が調剤基本料だけでなく地域支援体制加算（グループ外連携判定）や後発医薬品調剤体制加算等でも参照されることを [facility-compliance.md](01-organization/facility-compliance.md) に明記した。
+
+
+## `03-clinical` 未作成領域のモデル案作成（2026-11-23）
+
+令和8年度調剤報酬点数表（`docs/reference/調剤報酬点数表R8.pdf` 等）および既存の `03-clinical` 方針（一体型クラウド・NSIPS外部連携・バイテンポラル・イベント紐づけ）をもとに、未作成だった以下の6領域のモデル案を作成した。
+
+- [保険・公費等](03-patient-coverage/coverage.md)
+- [レセコン入力・連携](04-prescription-dispensing/reception-entry.md)
+- [処方監査・疑義照会](04-prescription-dispensing/prescription-review.md)
+- [調剤・鑑査](04-prescription-dispensing/dispensing.md)
+- [服薬指導・交付](05-pharmaceutical-care/medication-counseling.md)
+- [在宅医療・訪問薬剤管理](06-home-care/home-care.md)
+
+
+## 患者・薬歴記載の情報構造の仕上げ（2026-11-23）
+
+`03-clinical` の中核となる [患者](03-patient-coverage/patient.md) と [薬歴記載](05-pharmaceutical-care/medication-history.md) について、以下の情報構造・ルールを詳細化した。
+
+- **患者（[patient.md](03-patient-coverage/patient.md)）**: 基本属性・外部患者番号対応に加え、身体的特徴（体重・体表面積・妊娠/授乳）、アレルギー・副作用歴、疾患・既往歴、併用薬・生活習慣、検査値、ケア配慮、同意・契約状態の臨床プロファイル（頭書き）を構造化した。統合中は親・子双方の臨床プロファイルを合算して監査・参照し、権限は RBAC で制御する方針へ揃えた。
+- **薬歴記載（[medication-history.md](05-pharmaceutical-care/medication-history.md)）**: R8調剤管理料・服薬管理指導料・薬担規則の要件に基づき、記載ヘッダ、頭書き時点参照、処方・調剤・照会参照、収集情報・法定確認事項（服薬状況・残薬・副作用・併用薬・手帳・後発品意向）、SOAP構造、確定・訂正履歴を定義し、共有の患者臨床プロファイル（頭書き）への追記連動を明記した。
+
+
+## イベント完了を能動的な確定操作に変更（2026-11-23）
+
+ユーザー指摘により、イベントの完了条件について従来の「記載確定で必須事項を満たしたら自動完了（手動完了操作なし）」を置き換え、以下を確定した。
+
+- **能動的な完了（確定）操作**: 確定済み薬歴記載の合算で開設者設定の必須事項を満たしていても、それだけでは自動完了しない。記載者が能動的にイベントの完了（確定）操作を行うことでイベントを完了とする。
+- **未完了への差し戻しと再完了**: 訂正反映やNSIPS変更で必須事項が不足した場合は自動で未完了へ戻し、再充足した上で再度能動的に完了操作を行う。
+
+影響する文書: [care-event.md](05-pharmaceutical-care/care-event.md)、[follow-up.md](05-pharmaceutical-care/follow-up.md)、[medication-history.md](05-pharmaceutical-care/medication-history.md)、[workflow.md](workflow.md)、[diagram.html](clinical-diagram.html)。
+
+
+## M&A等による患者マージ時の最新情報採用（2026-11-23）
+
+ユーザー指摘により、重複患者の統合（マージ）について従来の「親患者の基本情報を固定採用」を置き換え、以下を確定した。
+
+- **重複の前提**: 基本的には同じテナント内では同じ患者データをもとにレセコン入力するため患者は重複しないが、M&A（データ承継等）で患者をマージする場合がある。
+- **マージ時の基本情報採用**: M&A等で患者をマージする場合は、親固定ではなく双方の更新日時等を比較し、**最新の情報を正解としてマージする**（統合前の基本情報は分離・監査用に保持する）。
+
+影響する文書: [patient.md](03-patient-coverage/patient.md)、[diagram.html](clinical-diagram.html)。
+
+
+## 令和8年度『保険調剤の理解のために』に基づく業務フローの更新（2026-11-23）
+
+[保険調剤の理解のために（令和８年度）](../reference/保険調剤の理解のために%20（令和８年度）.pdf) を精査し、[workflow.md](workflow.md) の一連の業務フローを制度要件に合わせて更新した。
+
+- **6工程とゲート整理**: 「レセコン入力・資格確認 → 調剤前確認（5項目）・処方監査・疑義照会（薬剤師法第24条ゲート） → 調剤・鑑査・処方箋記入（第26条）・調剤録 → 服薬指導・交付・領収証/明細書無償交付 → 薬歴記載（速やかな完了・頭書き連動）・能動的完了 → フォローアップ（AI活用時は薬剤師確認・双方向介入）・情報提供」として整理した。
+- **法定横断要件**: 電磁的記録の三原則（真正性・見読性・保存性）、保存期間（原則3年・生活保護法5年・全記録の直ち参照可能保持）、処方箋・調剤録・レセプトの突合チェックによる不正請求防止を明記した。
+
+
+## `docs/pharmacy/tmp.md` 突合による患者・保険要素の補強（2026-11-23）
+
+`docs/pharmacy/tmp.md`（一時作業メモ）で整理された要件と突合し、[patient.md](03-patient-coverage/patient.md) および [coverage.md](03-patient-coverage/coverage.md) に以下を補強した。
+
+- **アレルギー・副作用の確認状態（`ConfirmedStatus`）**: 「未聴取」と「なし（確認済み）」を明確に区別し、未聴取のまま処方監査を完了させないルールを追記。
+- **臨床・手帳・緊急連絡先要素の追加**: 緊急連絡先の続柄、血液型、腎機能・透析状況、OTCのJAN/成分名コード、お薬手帳の複数冊所持有無および1冊にまとめない理由・不利用理由、実施時点スナップショットの不変参照を追記。
+- **保険・公費のレセ電対応項目**: 職務上の事由、一部負担金区分（未就学者・高齢者割合等）、第1〜第4公費の優先順位を [coverage.md](03-patient-coverage/coverage.md) へ明記。
+
+
+## 患者の家族管理の追加（2026-11-23）
+
+ユーザー要望により、[patient.md](03-patient-coverage/patient.md) および [diagram.html](clinical-diagram.html) に患者の家族管理を追加した。
+
+- **2種類の家族管理**: 自局患者同士の家族関係（`PatientFamilyRelation`：続柄、同居/別居区分、期間）と、自局患者ではない家族・キーパーソン（`PatientFamilyContact`：氏名、続柄、連絡先、役割［緊急連絡先・主介護者・代理受取・在宅立会者等］）を分けて保持する。
+- **統合親子・閲覧権限との分離**: 重複統合（マージ）の親・子とは別概念とし、家族関係だけで別患者の薬歴閲覧や代理同意を自動許可しない。
+- **活用先**: 服薬指導・交付における「患者又はその家族等」の特定や、在宅医療における同居同一世帯患者の判定材料として参照する。
+
+
+## `docs/pharmacy/tmp.md`（薬歴記載）突合による不変条件・項目補強（2026-11-23）
+
+更新された `docs/pharmacy/tmp.md`（薬歴記載のDDDモデリング一時作業メモ）と突合し、[medication-history.md](05-pharmaceutical-care/medication-history.md) に以下を補強した。
+
+- **構造化項目の追加**: 指導場所（対面窓口/オンライン/患家/施設）、残薬理由、お薬手帳不利用理由・複数冊未統合理由、患者・家族相談事項の要点、トレーシングレポート等（外部連携文書）の写し・要点の添付参照を追記。
+- **ドメイン不変条件（ビジネスルール）の明記**: 指導後の即時完了検知（ドラフト放置・日跨ぎ警告）、定型文・画一的記載の抑止、加算算定と根拠記録の整合、追記型履歴（二本線抹消相当）による真正性担保、最終記入日を起算点とした患者単位での全記録保持を明記した。
+
+
+## `patient_and_medication_history_ddd_detail.md` 突合による防衛策・制約の補強（2026-11-23）
+
+[patient_and_medication_history_ddd_detail.md](../reference/NotebookLM/patient_and_medication_history_ddd_detail.md) と突合し、不足していた以下の制約・防衛策を各文書へ補強した。
+
+- **保険・資格（[coverage.md](03-patient-coverage/coverage.md)）**: 記号・番号のレセ電フォーマット制約（スペース/中点/ハイフン禁止、合計38バイト以内、単一モード）、非破壊履歴管理と同月内資格変更検知（レセプト分割トリガー）、オン資取得情報参照IDの保持を追記。
+- **お薬手帳プロファイル（[patient.md](03-patient-coverage/patient.md)）**: 「当日持参忘れ」時は理由ではなく「指導料2説明・次回持参指導フラグ」と紐づけ、「不使用・複数冊非統合」時は理由必須とする分岐を追記。
+- **薬歴記載（[medication-history.md](05-pharmaceutical-care/medication-history.md)）**: 代行入力（承認待ち）・未確定状態での調剤報酬確定・請求組み込み禁止（保険薬剤師の確定必須）、および「残薬なし」の明記必須ルール（空欄不可）・併用薬該当なしの確認事実記録を追記。
+- **指導・交付（[medication-counseling.md](05-pharmaceutical-care/medication-counseling.md)）**: 薬剤情報提供文書の無関係事項記載禁止、および JAHIS 電子お薬手帳データ出力時に医薬品提供を伴わない情報提供のみで処方・薬剤レコード（`51`〜`401`）を出力しない制約を追記。
+- **フォローアップ（[follow-up.md](05-pharmaceutical-care/follow-up.md)）**: 一律一斉メールのみの登録禁止（双方向・個別確認必須）、調剤後薬剤管理指導料の調剤同日不可・患者同意必須を追記。
+
+
+## `prescription_and_dispensing_ddd_detail.md` 突合による防衛策・制約の補強（2026-11-23）
+
+[prescription_and_dispensing_ddd_detail.md](../reference/NotebookLM/prescription_and_dispensing_ddd_detail.md) と突合し、不足していた以下の制約・防衛策を補強した。
+
+- **受付（[reception-entry.md](04-prescription-dispensing/reception-entry.md)）**: 受け入れ禁止処方箋（二枚処方箋による上限超過・翌週等交付予定処方箋、患者同意なき医療機関従業員持参、保険医以外の処方箋）のブロック、使用期間超過の調剤禁止を追記。
+- **処方監査・疑義照会（[prescription-review.md](04-prescription-dispensing/prescription-review.md)）**: 「取りそろえ前確認」の保険薬剤師専権（事務員不可）、形式不備・薬学的疑義検知時の疑義照会完了までの調剤確定ブロックを追記。
+- **調剤・鑑査（[dispensing.md](04-prescription-dispensing/dispensing.md)）**: 保険調剤と保険調剤以外（自費等）の調剤録分離、無資格調剤・代筆署名禁止、含量規格変更・類似別剤形変更の4要件、自家製剤・計量混合の算定適格性ルール、供給不安対応記録（別紙様式4-1/4-2・2年保存）、確定後の追記型訂正履歴（`DispensingRevision`）を追記。
+
+
+## `reimbursement_and_billing_claim_ddd_detail.md` に基づく `04-business` の作成（2026-11-23）
+
+[reimbursement_and_billing_claim_ddd_detail.md](../reference/NotebookLM/reimbursement_and_billing_claim_ddd_detail.md) を精査し、`04-business/` 配下の3文書（[reimbursement.md](07-reimbursement-billing/reimbursement.md)、[payment.md](07-reimbursement-billing/payment.md)、[billing-claim.md](07-reimbursement-billing/billing-claim.md)）を新規作成し、[04-business/README.md](07-reimbursement-billing/README.md) を更新した。
+
+- **調剤報酬算定（[reimbursement.md](07-reimbursement-billing/reimbursement.md)）**: 処方・調剤・指導実績から無状態（Stateless）で点数計算するモデルを定義。調剤基本料3段階（基本料/加算減算/特別調剤基本料）、時間外等の基礎額（基本料＋加算等合算）、内服7種類以上の90/100減算と重複排除、表1基準の算定マトリクス、摘要欄（`TK`）コメント自動生成（長期収載品特別の料金理由・`(支B)`・麻薬小売業免許番号・供給不足品名等）を明記。
+- **窓口会計（[payment.md](07-reimbursement-billing/payment.md)）**: 算定結果の点数（1点＝10円）に自己負担割合・公費上限・選定療養・自費項目を適用し、10円未満四捨五入、領収証・明細書（無償交付原則・正当理由時有償/不要確認）、未収管理を整理。
+- **保険等の請求・審査支払（[billing-claim.md](07-reimbursement-billing/billing-claim.md)）**: `MonthlyReceipt`（保険者・月単位）と `MN`（調剤報酬明細）のデータ識別番号 `1`〜`16`、`READY_TO_SUBMIT` 確定ゲート（保険薬剤師承認済み薬歴・確定済み調剤録の必須チェック）、同月内資格変更や分割調剤時の `HO`/`KO`/`CZ`/`KI`/`JD`/`TK` 分離・引き継ぎルール、返戻（`HR`）受領後の再請求ゲート、処方箋・調剤録・レセプト三者突合チェックを明記。
+- **03-clinical 連携**: [dispensing.md](04-prescription-dispensing/dispensing.md) の `ControlledDrugHandling` に、算定摘要欄抽出用の有効期限内麻薬小売業免許番号参照を追記した。
+
+
+## `organization_and_home_care_ddd_detail.md` 突合による防衛策・制約の補強（2026-11-23）
+
+[organization_and_home_care_ddd_detail.md](../reference/NotebookLM/organization_and_home_care_ddd_detail.md) と突合し、不足していた以下の制約・要件を `01-organization/` および [home-care.md](06-home-care/home-care.md) に補強した。
+
+- **店舗・許認可（[store.md](01-organization/store.md)）**: プライバシー配慮設備、休日輪番スケジュール、麻薬小売業免許の有効期限ガード（期限切れ・未登録時の麻薬調剤および摘要欄記載ブロック）、保険薬局指定の承継元指定ID（`predecessor_id`）を追記。
+- **スタッフ・管理薬剤師（[staff.md](01-organization/staff.md)）**: 管理薬剤師の他店舗兼務禁止（薬機法第7条・28条）、および地域支援・医薬品供給対応体制加算等届出店舗の管理薬剤師要件（保険薬剤師として薬局勤務経験5年以上、週32時間以上勤務、当該薬局1年以上継続在籍）を追記。
+- **施設基準・届出（[facility-compliance.md](01-organization/facility-compliance.md)）**: R8改定の特別調剤基本料A/Bと加算の連動制約（特別Bでの算定不可、特別Aでの10/100減算・関係医療機関との連携強化加算制限）、注4（50/100減算）・注8（後発品5点減算）・調剤ベースアップ評価料の流用禁止、地域支援加算の維持要件（PMDAメディナビ・プレアボイド・備蓄・掲示義務等）を追記。
+- **在宅医療（[home-care.md](06-home-care/home-care.md)）**: 在宅療養契約のライフサイクル（`契約準備` → `ACTIVE` → `TERMINATED`）、有効な医師指示・同意・指導計画の事前条件、訪問時の処方箋原本受領義務（特定共同指導 I-1 3(2)）、在宅移行初期管理料・複数名薬剤管理指導訪問料の算定条件整合、在宅協力薬局との連携区分（`調管`, `調時`, `支B` 等）を追記。
+
+
+## `docs/pharmacy` 全体の整合性チェックと修正（2026-11-23）
+
+`docs/pharmacy/` 配下の全文書およびインタラクティブ図解（HTML）を横断チェックし、以下の不整合を解消した。
+
+- **レイヤー配置・構成の統一（[README.md](README.md)・[domain-overview.md](domain-overview.md)・[domain-candidates.md](domain-candidates.md)）**: 品質・インシデント（`quality.md`）の `03-clinical` への配置、`04-business` の3領域（`reimbursement` / `payment` / `billing_claim`）分離、およびフォローアップ実施結果の「別記録としての作成・元薬歴との関連づけ」（元薬歴への追記ではない点）をトップ文書でも統一した。
+- **個人区分の法人間関係表記の統一（[organization-contracts.md](01-organization/organization-contracts.md)）**: [corporate.md](01-organization/corporate.md) と揃え、個人区分は法人番号を持たないが、同一開設者・役員兼任・実質支配等がある場合の法人間関係登録は許容する記述に統一した。
+- **許認可・指定系譜の横断反映（[cross-cutting-issues.md](01-organization/cross-cutting-issues.md)）**: [store.md](01-organization/store.md) と揃え、`FacilityLicense` の麻薬小売業免許有効期限ガードおよび `InsuranceDesignation` の `predecessor_id` を反映した。
+- **NSIPS変更時の再完了表現の統一（[tenant-access.md](01-organization/tenant-access.md)・[care-event.md](05-pharmaceutical-care/care-event.md)・[workflow.md](workflow.md)）**: 「追記・訂正は不要で、差分確認と能動的な完了（確定）操作だけで再完了できる」に表現を統一した。
+- **HTML図解の同期と導線追加（[01-organization/README.md](01-organization/README.md)・[01-organization/diagram.html](01-organization/diagram.html)・[03-clinical/README.md](05-pharmaceutical-care/README.md)・[03-clinical/diagram.html](clinical-diagram.html)）**: 各 README に `diagram.html` へのリンクを追加し、直近で補強した全ドメイン不変条件を HTML 図解側の詳細パネルにも同期した。
+- **参照リンク切れの解消（[discussion-log.md](discussion-log.md)）**: `patient_and_medication_history_ddd_detail.md` のパスを `../reference/NotebookLM/` 配下へ修正し、一時作業メモ（`tmp.md`）への相対リンクをインラインコード表記へ整理した。
+
+
+## DDDコンテキストに沿ったディレクトリ構造の再編（2026-11-23）
+
+肥大化していた `03-clinical/`（15ファイル）を DDD の境界づけられたコンテキスト（Bounded Context）とデータのライフサイクルに沿って分割し、`docs/pharmacy/` 全体のディレクトリ構造を以下の8レイヤー＋ルート横断文書へ再編した。
+
+- **ルート横断文書（`docs/pharmacy/`）**: 全体業務フローを [workflow.md](workflow.md)、臨床・ケア12領域の横断図解を [clinical-diagram.html](clinical-diagram.html) としてルート直下へ配置。
+- **`01-organization/`（[組織・基盤](01-organization/README.md)）**: 法人・店舗・スタッフ・施設基準・テナント認可。
+- **`02-reference/`（[マスタ・外部参照](02-reference/README.md)）**: 医薬品マスタ・医療機関/外部関係者。
+- **`03-patient-coverage/`（[患者・受給資格](03-patient-coverage/README.md)）**: [patient.md](03-patient-coverage/patient.md)、[coverage.md](03-patient-coverage/coverage.md)。
+- **`04-prescription-dispensing/`（[処方・調剤](04-prescription-dispensing/README.md)）**: [reception-entry.md](04-prescription-dispensing/reception-entry.md)、[prescription.md](04-prescription-dispensing/prescription.md)、[prescription-review.md](04-prescription-dispensing/prescription-review.md)、[dispensing.md](04-prescription-dispensing/dispensing.md)。
+- **`05-pharmaceutical-care/`（[服薬指導・薬歴・継続ケア](05-pharmaceutical-care/README.md)）**: [care-event.md](05-pharmaceutical-care/care-event.md)、[medication-counseling.md](05-pharmaceutical-care/medication-counseling.md)、[medication-history.md](05-pharmaceutical-care/medication-history.md)、[follow-up.md](05-pharmaceutical-care/follow-up.md)、[quality.md](05-pharmaceutical-care/quality.md)。
+- **`06-home-care/`（[在宅医療・訪問契約](06-home-care/README.md)）**: [home-care.md](06-home-care/home-care.md)。
+- **`07-reimbursement-billing/`（[算定・会計・請求](07-reimbursement-billing/README.md)）**: [reimbursement.md](07-reimbursement-billing/reimbursement.md)、[payment.md](07-reimbursement-billing/payment.md)、[billing-claim.md](07-reimbursement-billing/billing-claim.md)。
+- **`08-inventory-retail/`（[在庫・物販](08-inventory-retail/README.md)）**: 調達・在庫、商品・物販。
+
+
+## 完成形ドキュメントへの統一と `pharmacy_activities_catalog.md` 全フェーズ突合（2026-11-23）
+
+全仕様書から「相談用」「未決事項」「〜の案」等の暫定メタ記述を廃して完成形の仕様書へ統一した上で、[pharmacy_activities_catalog.md](../reference/NotebookLM/pharmacy_activities_catalog.md) の全6フェーズ（`1-1`〜`6-4`）と突合し、以下の細部要件を各文書へ補強した。
+
+- **Phase 1（組織・安全管理）**: [store.md](01-organization/store.md)・[facility-compliance.md](01-organization/facility-compliance.md) に敷地内禁煙、医療機関からの経済的・構造的・機能的独立性維持（リベート・派遣・粗品誘引禁止）、健康相談・健康教室、自局ウェブサイト掲載義務項目（0円患者含む明細書発行状況・不要申出方法等）、要件変更時の速やかな変更届を追記。[tenant-access.md](01-organization/tenant-access.md) に医療情報システム安全管理ガイドライン第6.0版準拠（共有ID禁止、パスワード/二要素認証要件、代行入力の保険薬剤師承認、アクセスログ・業務日誌保全）を追記。
+- **Phase 2〜3（受付・監査・調剤）**: [reception-entry.md](04-prescription-dispensing/reception-entry.md) にFAX等電送処方箋の窓口/訪問時原本受領・同一確認ゲートを追記。[prescription-review.md](04-prescription-dispensing/prescription-review.md) に曖昧用法（「医師の指示どおり」等）の疑義照会必須と二本線抹消相当の原記載保持を追記。[dispensing.md](04-prescription-dispensing/dispensing.md) に長期保存困難分割調剤（注9）時の受付時医療機関照会＋調剤録分割理由記載、オンライン服薬指導時の処方箋原本＋電送情報3年保存、調剤録の法定全項目を明記。
+- **Phase 4〜5（指導・フォロー）**: [medication-counseling.md](05-pharmaceutical-care/medication-counseling.md) に薬剤情報提供文書の「後発品収載有無・自局備蓄品名と価格比較（非備蓄時はその旨）」明記、および服薬情報等提供料1の「医療機関からの求めがある場合のみ」要件を追記。[follow-up.md](05-pharmaceutical-care/follow-up.md) に麻薬交付後の服用・残薬・保管状況の継続確認を追記。
+- **Phase 6（算定・会計・請求）**: [reimbursement.md](07-reimbursement-billing/reimbursement.md) にレセコン初期設定のまま指導未実施で服薬管理指導料等を自動算定することの禁止を明記。[payment.md](07-reimbursement-billing/payment.md) に一部負担金の減免・値引き・恣意的な端数切り捨て禁止を明記。[billing-claim.md](07-reimbursement-billing/billing-claim.md) に支払基金（`14_RECODEINFO_PHA.CSV`）・国保連（`24_RECODEINFO_PHA.CSV`）のレコード順序（`MN`〜`ST`）遵守および増減通知原因の翌月算定・記載へのフィードバックを明記。
+
+
+## レセ電患者データ・処方調剤算定レコード仕様書（2文書）の反映（2026-11-23）
+
+[receipt_patient_data_requirements.md](../reference/NotebookLM/receipt_patient_data_requirements.md) および [receipt_dispensing_and_claim_records_spec.md](../reference/NotebookLM/receipt_dispensing_and_claim_records_spec.md) を精査し、レセ電コード情報ファイル（調剤）のレコード別仕様と記録制約を各文書へ反映した。
+
+- **患者・資格レコード群（[patient.md](03-patient-coverage/patient.md)・[coverage.md](03-patient-coverage/coverage.md)）**: 麻薬処方・調剤時の患者住所記載必須（法27条）、`RE` 特記事項（`6歳`/`高一`/`高7`〜`高9`）、`HO` 記号の丸数字変換（`港②`→`港（２）`）と記号なし（後期高齢者等）時の省略、`SN`（負担者種別・確認区分・後期高齢者/公費単独/対象外ごとの記号・番号・枝番・受給者番号の省略条件）、`JD`（1〜31日来局スロット）、`MF`（窓口負担額区分：振替・分割対象化のための常時記録）を反映。
+- **処方・調剤・医薬品レコード群（[prescription.md](04-prescription-dispensing/prescription.md)・[dispensing.md](04-prescription-dispensing/dispensing.md)）**: 同一医療機関・受付1回で複数保険医から交付された処方箋の別 `SH` ブロック分離、服用時点同一でも投薬日数が異なる内服薬の別剤（別 `CZ`）分離と1剤内服薬の2剤分割禁止、`IY` の剤形別用量定義（内服/湯薬＝1日量、滴剤/注射/外用＝全量、屯服＝1回量＋全量、浸煎薬＝全量＋日数、鎮痛消炎貼付剤＝枚数全量＋1日量/日数）、`TO` での請求不可衛生材料除外を反映。
+- **算定・請求レコード群（[reimbursement.md](07-reimbursement-billing/reimbursement.md)・[billing-claim.md](07-reimbursement-billing/billing-claim.md)）**: 7種以上内服薬逓減時の `IY` 表示（`薬剤料逓減（90/100）（内服薬）`）、`KI` での調剤管理料・外来服薬支援料2の重複記載禁止、`ST`（分割技術料）、`TK` の選択式コメントコード原則（フリーテキスト単独不可）と全10パターン（介護保険併用時の訪問日・要支援/要介護度、自家製剤供給不足特例、特定指導2等含む）、16レコード順序（`MN`〜`ST`）、事後レコード（`JY` 補正区分1〜5、`ON`, `EX`, `RC`, `HR`, `MD`, `RT`, `JR`, `MK`）、出力前5大整合性チェックを反映。
+
+
+## 薬歴確定に伴うイベント完了・不足事項の注意喚起・複数者記載時の確定薬歴への追記への変更（2026-11-23）
+
+ユーザー指示により、薬歴記載とイベント完了・複数者記載のルールを以下のとおり変更・統一した。
+
+- **薬歴確定＝イベント完了**: 個々の薬歴記載の確定とイベント完了を別操作とせず、**薬歴記載者が薬歴を確定するときに、イベントも完了として扱う**。
+- **不足事項に対する注意喚起**: 開設者・イベント種別ごとの設定事項に不足があった場合には、完了ブロックではなく**確定時に注意を促す**。
+- **複数者記載は確定薬歴への追記**: 1つのイベントに複数の独立した薬歴記載を並立させる方式を改め、**複数者が記載することもあるが、確定した薬歴に追記（または訂正）という形にする**。
+
+影響する文書: [medication-history.md](05-pharmaceutical-care/medication-history.md)、[care-event.md](05-pharmaceutical-care/care-event.md)、[follow-up.md](05-pharmaceutical-care/follow-up.md)、[05-pharmaceutical-care/README.md](05-pharmaceutical-care/README.md)、[tenant-access.md](01-organization/tenant-access.md)、[workflow.md](workflow.md)、[domain-overview.md](domain-overview.md)、[domain-candidates.md](domain-candidates.md)、[external-integration.md](external-integration.md)、[clinical-diagram.html](clinical-diagram.html)。
+
+
+## 個別指導・特定共同指導対策（`individual_guidance_compliance_refinements.md`）の反映（2026-11-23）
+
+[individual_guidance_compliance_refinements.md](../reference/NotebookLM/individual_guidance_compliance_refinements.md) を精査し、個別指導・特定共同指導を確実に乗り切るための以下の仕様を各文書へ反映した。
+
+- **前回「継続的留意点」の自動引き継ぎ・回収（[medication-history.md](05-pharmaceutical-care/medication-history.md)）**: 前回確定記録の継続的留意点を未処理タスク（`CarryOverPrecaution`）として自動引き継ぎ、今回の確認結果（確認済み / 継続観察 / 今回未確認理由）の書きっぱなしを防止。
+- **加算コード別の構造化確認項目（[medication-history.md](05-pharmaceutical-care/medication-history.md)・[medication-counseling.md](05-pharmaceutical-care/medication-counseling.md)）**: `FeeJustification` として特定薬剤管理指導1（イ新規/ロ既存処方理由）・2（レジメン）・3（イRMP/ロ供給不足薬品名）、吸入薬指導（練習用吸入器実技）、乳幼児（体重・年齢・手帳記載）、重複投薬・相互作用等防止（処方変更事実必須）、麻薬管理指導（継続確認・返納麻薬廃棄届写し）の構造化要件を明記。
+- **かかりつけ薬剤師同意・24時間対応管理（[medication-counseling.md](05-pharmaceutical-care/medication-counseling.md)）**: `KakaritsukeAgreement` として署名原本保管参照、24時間連絡先・勤務日周知、手帳への連絡先記載、他院/他薬局への明示指導、開局時間外等に別薬剤師が対応した場合のかかりつけ薬剤師への情報共有記録必須を明記。
+- **疑義照会・残薬調整の「3者一致」単一ソース化（[prescription-review.md](04-prescription-dispensing/prescription-review.md)・[dispensing.md](04-prescription-dispensing/dispensing.md)・[medication-history.md](05-pharmaceutical-care/medication-history.md)）**: 処方監査で確定した同一の疑義照会ID・残薬調整IDを処方箋備考・調剤録・薬歴の3者が引用し、二重手入力による記載齟齬を防止。
+- **請求前突合点検・増減通知管理・物理保管メタデータ（[billing-claim.md](07-reimbursement-billing/billing-claim.md)・[tenant-access.md](01-organization/tenant-access.md) 他）**: `PreClaimReconciliation`、`AssessmentAdjustmentNotice`、過去紙薬歴の最終記入日＋3年（公費5年）廃棄ロック、処方箋原本＋電送情報のペア突合・3年保存、別紙様式4-1の2年保存、年次システム監査・個人情報保護教育訓練記録、代行入力の未承認滞留アラートを反映。
+
+
+## 全8ドメインの個別仕様書の完備と全体・各ドメイン別 HTML 図解の整備（2026-11-23）
+
+`docs/pharmacy/` 全体の完成度を点検し、README のみだった `02-reference` と `08-inventory-retail` に個別仕様書を作成するとともに、全8ドメインの関係性がわかる全体図解および各ドメイン内の個別インタラクティブ図解（`diagram.html`）を整備した。
+
+- **個別仕様書の追加**:
+  - `02-reference/`: [medicine-catalog.md](02-reference/medicine-catalog.md)（3層医薬品マスタ・薬価経過措置・長期収載品・特定器材）、[external-parties.md](02-reference/external-parties.md)（医療機関・保険医・介護施設種別・ケアマネ・外部連携薬局）
+  - `08-inventory-retail/`: [inventory.md](08-inventory-retail/inventory.md)（ロット/期限・追記型受払・他薬局分譲別紙様式4-1・規制薬品管理帳簿）、[retail.md](08-inventory-retail/retail.md)（要指導/第1〜3類OTC販売資格ガード・濫用等医薬品3確認・セルフメディケーション税制連携）
+- **HTML 図解の完備（相互ナビゲーション付き）**:
+  - 全体関係図: [diagram.html](diagram.html)（全8コンテキストマップ・受け渡し一覧・6フェーズ対応）
+  - 各ドメイン図解: [01-organization/diagram.html](01-organization/diagram.html)、[02-reference/diagram.html](02-reference/diagram.html)、[03-patient-coverage/diagram.html](03-patient-coverage/diagram.html)、[04-prescription-dispensing/diagram.html](04-prescription-dispensing/diagram.html)、[05-pharmaceutical-care/diagram.html](05-pharmaceutical-care/diagram.html)、[06-home-care/diagram.html](06-home-care/diagram.html)、[07-reimbursement-billing/diagram.html](07-reimbursement-billing/diagram.html)、[08-inventory-retail/diagram.html](08-inventory-retail/diagram.html)

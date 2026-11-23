@@ -1,0 +1,284 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="color-scheme" content="light dark" />
+  <title>08 在庫・物販 ドメイン図解</title>
+  <style>
+    :root {
+      color-scheme: light dark;
+      --bg-light: #f8fafc; --bg-dark: #0f172a;
+      --surface-light: #ffffff; --surface-dark: #1e293b;
+      --surface-muted-light: #f1f5f9; --surface-muted-dark: #0f172a;
+      --fg-light: #0f172a; --fg-dark: #f8fafc;
+      --muted-light: #475569; --muted-dark: #94a3b8;
+      --border-light: #cbd5e1; --border-dark: #334155;
+      --primary-light: #0284c7; --primary-dark: #38bdf8;
+      --primary-soft-light: #e0f2fe; --primary-soft-dark: #082f49;
+      --bg: var(--bg-light); --surface: var(--surface-light); --surface-muted: var(--surface-muted-light);
+      --fg: var(--fg-light); --muted: var(--muted-light); --border: var(--border-light);
+      --primary: var(--primary-light); --primary-soft: var(--primary-soft-light);
+      @media (prefers-color-scheme: dark) {
+        --bg: var(--bg-dark); --surface: var(--surface-dark); --surface-muted: var(--surface-muted-dark);
+        --fg: var(--fg-dark); --muted: var(--muted-dark); --border: var(--border-dark);
+        --primary: var(--primary-dark); --primary-soft: var(--primary-soft-dark);
+      }
+      @supports (color: light-dark(white, black)) {
+        --bg: light-dark(var(--bg-light), var(--bg-dark));
+        --surface: light-dark(var(--surface-light), var(--surface-dark));
+        --surface-muted: light-dark(var(--surface-muted-light), var(--surface-muted-dark));
+        --fg: light-dark(var(--fg-light), var(--fg-dark));
+        --muted: light-dark(var(--muted-light), var(--muted-dark));
+        --border: light-dark(var(--border-light), var(--border-dark));
+        --primary: light-dark(var(--primary-light), var(--primary-dark));
+        --primary-soft: light-dark(var(--primary-soft-light), var(--primary-soft-dark));
+      }
+    }
+    * { box-sizing: border-box; }
+    body { margin: 0; background: var(--bg); color: var(--fg); font-family: "Hiragino Kaku Gothic ProN", "Yu Gothic UI", "Meiryo", system-ui, sans-serif; line-height: 1.6; }
+    .container { max-width: 1280px; margin: 0 auto; padding: 24px 16px 48px; }
+    h1 { font-size: 22px; margin: 0 0 6px; }
+    h2 { font-size: 16px; margin: 0 0 12px; }
+    h3 { font-size: 15px; margin: 0 0 8px; }
+    p { margin: 0; }
+    .muted { color: var(--muted); font-size: 13px; }
+    .badge { display: inline-flex; align-items: center; padding: 2px 8px; border-radius: 999px; font-size: 11px; font-weight: 700; background: var(--primary-soft); color: var(--primary); }
+    .domain-nav { display: flex; flex-wrap: wrap; gap: 6px; margin: 14px 0 16px; padding: 10px 12px; background: var(--surface); border: 1px solid var(--border); border-radius: 10px; font-size: 12px; }
+    .domain-nav a { color: var(--fg); text-decoration: none; padding: 4px 10px; border-radius: 6px; border: 1px solid var(--border); background: var(--surface-muted); font-weight: 600; }
+    .domain-nav a:hover, .domain-nav a[aria-current="page"] { border-color: var(--primary); color: var(--primary); background: var(--primary-soft); }
+    [role="tablist"] { display: flex; overflow-x: auto; scroll-snap-type: inline proximity; gap: 4px; border-bottom: 1px solid var(--border); margin-bottom: 16px; }
+    [role="tab"] { flex: none; scroll-snap-align: start; position: relative; padding: 10px 16px; border: none; background: transparent; color: var(--muted); font: inherit; font-size: 13px; font-weight: 600; cursor: pointer; }
+    [role="tab"][aria-selected="true"] { color: var(--primary); }
+    [role="tab"][aria-selected="true"]::after { content: ""; position: absolute; inset: auto 0 0; border-block-end: 3px solid var(--primary); }
+    .panel-inner { background: var(--surface); border: 1px solid var(--border); border-radius: 12px; padding: 18px; }
+    .layout-main { display: grid; grid-template-columns: 1fr 360px; gap: 16px; align-items: start; }
+    @media (max-width: 960px) { .layout-main { grid-template-columns: 1fr; } }
+    .group-box { border: 1px dashed var(--border); border-radius: 10px; padding: 12px; background: var(--surface-muted); margin-bottom: 12px; }
+    .group-label { font-size: 12px; font-weight: 700; color: var(--primary); margin-bottom: 8px; }
+    .grid-2 { display: grid; grid-template-columns: repeat(2, 1fr); gap: 10px; }
+    .grid-3 { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; }
+    @media (max-width: 700px) { .grid-2, .grid-3 { grid-template-columns: 1fr; } }
+    .node-box { width: 100%; text-align: left; background: var(--surface); border: 1.5px solid var(--border); border-radius: 10px; padding: 12px; color: var(--fg); font: inherit; cursor: pointer; }
+    .node-box:hover { border-color: var(--primary); }
+    .node-box[aria-pressed="true"] { border-color: var(--primary); background: var(--primary-soft); }
+    .node-header { display: flex; justify-content: space-between; align-items: center; gap: 6px; margin-bottom: 4px; }
+    .node-title { font-weight: 700; font-size: 14px; }
+    .detail-box { position: sticky; top: 16px; background: var(--surface-muted); border: 1px solid var(--border); border-radius: 10px; padding: 16px; }
+    .points { margin: 10px 0 0; padding-left: 18px; font-size: 13px; }
+    .points li { margin-bottom: 6px; }
+    .table-wrapper { overflow: auto; max-inline-size: 100%; max-block-size: min(500px, 80vh); container-type: inline-size; border: 1px solid var(--border); border-radius: 8px; }
+    table { width: 100%; border-collapse: separate; border-spacing: 0; font-size: 13px; }
+    thead { position: sticky; inset-block-start: 0; z-index: 1; background: var(--surface-muted); }
+    th, td { padding: 10px 12px; text-align: left; border-bottom: 1px solid var(--border); vertical-align: top; }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <header>
+      <div style="display:flex; align-items:center; gap:10px; flex-wrap:wrap; margin-bottom:4px;">
+        <span class="badge">08-inventory-retail / diagram.html</span>
+        <span class="muted">調達・在庫管理 (`inventory`) ・ 商品・物販管理 (`retail`)</span>
+      </div>
+      <h1>08 在庫・物販 ドメイン図解</h1>
+      <p class="muted">ロット・使用期限・追記型受払トランザクション・他薬局分譲（別紙様式4-1）・規制薬品受払帳簿と、要指導/OTCリスク区分別の販売ガードを可視化します。</p>
+    </header>
+
+    <nav class="domain-nav" aria-label="ドメイン別図解ナビゲーション">
+      <a href="../diagram.html">全体関係図 (01〜08)</a>
+      <a href="../01-organization/diagram.html">01 組織・基盤</a>
+      <a href="../02-reference/diagram.html">02 マスタ・外部参照</a>
+      <a href="../03-patient-coverage/diagram.html">03 患者・受給資格</a>
+      <a href="../04-prescription-dispensing/diagram.html">04 処方・調剤</a>
+      <a href="../05-pharmaceutical-care/diagram.html">05 服薬指導・薬歴・継続ケア</a>
+      <a href="../06-home-care/diagram.html">06 在宅医療・訪問契約</a>
+      <a href="../07-reimbursement-billing/diagram.html">07 算定・会計・請求</a>
+      <a href="diagram.html" aria-current="page">08 在庫・物販</a>
+    </nav>
+
+    <div role="tablist" aria-label="08 在庫・物販ビュー切替">
+      <button type="button" role="tab" id="tab-model" aria-selected="true">1. 調達・在庫 &amp; 商品・物販モデル</button>
+      <button type="button" role="tab" id="tab-otc" aria-selected="false">2. OTCリスク区分別の販売資格・確認ガード一覧</button>
+    </div>
+
+    <div role="tabpanel" id="panel-model" aria-labelledby="tab-model">
+      <div class="panel-inner layout-main">
+        <div>
+          <div class="group-box">
+            <div class="group-label">調達・在庫管理 (inventory.md)：ロット追跡・逆仕訳受払・分譲・規制薬品帳簿</div>
+            <div class="grid-3">
+              <button type="button" class="node-box" data-node="lot_receipt" aria-pressed="true">
+                <span class="node-header"><span class="node-title">発注・入庫・ロット期限</span><span class="badge">GS1-128</span></span>
+                <span class="muted">InventoryLot・PurchaseReceipt・期限切れ/経過措置切れ引当ブロック</span>
+              </button>
+              <button type="button" class="node-box" data-node="movement" aria-pressed="false">
+                <span class="node-header"><span class="node-title">受払トランザクション &amp; 分譲</span><span class="badge">別紙4-1・2年保存</span></span>
+                <span class="muted">StockMovement(調剤払出/訂正戻入)・他薬局分譲(InterPharmacyTransfer)</span>
+              </button>
+              <button type="button" class="node-box" data-node="ledger" aria-pressed="false">
+                <span class="node-header"><span class="node-title">規制薬品管理帳簿</span><span class="badge">麻薬・向精神薬</span></span>
+                <span class="muted">麻薬/向精神薬/覚醒剤原料/毒劇薬・調剤録/廃棄届との数量完全一致</span>
+              </button>
+            </div>
+          </div>
+
+          <div class="group-box" style="margin-bottom:0;">
+            <div class="group-label">商品・物販管理 (retail.md)：要指導/OTC販売ガード・窓口会計/相談イベント連携</div>
+            <div class="grid-3">
+              <button type="button" class="node-box" data-node="product" aria-pressed="false">
+                <span class="node-header"><span class="node-title">物販商品・リスク区分</span><span class="badge">税率10%/8%</span></span>
+                <span class="muted">要指導・第1〜3類OTC・医薬部外品・衛生用品・セルフメディケーション税制</span>
+              </button>
+              <button type="button" class="node-box" data-node="compliance" aria-pressed="false">
+                <span class="node-header"><span class="node-title">医薬品販売確認 &amp; 濫用防止</span><span class="badge">資格者ガード</span></span>
+                <span class="muted">OtcComplianceRecord・薬剤師/登録販売者確認・濫用等医薬品3確認</span>
+              </button>
+              <button type="button" class="node-box" data-node="transaction" aria-pressed="false">
+                <span class="node-header"><span class="node-title">物販取引・会計/イベント連携</span><span class="badge">保険調剤と分離</span></span>
+                <span class="muted">RetailTransaction・窓口会計精算伝票連携・OTC相談イベント/頭書き連携</span>
+              </button>
+            </div>
+          </div>
+        </div>
+
+        <aside class="detail-box" id="node-detail" aria-live="polite"></aside>
+      </div>
+    </div>
+
+    <div role="tabpanel" id="panel-otc" aria-labelledby="tab-otc" hidden="until-found">
+      <div class="panel-inner">
+        <h2>商品区分別の販売資格者・情報提供・濫用防止ガード</h2>
+        <div tabindex="0" role="region" aria-label="商品区分別販売ガード一覧" class="table-wrapper">
+          <table>
+            <thead>
+              <tr>
+                <th>商品分類</th>
+                <th>対応必須資格者</th>
+                <th>法定確認・情報提供・販売確定ガード</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <th>要指導医薬品・第1類医薬品</th>
+                <td><strong>薬剤師限定</strong></td>
+                <td>使用者状況（年齢・症状・併用薬・副作用歴）の確認および<strong>書面（または電磁的記録）を用いた情報提供・理解確認</strong>の記録がない限り販売確定をブロック。</td>
+              </tr>
+              <tr>
+                <th>指定第2類・第2類・第3類医薬品</th>
+                <td><strong>薬剤師 または 登録販売者</strong></td>
+                <td>資格者の関与・確認のもとで販売し、相談応需時には情報提供内容を記録。</td>
+              </tr>
+              <tr>
+                <th>濫用等のおそれのある医薬品<br/>（エフェドリン・コデイン等）</th>
+                <td>区分に応じた資格者<br/>（薬剤師 / 登録販売者）</td>
+                <td>①若年者（中高生等）の場合は氏名・年齢、②他店での購入状況、③原則1人1包装（複数購入時は適正な必要理由）の確認記録がない限り販売確定をブロック。</td>
+              </tr>
+              <tr>
+                <th>指定医薬部外品・衛生用品・健康食品・日用品</th>
+                <td>制限なし（一般スタッフ可）</td>
+                <td>消費税区分（標準10% / 軽減8%）に従い精算し、保険調剤（非課税）とは別枠で窓口会計へ連携。</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    const details = {
+      lot_receipt: {
+        title: "発注・入庫・ロット/使用期限管理 (InventoryLot / PurchaseReceipt)",
+        badge: "inventory.md / GS1-128対応",
+        summary: "包装単位（GS1-128）での仕入入庫と、ロット・使用期限・保管棚の管理。",
+        points: [
+          "店舗ごとに品目・ロット番号・使用期限・保管ロケーション（冷所・麻薬金庫・毒薬庫・通常棚）を管理",
+          "使用期限切れまたは薬価経過措置満了ロットの調剤・販売引当を自動ブロック",
+          "卸からの仕入実績は妥結率報告の基礎データとして集計可能"
+        ]
+      },
+      movement: {
+        title: "追記型受払トランザクション & 他薬局分譲 (StockMovement / InterPharmacyTransfer)",
+        badge: "inventory.md / 別紙様式4-1連動",
+        summary: "すべての在庫変動を追記型で追跡し、調剤訂正や供給不安時の他薬局分譲と連動する。",
+        points: [
+          "在庫残高の直接上書きを禁止し、仕入入庫・調剤払出・調剤訂正戻入・物販売上払出・物販取消戻入・店舗間移動・分譲・廃棄で記録",
+          "他薬局との医薬品分譲・譲受（別紙様式4-1）は 04-prescription-dispensing の供給不安対応記録と連動し、分譲日から2年間保存期限を管理"
+        ]
+      },
+      ledger: {
+        title: "規制薬品管理帳簿 (ControlledSubstanceLedger)",
+        badge: "inventory.md / 麻薬・向精神薬・毒劇薬",
+        summary: "麻薬・向精神薬・覚醒剤原料・毒薬劇薬の受入・払出・廃棄・残高を追跡する法定帳簿。",
+        points: [
+          "調剤確定時の麻薬・向精神薬等の払出数量および患者氏名・調剤録参照を自動連携",
+          "患者からの返納麻薬や期限切れ麻薬の廃棄時は、麻薬廃棄届／調剤済麻薬廃棄届の写し参照と紐づける"
+        ]
+      },
+      product: {
+        title: "物販商品マスタ・リスク区分 (RetailProduct)",
+        badge: "retail.md / 48薬効群・税制対応",
+        summary: "要指導・第1〜3類OTCから衛生用品・健康食品・日用品までを管理する商品モデル。",
+        points: [
+          "リスク区分（要指導 / 第1類 / 指定第2類 / 第2類 / 第3類 / 医薬部外品 / 医療機器 / 衛生用品 / 健康食品 / 日用品）",
+          "濫用等のおそれのある医薬品フラグ、セルフメディケーション税制対象フラグ、消費税率区分（10% / 8%）を保持"
+        ]
+      },
+      compliance: {
+        title: "医薬品販売確認記録 & 濫用防止ガード (OtcComplianceRecord)",
+        badge: "retail.md / 薬機法第36条の5〜10",
+        summary: "リスク区分と濫用防止指定に応じた資格者確認・情報提供の強制ガード。",
+        points: [
+          "要指導医薬品・第1類医薬品は薬剤師による確認・書面情報提供・理解確認が未完了のまま販売確定不可",
+          "濫用等のおそれのある医薬品は、若年者氏名年齢・他店購入状況・複数個購入理由の記録なしでの販売確定をブロック"
+        ]
+      },
+      transaction: {
+        title: "物販取引 & 窓口会計・OTC相談イベント連携 (RetailTransaction)",
+        badge: "retail.md / 保険調剤と分離精算",
+        summary: "物販確定から在庫払出・窓口精算伝票・患者併用薬プロファイルへの連携。",
+        points: [
+          "07-reimbursement-billing（窓口会計）の精算伝票へ課税明細とセルフメディケーション税制対象印字区分を渡す",
+          "患者が特定されたOTC販売・相談時は 05-pharmaceutical-care（OTC相談イベント）および 03-patient-coverage（併用薬プロファイル）へ連携"
+        ]
+      }
+    };
+
+    function renderNode(key) {
+      const d = details[key];
+      if (!d) return;
+      document.getElementById("node-detail").innerHTML = `
+        <span class="badge" style="margin-bottom:8px;">${d.badge}</span>
+        <h3>${d.title}</h3>
+        <p class="muted">${d.summary}</p>
+        <ul class="points">${d.points.map(p => `<li>${p}</li>`).join("")}</ul>
+      `;
+    }
+
+    document.querySelectorAll(".node-box").forEach(btn => {
+      btn.addEventListener("click", () => {
+        document.querySelectorAll(".node-box").forEach(b => b.setAttribute("aria-pressed", "false"));
+        btn.setAttribute("aria-pressed", "true");
+        renderNode(btn.dataset.node);
+      });
+    });
+
+    const tabs = Array.from(document.querySelectorAll('[role="tab"]'));
+    const panels = Array.from(document.querySelectorAll('[role="tabpanel"]'));
+    function activateTab(selectedTab) {
+      for (const tab of tabs) tab.setAttribute("aria-selected", String(tab === selectedTab));
+      for (const panel of panels) {
+        if (panel.getAttribute("aria-labelledby") === selectedTab.id) panel.removeAttribute("hidden");
+        else panel.setAttribute("hidden", "until-found");
+      }
+      selectedTab.scrollIntoView({ block: "nearest", inline: "nearest" });
+    }
+    tabs.forEach(tab => tab.addEventListener("click", () => activateTab(tab)));
+    panels.forEach(panel => panel.addEventListener("beforematch", () => {
+      const tab = document.getElementById(panel.getAttribute("aria-labelledby"));
+      if (tab) activateTab(tab);
+    }));
+    renderNode("lot_receipt");
+  </script>
+</body>
+</html>
