@@ -1,0 +1,800 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="color-scheme" content="light dark" />
+  <title>薬局業務フロー・全8ドメイン関係図（1枚ガイド）</title>
+  <style>
+    :root {
+      color-scheme: light dark;
+      --bg-light: #f8fafc;
+      --bg-dark: #0b1120;
+      --surface-light: #ffffff;
+      --surface-dark: #162032;
+      --surface-muted-light: #f1f5f9;
+      --surface-muted-dark: #0f172a;
+      --fg-light: #0f172a;
+      --fg-dark: #f1f5f9;
+      --muted-light: #475569;
+      --muted-dark: #94a3b8;
+      --border-light: #cbd5e1;
+      --border-dark: #2c3b52;
+      --primary-light: #0284c7;
+      --primary-dark: #38bdf8;
+      --primary-soft-light: #e0f2fe;
+      --primary-soft-dark: #0c3554;
+
+      /* ドメイン別アクセントカラー */
+      --c01: #6366f1;
+      --c02: #64748b;
+      --c03: #0ea5e9;
+      --c04: #0d9488;
+      --c05: #16a34a;
+      --c06: #d97706;
+      --c07: #e11d48;
+      --c08: #9333ea;
+
+      --bg: var(--bg-light);
+      --surface: var(--surface-light);
+      --surface-muted: var(--surface-muted-light);
+      --fg: var(--fg-light);
+      --muted: var(--muted-light);
+      --border: var(--border-light);
+      --primary: var(--primary-light);
+      --primary-soft: var(--primary-soft-light);
+
+      @media (prefers-color-scheme: dark) {
+        --bg: var(--bg-dark);
+        --surface: var(--surface-dark);
+        --surface-muted: var(--surface-muted-dark);
+        --fg: var(--fg-dark);
+        --muted: var(--muted-dark);
+        --border: var(--border-dark);
+        --primary: var(--primary-dark);
+        --primary-soft: var(--primary-soft-dark);
+      }
+
+      @supports (color: light-dark(white, black)) {
+        --bg: light-dark(var(--bg-light), var(--bg-dark));
+        --surface: light-dark(var(--surface-light), var(--surface-dark));
+        --surface-muted: light-dark(var(--surface-muted-light), var(--surface-muted-dark));
+        --fg: light-dark(var(--fg-light), var(--fg-dark));
+        --muted: light-dark(var(--muted-light), var(--muted-dark));
+        --border: light-dark(var(--border-light), var(--border-dark));
+        --primary: light-dark(var(--primary-light), var(--primary-dark));
+        --primary-soft: light-dark(var(--primary-soft-light), var(--primary-soft-dark));
+      }
+    }
+
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      background: var(--bg);
+      color: var(--fg);
+      font-family: "Hiragino Kaku Gothic ProN", "Yu Gothic UI", "Meiryo", system-ui, sans-serif;
+      line-height: 1.65;
+    }
+    .container {
+      max-width: 1320px;
+      margin: 0 auto;
+      padding: 28px 18px 64px;
+      display: flex;
+      flex-direction: column;
+      gap: 28px;
+    }
+    h1 { font-size: 26px; margin: 4px 0 8px; line-height: 1.3; }
+    h2 {
+      font-size: 18px;
+      margin: 0 0 14px;
+      padding-left: 10px;
+      border-left: 4px solid var(--primary);
+    }
+    h3 { font-size: 15px; margin: 0 0 6px; }
+    p { margin: 0; }
+    .muted { color: var(--muted); font-size: 13px; }
+    .small { font-size: 12px; color: var(--muted); }
+
+    .hero {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 14px;
+      padding: 22px 24px;
+    }
+    .hero-top {
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-start;
+      flex-wrap: wrap;
+      gap: 12px;
+    }
+    .pill {
+      display: inline-flex;
+      align-items: center;
+      gap: 5px;
+      padding: 3px 10px;
+      border-radius: 999px;
+      font-size: 11px;
+      font-weight: 700;
+      background: var(--primary-soft);
+      color: var(--primary);
+    }
+    .top-links {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+      margin-top: 12px;
+    }
+    .top-links a {
+      font-size: 12px;
+      font-weight: 600;
+      text-decoration: none;
+      color: var(--fg);
+      background: var(--surface-muted);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 5px 11px;
+    }
+    .top-links a:hover { border-color: var(--primary); color: var(--primary); }
+
+    .section-card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 14px;
+      padding: 22px 24px;
+    }
+
+    /* フィルターバー */
+    .filter-bar {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 6px;
+      align-items: center;
+      padding: 12px 14px;
+      background: var(--surface-muted);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      margin-bottom: 16px;
+    }
+    .filter-btn {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      padding: 5px 11px;
+      border-radius: 999px;
+      border: 1.5px solid var(--border);
+      background: var(--surface);
+      color: var(--fg);
+      font: inherit;
+      font-size: 12px;
+      font-weight: 700;
+      cursor: pointer;
+    }
+    .filter-btn:hover { border-color: var(--primary); }
+    .filter-btn[aria-pressed="true"] {
+      background: var(--primary);
+      border-color: var(--primary);
+      color: #ffffff;
+    }
+    .dot {
+      width: 9px;
+      height: 9px;
+      border-radius: 50%;
+      display: inline-block;
+      flex-shrink: 0;
+    }
+
+    /* ドメインタグ */
+    .dtag {
+      display: inline-flex;
+      align-items: center;
+      gap: 4px;
+      padding: 2px 8px;
+      border-radius: 6px;
+      font-size: 11px;
+      font-weight: 700;
+      border: 1px solid currentColor;
+      text-decoration: none;
+      white-space: nowrap;
+    }
+    .d01 { color: var(--c01); }
+    .d02 { color: var(--c02); }
+    .d03 { color: var(--c03); }
+    .d04 { color: var(--c04); }
+    .d05 { color: var(--c05); }
+    .d06 { color: var(--c06); }
+    .d07 { color: var(--c07); }
+    .d08 { color: var(--c08); }
+
+    /* ハイライト制御 */
+    .is-dimmed { opacity: 0.25; transition: opacity 0.15s; }
+    .is-highlighted {
+      box-shadow: 0 0 0 2px var(--primary);
+      transition: opacity 0.15s, box-shadow 0.15s;
+    }
+
+    /* SVG全体構造図 */
+    .svg-scroll { overflow-x: auto; }
+    svg.arch-map {
+      width: 100%;
+      min-width: 920px;
+      height: auto;
+      display: block;
+    }
+
+    /* 業務フロータイムラインカード */
+    .flow-grid {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 14px;
+    }
+    @media (max-width: 980px) { .flow-grid { grid-template-columns: repeat(2, 1fr); } }
+    @media (max-width: 640px) { .flow-grid { grid-template-columns: 1fr; } }
+
+    .step-card {
+      background: var(--surface-muted);
+      border: 1.5px solid var(--border);
+      border-radius: 12px;
+      padding: 15px;
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+    }
+    .step-head {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 8px;
+    }
+    .step-num {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      padding: 2px 9px;
+      border-radius: 6px;
+      background: var(--primary);
+      color: #ffffff;
+      font-size: 11px;
+      font-weight: 800;
+    }
+    .who-badge {
+      font-size: 11px;
+      font-weight: 700;
+      padding: 2px 8px;
+      border-radius: 999px;
+      background: var(--surface);
+      border: 1px solid var(--border);
+      color: var(--muted);
+    }
+    .step-list {
+      margin: 0;
+      padding-left: 16px;
+      font-size: 12.5px;
+    }
+    .step-list li { margin-bottom: 4px; }
+    .guard-box {
+      margin-top: auto;
+      padding: 8px 10px;
+      border-radius: 8px;
+      background: var(--surface);
+      border-left: 3px solid var(--c07);
+      font-size: 12px;
+    }
+    .tags-row {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 5px;
+    }
+
+    /* ドメインカード一覧 */
+    .domain-grid {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 12px;
+    }
+    @media (max-width: 1050px) { .domain-grid { grid-template-columns: repeat(2, 1fr); } }
+    @media (max-width: 600px) { .domain-grid { grid-template-columns: 1fr; } }
+
+    .domain-card {
+      background: var(--surface-muted);
+      border: 1.5px solid var(--border);
+      border-radius: 12px;
+      padding: 14px;
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+    }
+    .domain-card-head {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 6px;
+    }
+    .domain-card a.detail-btn {
+      margin-top: auto;
+      display: inline-block;
+      font-size: 12px;
+      font-weight: 700;
+      color: var(--primary);
+      text-decoration: none;
+    }
+    .domain-card a.detail-btn:hover { text-decoration: underline; }
+
+    /* テーブル */
+    .table-wrapper {
+      overflow: auto;
+      max-inline-size: 100%;
+      container-type: inline-size;
+      border: 1px solid var(--border);
+      border-radius: 10px;
+    }
+    table {
+      width: 100%;
+      border-collapse: separate;
+      border-spacing: 0;
+      font-size: 13px;
+    }
+    thead {
+      position: sticky;
+      inset-block-start: 0;
+      z-index: 1;
+      background: var(--surface-muted);
+    }
+    th, td {
+      padding: 10px 12px;
+      text-align: left;
+      border-bottom: 1px solid var(--border);
+      vertical-align: top;
+    }
+
+    /* 5つの重要ルール */
+    .rules-grid {
+      display: grid;
+      grid-template-columns: repeat(5, 1fr);
+      gap: 10px;
+    }
+    @media (max-width: 1100px) { .rules-grid { grid-template-columns: repeat(2, 1fr); } }
+    @media (max-width: 600px) { .rules-grid { grid-template-columns: 1fr; } }
+    .rule-card {
+      background: var(--surface-muted);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      padding: 12px;
+      font-size: 12.5px;
+    }
+    .rule-card strong { display: block; margin-bottom: 4px; font-size: 13px; color: var(--primary); }
+
+    @media print {
+      body { background: #fff; color: #000; }
+      .filter-bar, .top-links { display: none; }
+      .section-card, .hero { break-inside: avoid; border-color: #999; }
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <!-- ヘッダー -->
+    <header class="hero">
+      <div class="hero-top">
+        <div>
+          <span class="pill">薬局ドメイン全体ガイド（1枚完結版）</span>
+          <h1>薬局業務フロー ＆ 全8ドメイン関わり図解</h1>
+          <p class="muted">患者さまの来局から処方受付・調剤・服薬指導・薬歴確定・フォローアップ・在宅医療・レセプト請求・在庫管理まで、<strong>「どの業務が」「どのドメインのデータを使って」「どう連携するか」</strong>を1枚で把握できる全体資料です。</p>
+        </div>
+      </div>
+      <div class="top-links">
+        <a href="diagram.html">詳細コンテキストマップを開く</a>
+        <a href="01-organization/diagram.html">01 組織・基盤</a>
+        <a href="02-reference/diagram.html">02 マスタ</a>
+        <a href="03-patient-coverage/diagram.html">03 患者・資格</a>
+        <a href="04-prescription-dispensing/diagram.html">04 処方・調剤</a>
+        <a href="05-pharmaceutical-care/diagram.html">05 指導・薬歴</a>
+        <a href="06-home-care/diagram.html">06 在宅医療</a>
+        <a href="07-reimbursement-billing/diagram.html">07 算定・請求</a>
+        <a href="08-inventory-retail/diagram.html">08 在庫・物販</a>
+      </div>
+    </header>
+
+    <main style="display:flex; flex-direction:column; gap:28px;">
+      <!-- セクション1: 全体関係図（SVG） -->
+      <section class="section-card" aria-labelledby="sec-arch">
+        <h2 id="sec-arch">1. 薬局システムの全体マップ（8つのドメインのつながり）</h2>
+        <p class="muted" style="margin-bottom:14px;">レセコン機能と電子薬歴機能は同じクラウド内で患者・処方情報を直接共有します（NSIPS は外部連携専用）。上の「基盤・マスタ」がルールと基準を供給し、中央の「患者の業務フロー」が動き、下の「算定・請求・在庫」へ結果が引き渡されます。</p>
+
+        <div class="svg-scroll">
+          <svg class="arch-map" viewBox="0 0 1040 500" role="img" aria-label="薬局ドメイン全8領域の連携関係図">
+            <defs>
+              <marker id="arr" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+                <path d="M 0 1 L 10 5 L 0 9 z" fill="currentColor" />
+              </marker>
+            </defs>
+
+            <!-- 上段：基盤・マスタ -->
+            <rect x="20" y="15" width="485" height="92" rx="12" fill="var(--surface-muted)" stroke="var(--c01)" stroke-width="2" />
+            <text x="38" y="42" fill="var(--c01)" font-weight="800" font-size="14">01 組織・基盤（法人・店舗・スタッフ・施設基準・監査ログ）</text>
+            <text x="38" y="64" fill="var(--fg)" font-size="12">・1法人＝1テナント分離 / 1アカウント＝1スタッフ / 管理薬剤師専任</text>
+            <text x="38" y="84" fill="var(--muted)" font-size="11.5">・施設基準（基本料・加算）・麻薬免許期限・GL第7.0版(二要素認証/NTP監査ログ)</text>
+
+            <rect x="535" y="15" width="485" height="92" rx="12" fill="var(--surface-muted)" stroke="var(--c02)" stroke-width="2" />
+            <text x="553" y="42" fill="var(--c02)" font-weight="800" font-size="14">02 マスタ・外部参照（医薬品・医療機関・介護施設）</text>
+            <text x="553" y="64" fill="var(--fg)" font-size="12">・医薬品3層（一般名 → 調剤製品YJ/レセ電 → 包装GS1/JAN）・薬価・経過措置</text>
+            <text x="553" y="84" fill="var(--muted)" font-size="11.5">・医療機関（7桁コード）・保険医確認・介護施設種別（特養 vs 自宅/サ高住）</text>
+
+            <!-- 下向き矢印（基盤→業務） -->
+            <g stroke="var(--muted)" stroke-width="1.6" fill="none" style="color:var(--muted);">
+              <path d="M 260 107 L 260 148" marker-end="url(#arr)" />
+              <path d="M 780 107 L 780 148" marker-end="url(#arr)" />
+              <path d="M 480 107 L 540 148" stroke-dasharray="4 3" marker-end="url(#arr)" />
+            </g>
+            <text x="270" y="133" fill="var(--muted)" font-size="11">権限・施設基準・免許番号</text>
+            <text x="790" y="133" fill="var(--muted)" font-size="11">薬価・規制区分・保険医・施設種別</text>
+
+            <!-- 中段：臨床・患者フローの枠 -->
+            <rect x="20" y="152" width="1000" height="190" rx="14" fill="none" stroke="var(--border)" stroke-dasharray="6 4" stroke-width="1.5" />
+            <text x="36" y="174" fill="var(--primary)" font-weight="800" font-size="12">日常の患者ケア・調剤フロー（一体型システム内部で直接共有）</text>
+
+            <!-- 03 患者・受給資格 -->
+            <rect x="38" y="190" width="215" height="132" rx="10" fill="var(--surface)" stroke="var(--c03)" stroke-width="2" />
+            <text x="52" y="216" fill="var(--c03)" font-weight="800" font-size="13.5">03 患者・受給資格</text>
+            <text x="52" y="238" fill="var(--fg)" font-size="12">・共通患者 / 家族管理</text>
+            <text x="52" y="256" fill="var(--fg)" font-size="12">・頭書き（アレルギー確認）</text>
+            <text x="52" y="274" fill="var(--fg)" font-size="12">・M&amp;Aマージ（最新採用）</text>
+            <text x="52" y="292" fill="var(--fg)" font-size="12">・マイナ保険証/公費資格</text>
+            <text x="52" y="310" fill="var(--muted)" font-size="11">→ 全イベントの必須入口</text>
+
+            <!-- 04 処方・調剤 -->
+            <rect x="285" y="190" width="225" height="132" rx="10" fill="var(--surface)" stroke="var(--c04)" stroke-width="2" />
+            <text x="299" y="216" fill="var(--c04)" font-weight="800" font-size="13.5">04 処方・調剤</text>
+            <text x="299" y="238" fill="var(--fg)" font-size="12">・受付 / 受入禁止ブロック</text>
+            <text x="299" y="256" fill="var(--fg)" font-size="12">・取りそろえ前確認(薬剤師)</text>
+            <text x="299" y="274" fill="var(--fg)" font-size="12">・処方監査・疑義照会(単一ID)</text>
+            <text x="299" y="292" fill="var(--fg)" font-size="12">・変更調剤4要件・調剤録</text>
+            <text x="299" y="310" fill="var(--muted)" font-size="11">→ 調剤実績・調剤済処方箋</text>
+
+            <!-- 05 服薬指導・薬歴・継続ケア -->
+            <rect x="542" y="190" width="230" height="132" rx="10" fill="var(--surface)" stroke="var(--c05)" stroke-width="2" />
+            <text x="556" y="216" fill="var(--c05)" font-weight="800" font-size="13.5">05 指導・薬歴・ケア</text>
+            <text x="556" y="238" fill="var(--fg)" font-size="12">・イベント先行作成</text>
+            <text x="556" y="256" fill="var(--fg)" font-size="12">・薬歴確定＝イベント完了</text>
+            <text x="556" y="274" fill="var(--fg)" font-size="12">・前回留意点の自動引継ぎ</text>
+            <text x="556" y="292" fill="var(--fg)" font-size="12">・フォロー(別記録)・品質安全</text>
+            <text x="556" y="310" fill="var(--muted)" font-size="11">→ 頭書き更新 / 請求承認ゲート</text>
+
+            <!-- 06 在宅医療 -->
+            <rect x="802" y="190" width="202" height="132" rx="10" fill="var(--surface)" stroke="var(--c06)" stroke-width="2" />
+            <text x="816" y="216" fill="var(--c06)" font-weight="800" font-size="13.5">06 在宅医療・契約</text>
+            <text x="816" y="238" fill="var(--fg)" font-size="12">・医師訪問指示・指導計画</text>
+            <text x="816" y="256" fill="var(--fg)" font-size="12">・介護優先/特養特例判定</text>
+            <text x="816" y="274" fill="var(--fg)" font-size="12">・単一建物人数・16km制限</text>
+            <text x="816" y="292" fill="var(--fg)" font-size="12">・訪問時処方箋原本突合</text>
+            <text x="816" y="310" fill="var(--muted)" font-size="11">→ 訪問実績・協力薬局連携</text>
+
+            <!-- 横矢印（中段） -->
+            <g stroke="var(--primary)" stroke-width="2" fill="none" style="color:var(--primary);">
+              <path d="M 253 256 L 281 256" marker-end="url(#arr)" />
+              <path d="M 510 256 L 538 256" marker-end="url(#arr)" />
+              <path d="M 772 256 L 798 256" marker-end="url(#arr)" />
+            </g>
+
+            <!-- 下向き矢印（業務→精算・在庫） -->
+            <g stroke="var(--fg)" stroke-width="1.8" fill="none" style="color:var(--fg);">
+              <path d="M 400 322 L 400 378" marker-end="url(#arr)" />
+              <path d="M 650 322 L 320 378" marker-end="url(#arr)" />
+              <path d="M 880 322 L 460 378" stroke-dasharray="4 3" marker-end="url(#arr)" />
+              <path d="M 450 322 L 660 378" marker-end="url(#arr)" />
+            </g>
+            <text x="170" y="364" fill="var(--muted)" font-size="11">確定調剤録＋保険薬剤師承認済み薬歴（未承認時は請求不可）</text>
+            <text x="610" y="364" fill="var(--muted)" font-size="11">調剤払出 / 訂正戻入 / 分譲</text>
+
+            <!-- 下段：算定請求・在庫物販 -->
+            <rect x="20" y="382" width="520" height="104" rx="12" fill="var(--surface-muted)" stroke="var(--c07)" stroke-width="2" />
+            <text x="38" y="409" fill="var(--c07)" font-weight="800" font-size="14">07 算定・会計・請求（点数計算・窓口精算・レセプト提出・返戻）</text>
+            <text x="38" y="431" fill="var(--fg)" font-size="12">・無状態計算（基本料3段階/時間外基礎額/7種減算/TK選択式コメント10類型）</text>
+            <text x="38" y="451" fill="var(--fg)" font-size="12">・窓口会計（10円未満四捨五入・減免禁止・0円でも明細書無償交付）</text>
+            <text x="38" y="471" fill="var(--muted)" font-size="11.5">・提出用(RECEIPTY.CYO)と機関CSV分離 / 請求前3者突合 / 返戻(HR)再請求 / 増減通知是正</text>
+
+            <rect x="560" y="382" width="460" height="104" rx="12" fill="var(--surface-muted)" stroke="var(--c08)" stroke-width="2" />
+            <text x="578" y="409" fill="var(--c08)" font-weight="800" font-size="14">08 在庫・物販（ロット管理・規制薬品帳簿・OTC販売）</text>
+            <text x="578" y="431" fill="var(--fg)" font-size="12">・ロット/期限管理・追記型受払（調剤払出/訂正戻入）・他薬局分譲(別紙4-1)</text>
+            <text x="578" y="451" fill="var(--fg)" font-size="12">・規制薬品管理帳簿（麻薬/向精神薬/毒劇薬）・要指導/第1〜3類OTC資格者ガード</text>
+            <text x="578" y="471" fill="var(--muted)" font-size="11.5">・濫用等のおそれのある医薬品3確認 → OTC相談は05へ、精算明細は07(窓口会計)へ連携</text>
+          </svg>
+        </div>
+      </section>
+
+      <!-- セクション2: 業務フロー一覧（ステップ1〜6＋在宅＋月次） -->
+      <section class="section-card" aria-labelledby="sec-flow">
+        <h2 id="sec-flow">2. 現場の業務フロー一覧（ドメインを絞り込んで関わりを確認できます）</h2>
+
+        <div class="filter-bar" role="group" aria-label="ドメイン別ハイライトフィルター">
+          <span class="small" style="font-weight:700; margin-right:4px;">関わるドメインで強調:</span>
+          <button type="button" class="filter-btn" data-filter="all" aria-pressed="true">すべて表示</button>
+          <button type="button" class="filter-btn" data-filter="d01" aria-pressed="false"><span class="dot" style="background:var(--c01);"></span>01 組織・基盤</button>
+          <button type="button" class="filter-btn" data-filter="d02" aria-pressed="false"><span class="dot" style="background:var(--c02);"></span>02 マスタ</button>
+          <button type="button" class="filter-btn" data-filter="d03" aria-pressed="false"><span class="dot" style="background:var(--c03);"></span>03 患者・資格</button>
+          <button type="button" class="filter-btn" data-filter="d04" aria-pressed="false"><span class="dot" style="background:var(--c04);"></span>04 処方・調剤</button>
+          <button type="button" class="filter-btn" data-filter="d05" aria-pressed="false"><span class="dot" style="background:var(--c05);"></span>05 指導・薬歴</button>
+          <button type="button" class="filter-btn" data-filter="d06" aria-pressed="false"><span class="dot" style="background:var(--c06);"></span>06 在宅</button>
+          <button type="button" class="filter-btn" data-filter="d07" aria-pressed="false"><span class="dot" style="background:var(--c07);"></span>07 算定・請求</button>
+          <button type="button" class="filter-btn" data-filter="d08" aria-pressed="false"><span class="dot" style="background:var(--c08);"></span>08 在庫・物販</button>
+        </div>
+
+        <div class="flow-grid">
+          <!-- Step 1 -->
+          <article class="step-card filterable" data-domains="d01 d02 d03 d04 d05">
+            <div class="step-head">
+              <span class="step-num">Step 1</span>
+              <span class="who-badge">受付事務 / 保険薬剤師</span>
+            </div>
+            <h3>受付・患者特定・資格確認</h3>
+            <ul class="step-list">
+              <li>患者を特定（新規はレセコン機能で登録）し、受付イベントを先行作成</li>
+              <li>マイナ保険証・資格確認書で有効な保険・公費を確認（R7.12.2保険証廃止前提）</li>
+              <li>処方箋の使用期間（原則4日以内）・偽造・FAX原本突合・同時受付を確認</li>
+            </ul>
+            <div class="tags-row">
+              <a class="dtag d03" href="03-patient-coverage/diagram.html">03 患者・資格</a>
+              <a class="dtag d04" href="04-prescription-dispensing/diagram.html">04 受付・処方箋</a>
+              <a class="dtag d05" href="05-pharmaceutical-care/diagram.html">05 イベント</a>
+              <a class="dtag d02" href="02-reference/diagram.html">02 医療機関</a>
+            </div>
+            <div class="guard-box">
+              <strong>NG防止ガード:</strong> 二枚処方箋・同意なき医療機関従業員持参・非保険医の処方箋・期限超過は受付ブロック。患者未登録の匿名イベント作成禁止。
+            </div>
+          </article>
+
+          <!-- Step 2 -->
+          <article class="step-card filterable" data-domains="d02 d03 d04">
+            <div class="step-head">
+              <span class="step-num">Step 2</span>
+              <span class="who-badge">保険薬剤師 専権</span>
+            </div>
+            <h3>取りそろえ前確認・処方監査・疑義照会</h3>
+            <ul class="step-list">
+              <li>薬を取りそろえる前に5項目（体質・疾患・併用薬/OTC・残薬・体調）を確認</li>
+              <li>形式監査（曖昧用法等）＋薬学的監査（重複・相互作用・電子処方箋チェック）</li>
+              <li>疑義があれば処方医へ照会し、回答内容を<strong>単一の疑義照会ID</strong>で確定</li>
+            </ul>
+            <div class="tags-row">
+              <a class="dtag d04" href="04-prescription-dispensing/diagram.html">04 処方監査・照会</a>
+              <a class="dtag d03" href="03-patient-coverage/diagram.html">03 頭書き</a>
+              <a class="dtag d02" href="02-reference/diagram.html">02 医薬品安全</a>
+            </div>
+            <div class="guard-box">
+              <strong>NG防止ガード:</strong> 事務員のみの取りそろえ前確認は不可。アレルギー「未聴取」や疑義未解消のまま調剤確定へ進めない。処方箋・調剤録・薬歴は単一IDを引用し3者一致。
+            </div>
+          </article>
+
+          <!-- Step 3 -->
+          <article class="step-card filterable" data-domains="d01 d02 d04 d08">
+            <div class="step-head">
+              <span class="step-num">Step 3</span>
+              <span class="who-badge">保険薬剤師</span>
+            </div>
+            <h3>調剤・手技・最終鑑査・調剤録</h3>
+            <ul class="step-list">
+              <li>一般名/後発品選択、変更調剤（含量/別剤形は4要件確認）、自家製剤・一包化</li>
+              <li>最終鑑査を実施し、調剤済処方箋へ記入（<strong>調剤した保険薬剤師本人が署名</strong>）</li>
+              <li>保険調剤と自費等を分離して調剤録を確定し、在庫払出を連携</li>
+            </ul>
+            <div class="tags-row">
+              <a class="dtag d04" href="04-prescription-dispensing/diagram.html">04 調剤・鑑査</a>
+              <a class="dtag d08" href="08-inventory-retail/diagram.html">08 在庫払出・帳簿</a>
+              <a class="dtag d01" href="01-organization/diagram.html">01 免許/営業時間</a>
+              <a class="dtag d02" href="02-reference/diagram.html">02 薬価/経過措置</a>
+            </div>
+            <div class="guard-box">
+              <strong>NG防止ガード:</strong> 無資格調剤・代筆署名・経過措置切れ品調剤・期限切れ麻薬免許での麻薬調剤をブロック。確定後は二本線抹消相当の追記型訂正。
+            </div>
+          </article>
+
+          <!-- Step 4 -->
+          <article class="step-card filterable" data-domains="d01 d03 d05 d07 d08">
+            <div class="step-head">
+              <span class="step-num">Step 4</span>
+              <span class="who-badge">保険薬剤師 ＋ 会計</span>
+            </div>
+            <h3>服薬指導・交付・窓口会計</h3>
+            <ul class="step-list">
+              <li>薬剤情報提供文書（後発品備蓄名・価格比較明記）とお薬手帳で指導し薬剤交付</li>
+              <li>実施実績と施設基準から無状態に点数計算し、一部負担金・選定療養・OTC物販を精算</li>
+              <li>領収証と明細書（<strong>公費等で0円の場合も無償交付</strong>）を発行</li>
+            </ul>
+            <div class="tags-row">
+              <a class="dtag d05" href="05-pharmaceutical-care/diagram.html">05 指導・交付</a>
+              <a class="dtag d07" href="07-reimbursement-billing/diagram.html">07 算定・会計</a>
+              <a class="dtag d08" href="08-inventory-retail/diagram.html">08 OTC物販</a>
+              <a class="dtag d01" href="01-organization/diagram.html">01 施設基準</a>
+            </div>
+            <div class="guard-box">
+              <strong>NG防止ガード:</strong> 指導未実施での自動算定・一部負担金の値引き/減免・要指導/第1類OTCの無資格販売・マイナポータルAPI専用アプリの手帳認定を禁止。
+            </div>
+          </article>
+
+          <!-- Step 5 -->
+          <article class="step-card filterable" data-domains="d01 d03 d04 d05">
+            <div class="step-head">
+              <span class="step-num">Step 5</span>
+              <span class="who-badge">保険薬剤師 確定</span>
+            </div>
+            <h3>薬歴記載・確定（＝イベント完了）</h3>
+            <ul class="step-list">
+              <li>前回の継続的留意点を自動引継ぎし、今回の確認結果を記録（書きっぱなし防止）</li>
+              <li>SOAP・残薬（「残薬なし」明記必須）・加算別構造化根拠（<code>FeeJustification</code>）を記録</li>
+              <li><strong>薬歴記載者が確定するときにイベントも完了</strong>（不足事項は確定時に注意喚起）</li>
+            </ul>
+            <div class="tags-row">
+              <a class="dtag d05" href="05-pharmaceutical-care/diagram.html">05 薬歴記載</a>
+              <a class="dtag d03" href="03-patient-coverage/diagram.html">03 頭書き連動</a>
+              <a class="dtag d04" href="04-prescription-dispensing/diagram.html">04 単一照会ID</a>
+              <a class="dtag d01" href="01-organization/diagram.html">01 店舗権限制御</a>
+            </div>
+            <div class="guard-box">
+              <strong>NG防止ガード:</strong> 複数者が記載する場合は確定薬歴へ追記する。事務員の代行入力・未確定のままでは報酬確定・レセプト請求へ進めない。
+            </div>
+          </article>
+
+          <!-- Step 6 -->
+          <article class="step-card filterable" data-domains="d02 d03 d05 d06 d07">
+            <div class="step-head">
+              <span class="step-num">Step 6</span>
+              <span class="who-badge">保険薬剤師</span>
+            </div>
+            <h3>フォローアップ・在宅医療・月次請求</h3>
+            <ul class="step-list">
+              <li>調剤翌日以降に双方向フォロー（元薬歴とは別記録・他店舗引継可）、必要時トレーシングレポート</li>
+              <li>在宅患者は医師指示・介護保険優先（特養特例除く）・単一建物人数・16km・原本突合を管理</li>
+              <li>月末に保険薬剤師が3者突合点検し、<code>RECEIPTY.CYO</code> で請求提出・返戻再請求</li>
+            </ul>
+            <div class="tags-row">
+              <a class="dtag d05" href="05-pharmaceutical-care/diagram.html">05 フォロー・品質</a>
+              <a class="dtag d06" href="06-home-care/diagram.html">06 在宅医療</a>
+              <a class="dtag d07" href="07-reimbursement-billing/diagram.html">07 レセプト請求</a>
+              <a class="dtag d02" href="02-reference/diagram.html">02 施設/ケアマネ</a>
+            </div>
+            <div class="guard-box">
+              <strong>NG防止ガード:</strong> 一斉メールのみのフォロー禁止。未承認薬歴や5大整合チェック未達のままの請求提出禁止。増減通知は翌月の算定・記載改善へ連動。
+            </div>
+          </article>
+        </div>
+      </section>
+
+      <!-- セクション3: 全8ドメインの役割カード -->
+      <section class="section-card" aria-labelledby="sec-domains">
+        <h2 id="sec-domains">3. 全8ドメインの役割と正本一覧（クリックで各ドメイン詳細図解へ）</h2>
+        <div class="domain-grid">
+          <div class="domain-card filterable" data-domains="d01">
+            <div class="domain-card-head">
+              <span class="dtag d01">01 組織・基盤</span>
+              <span class="small"><code>organization</code></span>
+            </div>
+            <p class="small"><strong>正本:</strong> 法人（法人/個人）、法人間関係、店舗・免許・保険指定、スタッフ（1:1アカウント）、施設基準、RBAC、監査ログ。</p>
+            <p class="small"><strong>関わり:</strong> 全ドメインにテナント分離・権限・調剤日時点の4点セット（開設者/管理薬剤師/薬局コード/施設基準）を供給。</p>
+            <a class="detail-btn" href="01-organization/diagram.html">01 の図解を見る →</a>
+          </div>
+
+          <div class="domain-card filterable" data-domains="d02">
+            <div class="domain-card-head">
+              <span class="dtag d02">02 マスタ・外部参照</span>
+              <span class="small"><code>reference</code></span>
+            </div>
+            <p class="small"><strong>正本:</strong> 医薬品3層（一般名/調剤製品/包装）、薬価・経過措置・選定療養・規制区分、特定器材、医療機関、介護施設、連携薬局。</p>
+            <p class="small"><strong>関わり:</strong> 04（監査/調剤）・05（指導加算）・06（施設分岐）・07（算定/請求）・08（在庫/OTC）へ基準マスタを供給。</p>
+            <a class="detail-btn" href="02-reference/diagram.html">02 の図解を見る →</a>
+          </div>
+
+          <div class="domain-card filterable" data-domains="d03">
+            <div class="domain-card-head">
+              <span class="dtag d03">03 患者・受給資格</span>
+              <span class="small"><code>patient_eligibility</code></span>
+            </div>
+            <p class="small"><strong>正本:</strong> 共通患者、頭書き（アレルギー確認状態等）、家族管理、M&amp;Aマージ/分離、医療/介護/公費資格、<code>CoverageSnapshot</code>。</p>
+            <p class="small"><strong>関わり:</strong> 04/05/06 の必須入口。05 で判明した安全情報は頭書きへ追記連動。07 へ資格セットと <code>JD</code>/<code>MF</code> を供給。</p>
+            <a class="detail-btn" href="03-patient-coverage/diagram.html">03 の図解を見る →</a>
+          </div>
+
+          <div class="domain-card filterable" data-domains="d04">
+            <div class="domain-card-head">
+              <span class="dtag d04">04 処方・調剤</span>
+              <span class="small"><code>prescription / dispensing</code></span>
+            </div>
+            <p class="small"><strong>正本:</strong> 処方箋受付、処方原記載、取りそろえ前確認、処方監査・単一疑義照会ID、調剤実績、手技、供給不安、調剤録。</p>
+            <p class="small"><strong>関わり:</strong> 03 から患者/資格を受け、05（薬歴・指導）、07（算定/請求）、08（在庫払出・麻薬帳簿）へ確定実績を渡す。</p>
+            <a class="detail-btn" href="04-prescription-dispensing/diagram.html">04 の図解を見る →</a>
+          </div>
+
+          <div class="domain-card filterable" data-domains="d05">
+            <div class="domain-card-head">
+              <span class="dtag d05">05 指導・薬歴・ケア</span>
+              <span class="small"><code>care / medication_history</code></span>
+            </div>
+            <p class="small"><strong>正本:</strong> ケア出来事（イベント）、服薬指導、かかりつけ同意、SOAP薬歴・留意点引継ぎ・加算根拠、フォロー記録、ヒヤリハット。</p>
+            <p class="small"><strong>関わり:</strong> 04 の単一照会IDを参照し、確定でイベント完了＆07の請求ゲートを解放。新安全情報は03の頭書きへ更新。</p>
+            <a class="detail-btn" href="05-pharmaceutical-care/diagram.html">05 の図解を見る →</a>
+          </div>
+
+          <div class="domain-card filterable" data-domains="d06">
+            <div class="domain-card-head">
+              <span class="dtag d06">06 在宅医療・契約</span>
+              <span class="small"><code>home_care</code></span>
+            </div>
+            <p class="small"><strong>正本:</strong> 在宅療養契約、医師訪問指示、薬学的管理指導計画、居住建物（単一建物人数・16km）、訪問実績、多職種報告。</p>
+            <p class="small"><strong>関わり:</strong> 03 から介護認定を受け制度判定し、訪問実績を 05（薬歴）と 07（在宅算定・交通費会計・介護併用TK）へ渡す。</p>
+            <a class="detail-btn" href="06-home-care/diagram.html">06 の図解を見る →</a>
+          </div>
+
+          <div class="domain-card filterable" data-domains="d07">
+            <div class="domain-card-head">
+              <span class="dtag d07">07 算定・会計・請求</span>
+              <span class="small"><code>reimbursement / billing</code></span>
+            </div>
+            <p class="small"><strong>正本:</strong> 無状態点数計算、窓口精算・領収証/明細書・未収金、月次レセプト（<code>RECEIPTY.CYO</code>/機関CSV）、返戻再請求、増減通知。</p>
+            <p class="small"><strong>関わり:</strong> 01/02/03/04/05/06 の確定スナップショットと 08 の物販明細を受け取り、精算と保険請求を完結させる。</p>
+            <a class="detail-btn" href="07-reimbursement-billing/diagram.html">07 の図解を見る →</a>
+          </div>
+
+          <div class="domain-card filterable" data-domains="d08">
+            <div class="domain-card-head">
+              <span class="dtag d08">08 在庫・物販</span>
+              <span class="small"><code>inventory / retail</code></span>
+            </div>
+            <p class="small"><strong>正本:</strong> 発注・入庫・ロット/期限・受払履歴、他薬局分譲（別紙4-1）、規制薬品帳簿、OTC商品・販売資格確認・濫用防止確認。</p>
+            <p class="small"><strong>関わり:</strong> 04 の調剤確定/訂正から払出/戻入を受け、OTC相談は 05 へ、物販精算明細は 07（窓口会計）へ渡す。</p>
+            <a class="detail-btn" href="08-inventory-retail/diagram.html">08 の図解を見る →</a>
+          </div>
+        </div>
+      </section>
+
+      <!-- セクション4: 全領域を貫く5つの重要ルール -->
+      <section class="section-card" aria-labelledby="sec-rules">
+        <h2 id="sec-rules">4. システム全体を貫く「5つの絶対ルール」</h2>
+        <div class="rules-grid">
+          <div class="rule-card">
+            <strong>① 1法人＝1テナント＆店舗境界</strong>
+            株式取得・親子関係でも他社の薬歴は一切見せない。同じ法人内なら他店舗の薬歴閲覧とフォロー引継ぎは可能だが、追記・訂正は記録元店舗のみ。
+          </div>
+          <div class="rule-card">
+            <strong>② 薬歴確定＝イベント完了＆追記</strong>
+            薬歴記載者が確定するときにイベントも完了（不足時は注意喚起）。複数者が書く場合も別記録にせず、確定済み薬歴への追記・訂正として残す。
+          </div>
+          <div class="rule-card">
+            <strong>③ 疑義照会の3者一致（単一ID）</strong>
+            処方箋備考欄・調剤録・薬歴の3箇所に手入力で別々に書かせない。処方監査で確定した同一の疑義照会ID・残薬調整IDを3者が引用する。
+          </div>
+          <div class="rule-card">
+            <strong>④ 保険薬剤師承認ゲート＆CYO分離</strong>
+            事務員の代行入力や未承認薬歴のままでは、報酬確定・レセプト請求へ進めない。提出用 <code>RECEIPTY.CYO</code> と機関CSV（<code>MN</code>付き）を分離管理する。
+          </div>
+          <div class="rule-card">
+            <strong>⑤ 安全管理GL第7.0版＆保存ロック</strong>
+            二要素認証・共有ID禁止・NTP同期・Append-only 監査ログ・不審アクセス検知を標準装備。過去紙薬歴も最終記入日＋3年（公費5年）まで廃棄ロック。
+          </div>
+        </div>
+      </section>
+    </main>
+  </div>
+
+  <script>
+    const buttons = Array.from(document.querySelectorAll(".filter-btn"));
+    const items = Array.from(document.querySelectorAll(".filterable"));
+
+    buttons.forEach(btn => {
+      btn.addEventListener("click", () => {
+        const target = btn.dataset.filter;
+        buttons.forEach(b => b.setAttribute("aria-pressed", String(b === btn)));
+
+        items.forEach(el => {
+          el.classList.remove("is-dimmed", "is-highlighted");
+          if (target === "all") return;
+          const domains = (el.dataset.domains || "").split(/\s+/);
+          if (domains.includes(target)) {
+            el.classList.add("is-highlighted");
+          } else {
+            el.classList.add("is-dimmed");
+          }
+        });
+      });
+    });
+  </script>
+</body>
+</html>
