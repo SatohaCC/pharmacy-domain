@@ -706,3 +706,13 @@ PR #6 のコードレビューで指摘された以下の2点を修正した。
 
 - **アクセスログ・監査基盤要件（[tenant-access.md](01-organization/tenant-access.md)・[01-organization/diagram.html](01-organization/diagram.html)・[diagram.html](diagram.html)）**: ガイドライン第7.0版へ更新し、クライアント/サーバ双方での二要素認証原則実装（8文字以上 / なし時13文字以上）、ID台帳・定期棚卸し、端末OS管理者権限非要求、保守作業専用アカウントのアクセスログ、NTP標準時刻同期と Append-only 改ざん防止、外部接続先ログの一元集約、不審アクセス検知ビュー（営業時間外・退職予定/退職者ID・未承認代行滞留・大量患者閲覧・外部侵入痕跡）と緊急アラート、技術的監査計画と企画管理者への報告を追記。
 - **薬歴確定・更新証跡の強化（[medication-history.md](05-pharmaceutical-care/medication-history.md)）**: 作成者ID・確定者ID・NTP同期タイムスタンプ・代行入力管理情報（誰の代行を誰がいつ行ったかの都度記録）・更新前後スナップショットと更新の順序性を明記し、業務ドメインの真正性履歴とセキュリティアクセスログの二重保全を定義。
+
+
+## 一次資料追加差分（`domain_knowledge_updates_from_new_sources.md`）の反映（2026-11-23）
+
+[domain_knowledge_updates_from_new_sources.md](../reference/NotebookLM/domain_knowledge_updates_from_new_sources.md)（保医発0305第8号、電子処方箋技術解説書、電子版お薬手帳ガイドライン、オンライン請求記録条件仕様令和8年8月版、安全管理ガイドライン第7.0版）に基づき、以下の仕様を追加・更新した。
+
+- **組織・施設基準（[facility-compliance.md](01-organization/facility-compliance.md)・[store.md](01-organization/store.md)）**: 調剤基本料の受付回数（時間外等除外・リフィル加算）・処方箋集中率控除式・医療モール合算・都市部500mルール・門前薬局等立地依存減算、地域支援加算（1〜5）の同一グループ分譲/職員家族除外・加算1経過措置、および M&A・移転時の電子証明書インストール前の旧薬局コード変更禁止ガードを追記。
+- **電子処方箋・資格・手帳（[coverage.md](03-patient-coverage/coverage.md)・[reception-entry.md](04-prescription-dispensing/reception-entry.md)・[prescription-review.md](04-prescription-dispensing/prescription-review.md)・[medication-counseling.md](05-pharmaceutical-care/medication-counseling.md)）**: 健康保険証廃止前提（マイナ保険証・資格確認書）、調剤結果取消後のステータス「調剤済み」戻り、未調剤回収時の閲覧範囲、職域診療所・100日超登録、重複投薬等チェックの薬剤種類数表示（R9.3以降）、マイナポータルAPI専用アプリの非認定と「e薬 Link®」同意・紙手帳切替対応を追記。
+- **一次請求仕様（[billing-claim.md](07-reimbursement-billing/billing-claim.md)）**: `RECEIPTY.CYO` マルチボリューム分割識別、`GO` のレセプト件数・総合計点数合算ルール（公費のみ時は最初の `KO` のみ合算）、および一次請求時の `SN` 記録対象（`12` から始まる生活保護等のみ）を追記。
+- **安全管理第7.0版差分（[tenant-access.md](01-organization/tenant-access.md)）**: サイバーセキュリティ基本法・保守委託機関編との整合、ID登録時の身元確認（IAL Level 2以上）、クラウド事業者セキュリティ認証確認・意図しない設定変更自動検知、BYOD端末規則・台帳管理を追記。
