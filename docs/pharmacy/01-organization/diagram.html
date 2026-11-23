@@ -81,10 +81,12 @@
     .grid-3 { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; }
     @media (max-width: 640px) { .grid-2, .grid-3 { grid-template-columns: 1fr; } }
     .node-box {
+      width: 100%; text-align: left; font: inherit; color: inherit;
       background: var(--card); border: 1px solid var(--border); border-radius: 8px; padding: 12px;
       cursor: pointer; transition: transform 0.15s, border-color 0.15s, box-shadow 0.15s;
     }
     .node-box:hover { transform: translateY(-2px); }
+    .node-box:focus-visible { outline: 2px solid var(--primary); outline-offset: 2px; }
     .node-box.active { border-color: var(--primary); box-shadow: 0 0 0 2px var(--primary); }
     .node-header { display: flex; justify-content: space-between; align-items: center; gap: 8px; margin-bottom: 4px; }
     .node-title { font-weight: 700; font-size: 13px; }
@@ -120,7 +122,7 @@
       </nav>
     </header>
 
-    <!-- Tab 1 -->
+    <!-- タブ1: 全体関係図 -->
     <section id="tab-overview" class="tab-panel grid-overview">
       <div class="card">
         <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:8px; margin-bottom:14px;">
@@ -132,22 +134,22 @@
           <div class="group-box">
             <div class="muted" style="font-weight:600; margin-bottom:8px;">法人・テナント境界</div>
             <div class="grid-2">
-              <div class="node-box active" data-node="corporation">
-                <div class="node-header">
+              <button type="button" class="node-box active" data-node="corporation" aria-pressed="true">
+                <span class="node-header">
                   <span class="node-title">法人 (Corporation)</span>
                   <span class="badge">＝テナント</span>
-                </div>
-                <p class="muted">区分: 法人 / 個人（個人開設者も統一）</p>
-                <p class="muted" style="margin-top:4px;">法人番号(法人のみ)・存続状態</p>
-              </div>
-              <div class="node-box" data-node="corporate_relation">
-                <div class="node-header">
+                </span>
+                <span class="muted" style="display:block;">区分: 法人 / 個人（個人開設者も統一）</span>
+                <span class="muted" style="display:block; margin-top:4px;">法人番号(法人のみ)・存続状態</span>
+              </button>
+              <button type="button" class="node-box" data-node="corporate_relation" aria-pressed="false">
+                <span class="node-header">
                   <span class="node-title">法人間関係</span>
                   <span class="badge">CorporateRelation</span>
-                </div>
-                <p class="muted">種別: 親子(単一親・多段) / 関連会社 / FC・VC契約</p>
-                <p class="muted" style="margin-top:4px;">手動登録・期間・根拠メモ（関係があっても別テナント）</p>
-              </div>
+                </span>
+                <span class="muted" style="display:block;">種別: 親子(単一親・多段) / 関連会社 / FC・VC契約</span>
+                <span class="muted" style="display:block; margin-top:4px;">手動登録・期間・根拠メモ（関係があっても別テナント）</span>
+              </button>
             </div>
           </div>
 
@@ -158,61 +160,61 @@
 
           <div class="grid-2">
             <div class="group-box-solid" style="display:flex; flex-direction:column; gap:10px;">
-              <div class="node-box" data-node="store">
-                <div class="node-header">
+              <button type="button" class="node-box" data-node="store" aria-pressed="false">
+                <span class="node-header">
                   <span class="node-title">薬局店舗 (PharmacyStore)</span>
                   <span class="badge">不変ID</span>
-                </div>
-                <p class="muted">屋号・営業状態・連絡先・営業時間(日別例外含)</p>
-              </div>
+                </span>
+                <span class="muted" style="display:block;">屋号・営業状態・連絡先・営業時間(日別例外含)</span>
+              </button>
               <div class="grid-2">
-                <div class="node-box" data-node="location">
-                  <div class="node-title">物理拠点</div>
-                  <div class="muted">住所・区画・緯度経度</div>
-                </div>
-                <div class="node-box" data-node="license">
-                  <div class="node-title">許可・保険指定</div>
-                  <div class="muted">複数許可可 / 3要素コード</div>
-                </div>
+                <button type="button" class="node-box" data-node="location" aria-pressed="false">
+                  <span class="node-title" style="display:block;">物理拠点</span>
+                  <span class="muted" style="display:block;">住所・区画・緯度経度</span>
+                </button>
+                <button type="button" class="node-box" data-node="license" aria-pressed="false">
+                  <span class="node-title" style="display:block;">許可・保険指定</span>
+                  <span class="muted" style="display:block;">複数許可可 / 3要素コード</span>
+                </button>
               </div>
             </div>
 
             <div class="group-box-solid" style="display:flex; flex-direction:column; gap:10px;">
-              <div class="node-box" data-node="staff_account">
-                <div class="node-header">
+              <button type="button" class="node-box" data-node="staff_account" aria-pressed="false">
+                <span class="node-header">
                   <span class="node-title">アカウント 1 ── 1 スタッフ</span>
                   <span class="badge">1:1厳守</span>
-                </div>
-                <p class="muted">契約区分: 雇用 / 派遣 / 業務委託（派遣会社マスタなし）</p>
-              </div>
+                </span>
+                <span class="muted" style="display:block;">契約区分: 雇用 / 派遣 / 業務委託（派遣会社マスタなし）</span>
+              </button>
               <div class="grid-2">
-                <div class="node-box" data-node="assignment">
-                  <div class="node-title">配属・勤務・就任</div>
-                  <div class="muted">主配属/応援・管理薬剤師</div>
-                </div>
-                <div class="node-box" data-node="rbac">
-                  <div class="node-title">アクセス権限 (RBAC)</div>
-                  <div class="muted">Role＋範囲＋期間（別操作）</div>
-                </div>
+                <button type="button" class="node-box" data-node="assignment" aria-pressed="false">
+                  <span class="node-title" style="display:block;">配属・勤務・就任</span>
+                  <span class="muted" style="display:block;">主配属/応援・管理薬剤師</span>
+                </button>
+                <button type="button" class="node-box" data-node="rbac" aria-pressed="false">
+                  <span class="node-title" style="display:block;">アクセス権限 (RBAC)</span>
+                  <span class="muted" style="display:block;">Role＋範囲＋期間（別操作）</span>
+                </button>
               </div>
             </div>
           </div>
 
           <div class="grid-2">
-            <div class="node-box" data-node="compliance">
-              <div class="node-header">
+            <button type="button" class="node-box" data-node="compliance" aria-pressed="false">
+              <span class="node-header">
                 <span class="node-title">施設基準・届出</span>
                 <span class="badge">GroupAssessment正本</span>
-              </div>
-              <p class="muted">調剤基本料・主要加算・妥結率報告・外部実績サマリー合算</p>
-            </div>
-            <div class="node-box" data-node="quality">
-              <div class="node-header">
+              </span>
+              <span class="muted" style="display:block;">調剤基本料・主要加算・妥結率報告・外部実績サマリー合算</span>
+            </button>
+            <button type="button" class="node-box" data-node="quality" aria-pressed="false">
+              <span class="node-header">
                 <span class="node-title">品質・インシデント</span>
                 <span class="badge">03-clinical 領域</span>
-              </div>
-              <p class="muted">発生店舗の法人が管理・緊急連絡/固定承認者なし</p>
-            </div>
+              </span>
+              <span class="muted" style="display:block;">発生店舗の法人が管理・緊急連絡/固定承認者なし</span>
+            </button>
           </div>
         </div>
       </div>
@@ -223,7 +225,7 @@
       </aside>
     </section>
 
-    <!-- Tab 2 -->
+    <!-- タブ2: 状態遷移・期間 -->
     <section id="tab-lifecycle" class="tab-panel hidden">
       <div class="card">
         <h2>店舗の営業状態遷移（例外・取込・再開対応）</h2>
@@ -287,7 +289,7 @@
       </div>
     </section>
 
-    <!-- Tab 3 -->
+    <!-- タブ3: M&A・異動ケース -->
     <section id="tab-ma" class="tab-panel hidden">
       <div class="card">
         <div style="display:flex; flex-wrap:wrap; justify-content:space-between; align-items:center; gap:12px; margin-bottom:16px;">
@@ -304,7 +306,7 @@
       </div>
     </section>
 
-    <!-- Tab 4 -->
+    <!-- タブ4: 正本・責務一覧 -->
     <section id="tab-contracts" class="tab-panel hidden">
       <div class="card" style="overflow-x:auto;">
         <h2>領域別の正本・所有先と主要ルール</h2>
@@ -534,8 +536,12 @@
 
     document.querySelectorAll(".node-box").forEach(box => {
       box.addEventListener("click", () => {
-        document.querySelectorAll(".node-box").forEach(b => b.classList.remove("active"));
+        document.querySelectorAll(".node-box").forEach(b => {
+          b.classList.remove("active");
+          b.setAttribute("aria-pressed", "false");
+        });
         box.classList.add("active");
+        box.setAttribute("aria-pressed", "true");
         renderNodeDetail(box.dataset.node);
       });
     });

@@ -50,7 +50,7 @@
 
 ## 品質管理の運用方針（2026-11-23）
 
-ユーザー指定により、インシデント・ヒヤリハットは店舗が起票し、企業が管理する。[品質・インシデント](01-organization/quality.md) に反映した。企業内の担当・承認手順や案件引継ぎの詳細はモデル案として検討する。
+ユーザー指定により、インシデント・ヒヤリハットは店舗が起票し、企業が管理する。[品質・インシデント](03-clinical/quality.md) に反映した。企業内の担当・承認手順や案件引継ぎの詳細はモデル案として検討する。
 
 ## 在庫・物販の分離と業務順序
 
@@ -434,7 +434,7 @@
 - **派遣・業務委託の所属**: 派遣会社等の外部法人は法人マスタに登録せず、自法人との契約区分（雇用・派遣・業務委託等）として表現する。
 - **配属とアクセス権限の分離**: 人事・シフト上の店舗配属（主配属・応援）とシステム上のアクセス権限付与は完全に別操作として管理し、配属変更による自動付与・自動剥奪は行わない。
 
-影響する文書: [01-organization/README.md](01-organization/README.md)、[corporate.md](01-organization/corporate.md)、[store.md](01-organization/store.md)、[staff.md](01-organization/staff.md)、[tenant-access.md](01-organization/tenant-access.md)、[organization-contracts.md](01-organization/organization-contracts.md)、[cross-cutting-issues.md](01-organization/cross-cutting-issues.md)、[quality.md](01-organization/quality.md)。
+影響する文書: [01-organization/README.md](01-organization/README.md)、[corporate.md](01-organization/corporate.md)、[store.md](01-organization/store.md)、[staff.md](01-organization/staff.md)、[tenant-access.md](01-organization/tenant-access.md)、[organization-contracts.md](01-organization/organization-contracts.md)、[cross-cutting-issues.md](01-organization/cross-cutting-issues.md)、[quality.md](03-clinical/quality.md)。
 
 
 ## 報酬上のグループ判定と店舗例外・詳細属性の確定（2026-11-23）
@@ -453,7 +453,7 @@
 `01-organization` 全体の残りの未決事項について、以下を合意した。
 
 - **施設基準・届出（[facility-compliance.md](01-organization/facility-compliance.md)）**: 調剤基本料（`GroupAssessment` 含む）・主要加算・年次報告（妥結率等）を同じ「基準・届出・報告」の枠組みで扱う。妥結率等の数値算出元は他領域に任せ、本領域では提出内容・提出日・確認状態を管理する。行政上の確認は担当者が手動登録する。導入直後・譲受時等の過去期間は外部実績サマリー（手入力＋出典メモ）を合算可能とし、算定領域へは指定日時点で確認済み・適用期間内の施設基準一覧を渡す。
-- **品質・インシデント（[quality.md](01-organization/quality.md)）**: 薬局ヒヤリ・ハット事例収集・分析事業への報告をベースとした登録フォーマットとする。緊急連絡機能と固定的な完了承認者は不要とし、起票店舗≠発生店舗時は発生店舗（開設法人）を管理主体とする。店舗譲渡前は原則旧法人が管理・完了させ、必要時のみデータ承継承認で引き継ぐ。訂正は履歴付きで保持し原則物理削除不可、保存年数は法人運用に委ねる。
+- **品質・インシデント（[quality.md](03-clinical/quality.md)）**: 薬局ヒヤリ・ハット事例収集・分析事業への報告をベースとした登録フォーマットとする。緊急連絡機能と固定的な完了承認者は不要とし、起票店舗≠発生店舗時は発生店舗（開設法人）を管理主体とする。店舗譲渡前は原則旧法人が管理・完了させ、必要時のみデータ承継承認で引き継ぐ。訂正は履歴付きで保持し原則物理削除不可、保存年数は法人運用に委ねる。
 - **テナント・アクセス管理（[tenant-access.md](01-organization/tenant-access.md)）**: 認可モデルは「`Permission` の束である `Role` ＋ 対象範囲（法人全体 / 指定店舗）＋ 有効期間」をアカウントへ付与する形に統一する。外部委託者も1アカウント＝1スタッフ（契約区分：業務委託）で表現する。緊急時アクセスは不要、アカウント無効化・権限剥奪は即時反映、監査ログは原則削除不可とする。NSIPS変更時の法人設定は初期値「未完了へ戻す」、設定変更後の受信分から適用、法人（個人区分含む）で設定可能とする。
 - **スタッフ（[staff.md](01-organization/staff.md)）**: 勤務予定・実績は本システム内で直接管理でき、必要に応じ外部勤怠からの取込も許容する。本人照合・資格確認は管理者が目視確認のうえ手動で「確認済み」を登録する。
 - **保存方針（[cross-cutting-issues.md](01-organization/cross-cutting-issues.md)）**: 法定保存期間を下回らないよう記録種別ごとの保存ポリシーで保持し、具体的な年数表は実装・制度マスタ側へ委ねる。訂正は履歴付き・原則物理削除不可とする。
