@@ -1,0 +1,333 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="color-scheme" content="light dark" />
+  <title>05 服薬指導・薬歴・継続ケア ドメイン図解</title>
+  <style>
+    :root {
+      color-scheme: light dark;
+      --bg-light: #f8fafc; --bg-dark: #0f172a;
+      --surface-light: #ffffff; --surface-dark: #1e293b;
+      --surface-muted-light: #f1f5f9; --surface-muted-dark: #0f172a;
+      --fg-light: #0f172a; --fg-dark: #f8fafc;
+      --muted-light: #475569; --muted-dark: #94a3b8;
+      --border-light: #cbd5e1; --border-dark: #334155;
+      --primary-light: #0284c7; --primary-dark: #38bdf8;
+      --primary-soft-light: #e0f2fe; --primary-soft-dark: #082f49;
+      --bg: var(--bg-light); --surface: var(--surface-light); --surface-muted: var(--surface-muted-light);
+      --fg: var(--fg-light); --muted: var(--muted-light); --border: var(--border-light);
+      --primary: var(--primary-light); --primary-soft: var(--primary-soft-light);
+      @media (prefers-color-scheme: dark) {
+        --bg: var(--bg-dark); --surface: var(--surface-dark); --surface-muted: var(--surface-muted-dark);
+        --fg: var(--fg-dark); --muted: var(--muted-dark); --border: var(--border-dark);
+        --primary: var(--primary-dark); --primary-soft: var(--primary-soft-dark);
+      }
+      @supports (color: light-dark(white, black)) {
+        --bg: light-dark(var(--bg-light), var(--bg-dark));
+        --surface: light-dark(var(--surface-light), var(--surface-dark));
+        --surface-muted: light-dark(var(--surface-muted-light), var(--surface-muted-dark));
+        --fg: light-dark(var(--fg-light), var(--fg-dark));
+        --muted: light-dark(var(--muted-light), var(--muted-dark));
+        --border: light-dark(var(--border-light), var(--border-dark));
+        --primary: light-dark(var(--primary-light), var(--primary-dark));
+        --primary-soft: light-dark(var(--primary-soft-light), var(--primary-soft-dark));
+      }
+    }
+    * { box-sizing: border-box; }
+    body { margin: 0; background: var(--bg); color: var(--fg); font-family: "Hiragino Kaku Gothic ProN", "Yu Gothic UI", "Meiryo", system-ui, sans-serif; line-height: 1.6; }
+    .container { max-width: 1280px; margin: 0 auto; padding: 24px 16px 48px; }
+    h1 { font-size: 22px; margin: 0 0 6px; }
+    h2 { font-size: 16px; margin: 0 0 12px; }
+    h3 { font-size: 15px; margin: 0 0 8px; }
+    p { margin: 0; }
+    .muted { color: var(--muted); font-size: 13px; }
+    .badge { display: inline-flex; align-items: center; padding: 2px 8px; border-radius: 999px; font-size: 11px; font-weight: 700; background: var(--primary-soft); color: var(--primary); }
+    .domain-nav { display: flex; flex-wrap: wrap; gap: 6px; margin: 14px 0 16px; padding: 10px 12px; background: var(--surface); border: 1px solid var(--border); border-radius: 10px; font-size: 12px; }
+    .domain-nav a { color: var(--fg); text-decoration: none; padding: 4px 10px; border-radius: 6px; border: 1px solid var(--border); background: var(--surface-muted); font-weight: 600; }
+    .domain-nav a:hover, .domain-nav a[aria-current="page"] { border-color: var(--primary); color: var(--primary); background: var(--primary-soft); }
+    [role="tablist"] { display: flex; overflow-x: auto; scroll-snap-type: inline proximity; gap: 4px; border-bottom: 1px solid var(--border); margin-bottom: 16px; }
+    [role="tab"] { flex: none; scroll-snap-align: start; position: relative; padding: 10px 16px; border: none; background: transparent; color: var(--muted); font: inherit; font-size: 13px; font-weight: 600; cursor: pointer; }
+    [role="tab"][aria-selected="true"] { color: var(--primary); }
+    [role="tab"][aria-selected="true"]::after { content: ""; position: absolute; inset: auto 0 0; border-block-end: 3px solid var(--primary); }
+    .panel-inner { background: var(--surface); border: 1px solid var(--border); border-radius: 12px; padding: 18px; }
+    .layout-main { display: grid; grid-template-columns: 1fr 360px; gap: 16px; align-items: start; }
+    @media (max-width: 960px) { .layout-main { grid-template-columns: 1fr; } }
+    .group-box { border: 1px dashed var(--border); border-radius: 10px; padding: 12px; background: var(--surface-muted); margin-bottom: 12px; }
+    .group-label { font-size: 12px; font-weight: 700; color: var(--primary); margin-bottom: 8px; }
+    .grid-2 { display: grid; grid-template-columns: repeat(2, 1fr); gap: 10px; }
+    .grid-3 { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; }
+    @media (max-width: 700px) { .grid-2, .grid-3 { grid-template-columns: 1fr; } }
+    .node-box { width: 100%; text-align: left; background: var(--surface); border: 1.5px solid var(--border); border-radius: 10px; padding: 12px; color: var(--fg); font: inherit; cursor: pointer; }
+    .node-box:hover { border-color: var(--primary); }
+    .node-box[aria-pressed="true"] { border-color: var(--primary); background: var(--primary-soft); }
+    .node-header { display: flex; justify-content: space-between; align-items: center; gap: 6px; margin-bottom: 4px; }
+    .node-title { font-weight: 700; font-size: 14px; }
+    .detail-box { position: sticky; top: 16px; background: var(--surface-muted); border: 1px solid var(--border); border-radius: 10px; padding: 16px; }
+    .points { margin: 10px 0 0; padding-left: 18px; font-size: 13px; }
+    .points li { margin-bottom: 6px; }
+    .table-wrapper { overflow: auto; max-inline-size: 100%; max-block-size: min(500px, 80vh); container-type: inline-size; border: 1px solid var(--border); border-radius: 8px; }
+    table { width: 100%; border-collapse: separate; border-spacing: 0; font-size: 13px; }
+    thead { position: sticky; inset-block-start: 0; z-index: 1; background: var(--surface-muted); }
+    th, td { padding: 10px 12px; text-align: left; border-bottom: 1px solid var(--border); vertical-align: top; }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <header>
+      <div style="display:flex; align-items:center; gap:10px; flex-wrap:wrap; margin-bottom:4px;">
+        <span class="badge">05-pharmaceutical-care / diagram.html</span>
+        <span class="muted">イベント (`care_event`) ・ 服薬指導 (`medication_counseling`) ・ 薬歴記載 (`medication_history`) ・ フォローアップ (`follow_up`) ・ 品質 (`quality`)</span>
+      </div>
+      <h1>05 服薬指導・薬歴・継続ケア ドメイン図解</h1>
+      <p class="muted">イベント先行作成、服薬指導・交付、薬歴確定（＝イベント完了・不足事項注意喚起・複数者追記・留意点引継ぎ・加算別根拠）、フォローアップ、ヒヤリハット管理を可視化します。</p>
+    </header>
+
+    <nav class="domain-nav" aria-label="ドメイン別図解ナビゲーション">
+      <a href="../diagram.html">全体関係図 (01〜08)</a>
+      <a href="../01-organization/diagram.html">01 組織・基盤</a>
+      <a href="../02-reference/diagram.html">02 マスタ・外部参照</a>
+      <a href="../03-patient-coverage/diagram.html">03 患者・受給資格</a>
+      <a href="../04-prescription-dispensing/diagram.html">04 処方・調剤</a>
+      <a href="diagram.html" aria-current="page">05 服薬指導・薬歴・継続ケア</a>
+      <a href="../06-home-care/diagram.html">06 在宅医療・訪問契約</a>
+      <a href="../07-reimbursement-billing/diagram.html">07 算定・会計・請求</a>
+      <a href="../08-inventory-retail/diagram.html">08 在庫・物販</a>
+    </nav>
+
+    <div role="tablist" aria-label="05 服薬指導・薬歴・継続ケアビュー切替">
+      <button type="button" role="tab" id="tab-model" aria-selected="true">1. イベント・指導・薬歴・フォロー・品質モデル</button>
+      <button type="button" role="tab" id="tab-fee" aria-selected="false">2. 加算コード別の構造化記載要件 (FeeJustification)</button>
+    </div>
+
+    <div role="tabpanel" id="panel-model" aria-labelledby="tab-model">
+      <div class="panel-inner layout-main">
+        <div>
+          <div class="group-box">
+            <div class="group-label">イベント・服薬指導・交付 (care-event.md / medication-counseling.md)</div>
+            <div class="grid-3">
+              <button type="button" class="node-box" data-node="event" aria-pressed="true">
+                <span class="node-header"><span class="node-title">受付・相談イベント</span><span class="badge">CareEvent</span></span>
+                <span class="muted">患者必須入口・薬歴確定時に完了・NSIPS履歴と差分確認</span>
+              </button>
+              <button type="button" class="node-box" data-node="counseling" aria-pressed="false">
+                <span class="node-header"><span class="node-title">服薬指導・手帳・交付</span><span class="badge">薬剤情報提供</span></span>
+                <span class="muted">後発品備蓄名/価格比較明記・JAHIS出力制約・受取確認</span>
+              </button>
+              <button type="button" class="node-box" data-node="kakaritsuke" aria-pressed="false">
+                <span class="node-header"><span class="node-title">かかりつけ薬剤師同意</span><span class="badge">24h・時間外共有</span></span>
+                <span class="muted">署名原本保管・24h連絡先周知・時間外別薬剤師対応時の共有必須</span>
+              </button>
+            </div>
+          </div>
+
+          <div class="group-box">
+            <div class="group-label">薬歴記載 (medication-history.md)：確定＝イベント完了・複数者追記・個別指導対策</div>
+            <div class="grid-3">
+              <button type="button" class="node-box" data-node="history_core" aria-pressed="false">
+                <span class="node-header"><span class="node-title">薬歴確定＝イベント完了</span><span class="badge">複数者は追記</span></span>
+                <span class="muted">不足事項は注意喚起・複数者記載は確定薬歴へ追記・二本線抹消履歴</span>
+              </button>
+              <button type="button" class="node-box" data-node="carry_over" aria-pressed="false">
+                <span class="node-header"><span class="node-title">前回留意点の自動引継ぎ</span><span class="badge">書きっぱなし防止</span></span>
+                <span class="muted">CarryOverPrecaution・確認結果記録・残薬なし明記・頭書き連動</span>
+              </button>
+              <button type="button" class="node-box" data-node="gate_lock" aria-pressed="false">
+                <span class="node-header"><span class="node-title">保険薬剤師確定ゲート &amp; 保存</span><span class="badge">請求ゲート</span></span>
+                <span class="muted">代行入力滞留アラート・最終記入日＋3/5年全保持・過去紙薬歴廃棄ロック</span>
+              </button>
+            </div>
+          </div>
+
+          <div class="group-box" style="margin-bottom:0;">
+            <div class="group-label">継続フォローアップ・医療安全 (follow-up.md / quality.md)</div>
+            <div class="grid-2">
+              <button type="button" class="node-box" data-node="followup" aria-pressed="false">
+                <span class="node-header"><span class="node-title">フォローアップ &amp; 情報提供</span><span class="badge">独立別記録</span></span>
+                <span class="muted">元薬歴と関連づけ・他店舗引継可・双方向確認・麻薬継続確認・提供料1要件</span>
+              </button>
+              <button type="button" class="node-box" data-node="quality" aria-pressed="false">
+                <span class="node-header"><span class="node-title">品質・インシデント</span><span class="badge">ヒヤリハット</span></span>
+                <span class="muted">収集事業フォーマット準拠・発生店舗の開設法人が管理・物理削除不可</span>
+              </button>
+            </div>
+          </div>
+        </div>
+
+        <aside class="detail-box" id="node-detail" aria-live="polite"></aside>
+      </div>
+    </div>
+
+    <div role="tabpanel" id="panel-fee" aria-labelledby="tab-fee" hidden="until-found">
+      <div class="panel-inner">
+        <h2>加算コード別の構造化確認・記載要件 (`FeeJustification`)</h2>
+        <div tabindex="0" role="region" aria-label="加算コード別の構造化記載要件一覧" class="table-wrapper">
+          <table>
+            <thead>
+              <tr>
+                <th>対象管理料・加算</th>
+                <th>薬歴に必須となる構造化確認・記載フィールド</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <th>特定薬剤管理指導加算 1</th>
+                <td>・<strong>区分イ（新規・変更）</strong>：対象薬効群（ハイリスク薬）の確認、副作用の初期症状・発現時の対応、併用薬・生活上の注意事項の指導内容<br/>・<strong>区分ロ（既存処方）</strong>：従来と同一処方でありながら<strong>「特に指導が必要と保険薬剤師が判断した理由の要点」</strong></td>
+              </tr>
+              <tr>
+                <th>特定薬剤管理指導加算 2</th>
+                <td>レジメン（治療計画）の確認、副作用の発現状況および指導内容、医療機関へ情報提供した要点（同一内容での服薬情報等提供料との重複算定不可）。</td>
+              </tr>
+              <tr>
+                <th>特定薬剤管理指導加算 3</th>
+                <td>・<strong>区分イ（RMP等）</strong>：RMPに基づく患者向け資材や製薬企業資材等を用いた説明と交付事実<br/>・<strong>区分ロ（供給不足・長期収載品）</strong>：供給不足等で説明・変更を行った<strong>該当医薬品名</strong>および患者への説明要点（<code>TK</code> 摘要欄へ連動）</td>
+              </tr>
+              <tr>
+                <th>吸入薬指導加算</th>
+                <td>文書および<strong>練習用吸入器等を用いた実技指導</strong>の実施、手技の習得確認結果（6月に1回制限・服薬情報等提供料との排他チェック含む）。</td>
+              </tr>
+              <tr>
+                <th>乳幼児服薬指導加算</th>
+                <td>体重・年齢の確認、保護者等への服用・保管上の指導要点、<strong>お薬手帳への必要事項記載</strong>。</td>
+              </tr>
+              <tr>
+                <th>重複投薬・相互作用等防止加算<br/>（残薬調整／有害事象防止）</th>
+                <td>単一ソースの疑義照会ID・残薬調整IDを引用し、薬学的問題点の検出内容、処方医照会日時・回答、<strong>処方変更の事実</strong>（処方変更がない残薬確認のみでの算定等をブロック）を記録。</td>
+              </tr>
+              <tr>
+                <th>麻薬管理指導加算</th>
+                <td>調剤後の電話等による<strong>継続的な服用・残薬・保管状況の確認</strong>記録、指導要点、返納麻薬がある場合の<strong>麻薬廃棄届の写し添付</strong>。</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    const details = {
+      event: {
+        title: "受付・相談・フォローアップのイベント (CareEvent)",
+        badge: "care-event.md",
+        summary: "登録済み患者を入口として先行作成される業務上の出来事単位。",
+        points: [
+          "処方箋受付・来局相談・電話相談・OTC相談・フォローアップ・在宅訪問・開設者独自種別を統一管理",
+          "薬歴記載者が薬歴を確定するときに、イベントも完了として扱う（不足事項がある場合は注意を促す）",
+          "同一テナント・同一患者なら別店舗のイベント同士も多対多で関連づけ可能",
+          "外部NSIPS再受信時は処方・受付取込データを最新化し、旧版履歴との差分確認と再完了をサポート"
+        ]
+      },
+      counseling: {
+        title: "服薬指導・手帳・交付 (MedicationCounseling)",
+        badge: "medication-counseling.md",
+        summary: "対面・オンライン・訪問での服薬指導、薬剤情報提供文書・手帳記載、薬剤交付を管理する。",
+        points: [
+          "指導実施日時と薬歴記載・確定日時を分離して保持",
+          "薬剤情報提供文書: 無関係な事項の記載禁止、後発品・バイオ後続品の薬価収載有無および自局備蓄品名と価格比較（非備蓄の旨）を明記",
+          "JAHIS電子お薬手帳出力時、調剤を行わず医薬品提供を伴わない場合は処方・薬剤レコード（51〜401）を出力禁止"
+        ]
+      },
+      kakaritsuke: {
+        title: "かかりつけ薬剤師同意・24時間対応管理 (KakaritsukeAgreement)",
+        badge: "medication-counseling.md / 個別指導対策",
+        summary: "かかりつけ薬剤師指導料・包括管理料の算定適格性を担保する同意・対応管理。",
+        points: [
+          "施設基準充足薬剤師ID、同意取得日、患者署名付き同意書原本の保管場所・スキャン参照",
+          "24時間相談応需連絡先・勤務日の周知確認フラグ、お薬手帳への担当薬剤師名・連絡先記載確認フラグ",
+          "開局時間外等にやむを得ず別薬剤師が対応した場合、かかりつけ薬剤師への情報共有記録がない限り完了不可"
+        ]
+      },
+      history_core: {
+        title: "薬歴記載：確定＝イベント完了・複数者追記",
+        badge: "medication-history.md",
+        summary: "SOAP・法定確認事項を記録し、二本線抹消相当の追記型履歴で真正性を担保する。",
+        points: [
+          "薬歴記載者が薬歴を確定するときにイベントも完了として扱う（開設者設定の不足事項がある場合は注意を促す）",
+          "複数者が記載することもあるが、別レコード並立ではなく確定した薬歴に追記（または訂正）という形にする",
+          "同一テナント内の他店舗から閲覧可能だが、確定・追記・訂正は記録元店舗の操作権限者に限定"
+        ]
+      },
+      carry_over: {
+        title: "前回「継続的留意点」の自動引継ぎ & 頭書き連動",
+        badge: "medication-history.md / CarryOverPrecaution",
+        summary: "個別指導で頻出する「前回申し送りの書きっぱなし」と「残薬空欄」を構造的に防ぐ。",
+        points: [
+          "前回確定薬歴の「エ：継続的留意点」を新規薬歴作成時に未処理タスク（CarryOverPrecaution）として自動引き継ぎ",
+          "今回の確認結果（確認済み / 継続観察 / 今回未確認理由）の未入力に対して確定時に注意を促す",
+          "残薬ゼロ時も空欄不可（「残薬なし」明記必須）、併用薬・相互作用該当なし時も確認事実を記録",
+          "新たに判明したアレルギー・副作用・検査値等はテナント共通の患者頭書きへ追記連動"
+        ]
+      },
+      gate_lock: {
+        title: "保険薬剤師確定ゲート・代行入力滞留監視・過去紙薬歴ロック",
+        badge: "medication-history.md / 真正性・保存性",
+        summary: "無根拠請求の防止と法定保存期間（最終記入日起算）の厳格な遵守。",
+        points: [
+          "事務員等の代行入力（下書き）や未確定状態では報酬確定・レセプト請求（07）への組み込みをブロック",
+          "代行入力から保険薬剤師承認までの経過時間を監視し、未承認滞留を管理薬剤師へアラート",
+          "保存期間は「最終記入日から起算して3年（公費5年）」のため全薬歴を保持し、過去の紙薬歴も期限未満の廃棄をロック管理"
+        ]
+      },
+      followup: {
+        title: "フォローアップ & 処方医情報提供 (FollowUpRecord)",
+        badge: "follow-up.md",
+        summary: "元の薬歴とは独立した別記録として作成し、元の薬歴・イベントへ関連づける継続ケア記録。",
+        points: [
+          "同一テナント内の別店舗へ引き継いで実施可能（実施店舗の新しい記録として作成し元薬歴は変更しない）",
+          "一方的な一律一斉メール送信のみは登録不可（個別の双方向確認・AI利用時は薬剤師確認必須）",
+          "麻薬交付後の服用・残薬・保管状況の継続確認、調剤後薬剤管理指導料の調剤同日不可・同意必須ガード",
+          "服薬情報等提供料1は「保険医療機関からの求め」がある場合のみ算定可とし、提供文書写し/要点を薬歴に添付"
+        ]
+      },
+      quality: {
+        title: "品質・インシデント (IncidentReport)",
+        badge: "quality.md",
+        summary: "薬局ヒヤリ・ハット事例収集・分析事業フォーマット準拠の安全管理。",
+        points: [
+          "店舗から起票・提出し、発生店舗の開設法人（個人区分含む）が自テナント内で調査・是正・効果確認を管理",
+          "親子法人関係を理由に親法人へ自動公開せず、M&A譲渡前案件は原則旧法人が完了させる",
+          "インシデント報告の編集で調剤録や薬歴の正本を自動上書きせず、訂正は履歴付き・物理削除不可で保持"
+        ]
+      }
+    };
+
+    function renderNode(key) {
+      const d = details[key];
+      if (!d) return;
+      document.getElementById("node-detail").innerHTML = `
+        <span class="badge" style="margin-bottom:8px;">${d.badge}</span>
+        <h3>${d.title}</h3>
+        <p class="muted">${d.summary}</p>
+        <ul class="points">${d.points.map(p => `<li>${p}</li>`).join("")}</ul>
+      `;
+    }
+
+    document.querySelectorAll(".node-box").forEach(btn => {
+      btn.addEventListener("click", () => {
+        document.querySelectorAll(".node-box").forEach(b => b.setAttribute("aria-pressed", "false"));
+        btn.setAttribute("aria-pressed", "true");
+        renderNode(btn.dataset.node);
+      });
+    });
+
+    const tabs = Array.from(document.querySelectorAll('[role="tab"]'));
+    const panels = Array.from(document.querySelectorAll('[role="tabpanel"]'));
+    function activateTab(selectedTab) {
+      for (const tab of tabs) tab.setAttribute("aria-selected", String(tab === selectedTab));
+      for (const panel of panels) {
+        if (panel.getAttribute("aria-labelledby") === selectedTab.id) panel.removeAttribute("hidden");
+        else panel.setAttribute("hidden", "until-found");
+      }
+      selectedTab.scrollIntoView({ block: "nearest", inline: "nearest" });
+    }
+    tabs.forEach(tab => tab.addEventListener("click", () => activateTab(tab)));
+    panels.forEach(panel => panel.addEventListener("beforematch", () => {
+      const tab = document.getElementById(panel.getAttribute("aria-labelledby"));
+      if (tab) activateTab(tab);
+    }));
+    renderNode("event");
+  </script>
+</body>
+</html>

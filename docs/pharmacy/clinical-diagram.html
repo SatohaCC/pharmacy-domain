@@ -1,0 +1,582 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="color-scheme" content="light dark" />
+  <title>薬局ドメイン 臨床・ケア領域（03〜06）図解</title>
+  <style>
+    :root {
+      color-scheme: light dark;
+      --bg: #f8fafc;
+      --card: #ffffff;
+      --content: #f1f5f9;
+      --border: #cbd5e1;
+      --fg: #0f172a;
+      --muted: #475569;
+      --primary: #2563eb;
+      --primary-fg: #ffffff;
+      --success: #16a34a;
+      --warning: #d97706;
+      --error: #dc2626;
+    }
+    @media (prefers-color-scheme: dark) {
+      :root {
+        --bg: #0f172a;
+        --card: #1e293b;
+        --content: #0f172a;
+        --border: #334155;
+        --fg: #f8fafc;
+        --muted: #94a3b8;
+        --primary: #3b82f6;
+        --primary-fg: #ffffff;
+        --success: #22c55e;
+        --warning: #f59e0b;
+        --error: #ef4444;
+      }
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      padding: 24px;
+      background: var(--bg);
+      color: var(--fg);
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "Hiragino Kaku Gothic ProN", "Yu Gothic", sans-serif;
+      font-size: 14px;
+      line-height: 1.5;
+    }
+    .container { max-width: 1240px; margin: 0 auto; display: flex; flex-direction: column; gap: 20px; }
+    header {
+      display: flex; flex-wrap: wrap; justify-content: space-between; align-items: flex-end; gap: 16px;
+      padding-bottom: 16px; border-bottom: 1px solid var(--border);
+    }
+    .badge {
+      display: inline-block; padding: 2px 8px; border-radius: 6px; font-size: 12px;
+      background: var(--card); border: 1px solid var(--border); color: var(--muted);
+      font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+    }
+    h1 { margin: 6px 0 4px; font-size: 22px; font-weight: 700; }
+    h2 { margin: 0 0 12px; font-size: 16px; font-weight: 600; }
+    h3 { margin: 0 0 6px; font-size: 18px; font-weight: 700; }
+    p { margin: 0; }
+    .muted { color: var(--muted); font-size: 12px; }
+    .nav-tabs { display: flex; flex-wrap: wrap; gap: 8px; }
+    .btn {
+      padding: 6px 12px; border-radius: 8px; font-size: 12px; font-weight: 600; cursor: pointer;
+      border: 1px solid var(--border); background: var(--card); color: var(--fg);
+      transition: background 0.15s, border-color 0.15s;
+    }
+    .btn.active { background: var(--primary); color: var(--primary-fg); border-color: var(--primary); }
+    .hidden { display: none !important; }
+    .grid-overview { display: grid; grid-template-columns: 2fr 1fr; gap: 20px; }
+    @media (max-width: 960px) { .grid-overview { grid-template-columns: 1fr; } }
+    .card { background: var(--card); border: 1px solid var(--border); border-radius: 12px; padding: 20px; }
+    .group-box { background: var(--content); border: 1px dashed var(--border); border-radius: 10px; padding: 12px; }
+    .group-box-solid { background: var(--content); border: 1px solid var(--border); border-radius: 10px; padding: 12px; }
+    .grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+    .grid-3 { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; }
+    .grid-4 { display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px; }
+    @media (max-width: 720px) { .grid-2, .grid-3, .grid-4 { grid-template-columns: 1fr; } }
+    .node-box {
+      width: 100%; text-align: left; font: inherit; color: inherit;
+      background: var(--card); border: 1px solid var(--border); border-radius: 8px; padding: 10px 12px;
+      cursor: pointer; transition: transform 0.15s, border-color 0.15s, box-shadow 0.15s;
+    }
+    .node-box:hover { transform: translateY(-2px); }
+    .node-box:focus-visible { outline: 2px solid var(--primary); outline-offset: 2px; }
+    .node-box.active { border-color: var(--primary); box-shadow: 0 0 0 2px var(--primary); }
+    .node-header { display: flex; justify-content: space-between; align-items: center; gap: 6px; margin-bottom: 4px; flex-wrap: wrap; }
+    .node-title { font-weight: 700; font-size: 13px; }
+    .arrow-row { text-align: center; color: var(--muted); font-size: 12px; font-weight: 600; padding: 4px 0; }
+    .detail-panel { display: flex; flex-direction: column; justify-content: space-between; }
+    ul.points { list-style: none; padding: 0; margin: 14px 0 0; display: flex; flex-direction: column; gap: 8px; font-size: 13px; }
+    ul.points li { display: flex; gap: 8px; align-items: flex-start; }
+    ul.points li::before { content: "•"; color: var(--primary); font-weight: 700; }
+    .detail-footer { margin-top: 16px; padding-top: 12px; border-top: 1px solid var(--border); font-size: 12px; color: var(--muted); }
+    table { width: 100%; border-collapse: collapse; font-size: 12px; }
+    th, td { text-align: left; padding: 10px 12px; border-bottom: 1px solid var(--border); vertical-align: top; }
+    th { color: var(--muted); font-weight: 600; }
+    .svg-wrap { overflow-x: auto; }
+    svg { width: 100%; min-width: 680px; height: auto; display: block; }
+    .domain-nav { display: flex; flex-wrap: wrap; gap: 6px; padding: 10px 12px; background: var(--card); border: 1px solid var(--border); border-radius: 10px; font-size: 12px; }
+    .domain-nav a { color: var(--fg); text-decoration: none; padding: 4px 10px; border-radius: 6px; border: 1px solid var(--border); background: var(--content); font-weight: 600; }
+    .domain-nav a:hover { border-color: var(--primary); color: var(--primary); }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <nav class="domain-nav" aria-label="ドメイン別図解ナビゲーション">
+      <a href="diagram.html">全体関係図 (01〜08)</a>
+      <a href="01-organization/diagram.html">01 組織・基盤</a>
+      <a href="02-reference/diagram.html">02 マスタ・外部参照</a>
+      <a href="03-patient-coverage/diagram.html">03 患者・受給資格</a>
+      <a href="04-prescription-dispensing/diagram.html">04 処方・調剤</a>
+      <a href="05-pharmaceutical-care/diagram.html">05 服薬指導・薬歴・継続ケア</a>
+      <a href="06-home-care/diagram.html">06 在宅医療・訪問契約</a>
+      <a href="07-reimbursement-billing/diagram.html">07 算定・会計・請求</a>
+      <a href="08-inventory-retail/diagram.html">08 在庫・物販</a>
+    </nav>
+    <header>
+      <div>
+        <div style="display:flex; gap:8px; align-items:center;">
+          <span class="badge">docs/pharmacy/03〜06 臨床・ケア領域</span>
+          <span class="muted">R8調剤報酬対応・患者/臨床/ケア</span>
+        </div>
+        <h1>患者・臨床・ケア ドメイン構造図解</h1>
+        <p class="muted" style="font-size:13px;">レセコン入力 → 監査・調剤 → 服薬指導・交付 → 薬歴記載 → フォローアップ・在宅・品質の全体構造</p>
+      </div>
+      <nav class="nav-tabs" role="tablist">
+        <button class="btn tab-btn active" data-tab="overview">1. 全体関係図</button>
+        <button class="btn tab-btn" data-tab="lifecycle">2. 薬歴・患者統合</button>
+        <button class="btn tab-btn" data-tab="r8">3. R8報酬・制度対応</button>
+        <button class="btn tab-btn" data-tab="contracts">4. 全12領域一覧</button>
+      </nav>
+    </header>
+
+    <!-- タブ1: 全体関係図 -->
+    <section id="tab-overview" class="tab-panel grid-overview">
+      <div class="card">
+        <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:8px; margin-bottom:14px;">
+          <h2 style="margin:0;">臨床・ケア 業務ドメイン図（クリックで詳細表示）</h2>
+          <span class="muted">一体型クラウド（NSIPSは外部連携用）</span>
+        </div>
+
+        <div style="display:flex; flex-direction:column; gap:10px;">
+          <!-- 入口・患者層 -->
+          <div class="group-box">
+            <div class="muted" style="font-weight:600; margin-bottom:8px;">入口・共通基盤（テナント内共通患者が入口）</div>
+            <div class="grid-3">
+              <button type="button" class="node-box active" data-node="patient" aria-pressed="true">
+                <span class="node-header">
+                  <span class="node-title">患者 (Patient)</span>
+                  <span class="badge">臨床プロファイル</span>
+                </span>
+                <span class="muted" style="display:block;">基本属性・共通患者番号・頭書き・同意・家族・マージ</span>
+              </button>
+              <button type="button" class="node-box" data-node="coverage" aria-pressed="false">
+                <span class="node-header">
+                  <span class="node-title">保険・公費等</span>
+                  <span class="badge">資格確認</span>
+                </span>
+                <span class="muted" style="display:block;">医療/介護保険・公費併用・調剤日時点スナップショット</span>
+              </button>
+              <button type="button" class="node-box" data-node="reception" aria-pressed="false">
+                <span class="node-header">
+                  <span class="node-title">レセコン入力・連携</span>
+                  <span class="badge">受付入口</span>
+                </span>
+                <span class="muted" style="display:block;">紙/QR/電子処方箋/NSIPS・同時受付・分割/リフィル</span>
+              </button>
+            </div>
+          </div>
+
+          <div class="arrow-row">▼ 登録済み患者に紐づけてイベントを作成</div>
+
+          <!-- イベント・処方・調剤・指導フロー -->
+          <div class="group-box-solid" style="display:flex; flex-direction:column; gap:10px;">
+            <div class="grid-2">
+              <button type="button" class="node-box" data-node="care_event" aria-pressed="false">
+                <span class="node-header">
+                  <span class="node-title">受付・相談イベント</span>
+                  <span class="badge">CareEvent</span>
+                </span>
+                <span class="muted" style="display:block;">処方箋受付 / 相談 / OTC / フォロー / 在宅・薬歴確定で完了</span>
+              </button>
+              <button type="button" class="node-box" data-node="prescription" aria-pressed="false">
+                <span class="node-header">
+                  <span class="node-title">処方箋と処方内容</span>
+                  <span class="badge">紙/電子</span>
+                </span>
+                <span class="muted" style="display:block;">原記載の保全・媒体固有情報・Rp/薬剤指示</span>
+              </button>
+            </div>
+
+            <div class="grid-3">
+              <button type="button" class="node-box" data-node="review" aria-pressed="false">
+                <span class="node-header">
+                  <span class="node-title">処方監査・疑義照会</span>
+                  <span class="badge">R8残薬/有害事象</span>
+                </span>
+                <span class="muted" style="display:block;">形式/薬学的監査・照会経緯・事前提案</span>
+              </button>
+              <button type="button" class="node-box" data-node="dispensing" aria-pressed="false">
+                <span class="node-header">
+                  <span class="node-title">調剤・鑑査</span>
+                  <span class="badge">調剤録元</span>
+                </span>
+                <span class="muted" style="display:block;">銘柄選択・手技/規制薬・最終鑑査・在庫払出</span>
+              </button>
+              <button type="button" class="node-box" data-node="counseling" aria-pressed="false">
+                <span class="node-header">
+                  <span class="node-title">服薬指導・交付</span>
+                  <span class="badge">対面/オンライン</span>
+                </span>
+                <span class="muted" style="display:block;">手帳・かかりつけ・特定指導1〜3・交付確認</span>
+              </button>
+            </div>
+          </div>
+
+          <div class="arrow-row">▼ 実施内容の記録・継続ケア・安全管理</div>
+
+          <!-- 記録・継続・品質 -->
+          <div class="grid-4">
+            <button type="button" class="node-box" data-node="med_history" aria-pressed="false">
+              <span class="node-header">
+                <span class="node-title">薬歴記載</span>
+                <span class="badge">SOAP・法定項目</span>
+              </span>
+              <span class="muted" style="display:block;">下書き/確定/訂正・頭書き連動</span>
+            </button>
+            <button type="button" class="node-box" data-node="follow_up" aria-pressed="false">
+              <span class="node-header">
+                <span class="node-title">フォローアップ</span>
+                <span class="badge">別記録</span>
+              </span>
+              <span class="muted" style="display:block;">独立実施記録・他店舗引継可</span>
+            </button>
+            <button type="button" class="node-box" data-node="home_care" aria-pressed="false">
+              <span class="node-header">
+                <span class="node-title">在宅医療・訪問</span>
+                <span class="badge">医療/介護</span>
+              </span>
+              <span class="muted" style="display:block;">単一建物・16km・回数上限・共同指導</span>
+            </button>
+            <button type="button" class="node-box" data-node="quality" aria-pressed="false">
+              <span class="node-header">
+                <span class="node-title">品質・インシデント</span>
+                <span class="badge">ヒヤリハット</span>
+              </span>
+              <span class="muted" style="display:block;">発生店舗の法人が管理・削除不可</span>
+            </button>
+          </div>
+        </div>
+      </div>
+
+      <aside class="card detail-panel">
+        <div id="detail-content"></div>
+        <div class="detail-footer">ヒント: 左の図のボックスをクリックすると、責務・構造化項目・連携先を確認できます。</div>
+      </aside>
+    </section>
+
+    <!-- タブ2: 薬歴・患者統合 -->
+    <section id="tab-lifecycle" class="tab-panel hidden" style="display:flex; flex-direction:column; gap:16px;">
+      <div class="card">
+        <h2>薬歴記載の確定（イベント完了）と追記・訂正</h2>
+        <div class="svg-wrap">
+          <svg viewBox="0 0 820 210">
+            <defs>
+              <marker id="arrow" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+                <path d="M 0 1 L 10 5 L 0 9 z" fill="currentColor" />
+              </marker>
+            </defs>
+            <rect x="30" y="65" width="130" height="50" rx="10" fill="var(--content)" stroke="var(--border)" stroke-width="1.5" />
+            <text x="95" y="94" text-anchor="middle" fill="var(--fg)" font-weight="600" font-size="13">下書き編集</text>
+
+            <rect x="230" y="65" width="160" height="50" rx="10" fill="var(--content)" stroke="var(--success)" stroke-width="2" />
+            <text x="310" y="88" text-anchor="middle" fill="var(--fg)" font-weight="700" font-size="13">薬歴確定＝イベント完了</text>
+            <text x="310" y="105" text-anchor="middle" fill="var(--muted)" font-size="11">原記載・確定者を保持</text>
+
+            <rect x="460" y="65" width="160" height="50" rx="10" fill="var(--content)" stroke="var(--primary)" stroke-width="1.5" />
+            <text x="540" y="88" text-anchor="middle" fill="var(--fg)" font-weight="600" font-size="13">追記・訂正履歴</text>
+            <text x="540" y="105" text-anchor="middle" fill="var(--muted)" font-size="11">複数者記載は確定薬歴へ追記</text>
+
+            <rect x="670" y="65" width="130" height="50" rx="10" fill="var(--content)" stroke="var(--warning)" stroke-width="1.5" />
+            <text x="735" y="88" text-anchor="middle" fill="var(--fg)" font-weight="600" font-size="12">頭書き反映</text>
+            <text x="735" y="105" text-anchor="middle" fill="var(--muted)" font-size="10">全店舗へ安全警告</text>
+
+            <g stroke="var(--muted)" stroke-width="1.5" fill="none" style="color:var(--muted);">
+              <path d="M 160 90 L 226 90" marker-end="url(#arrow)" />
+              <path d="M 390 90 L 456 90" marker-end="url(#arrow)" />
+              <path d="M 310 115 L 310 155 L 735 155 L 735 119" stroke="var(--warning)" stroke-dasharray="4 3" style="color:var(--warning);" marker-end="url(#arrow)" />
+            </g>
+            <text x="193" y="82" fill="var(--muted)" font-size="11" text-anchor="middle">別薬剤師可</text>
+            <text x="423" y="82" fill="var(--muted)" font-size="11" text-anchor="middle">本人確定</text>
+            <text x="520" y="148" fill="var(--warning)" font-size="11" text-anchor="middle">新規判明したアレルギー・副作用・検査値を共有プロファイルへ追記</text>
+          </svg>
+        </div>
+        <div class="grid-3" style="margin-top:12px;">
+          <div class="group-box-solid">
+            <div style="font-weight:700; font-size:13px; margin-bottom:4px;">薬歴確定＝イベント完了</div>
+            <p class="muted">薬歴記載者が確定するときにイベントも完了として扱う。不足事項がある場合は注意を促す。複数者が記載する場合は確定した薬歴に追記する。</p>
+          </div>
+          <div class="group-box-solid">
+            <div style="font-weight:700; font-size:13px; margin-bottom:4px;">店舗間閲覧と追記制限</div>
+            <p class="muted">同一テナント内の他店舗から閲覧可能。ただし確定後の追記・訂正は記録元店舗の操作権限者に限定。</p>
+          </div>
+          <div class="group-box-solid">
+            <div style="font-weight:700; font-size:13px; margin-bottom:4px;">NSIPS再受信との分離</div>
+            <p class="muted">外部NSIPS再受信時は処方・受付情報を最新化しつつ、確定済み薬歴と追記・訂正履歴は上書きしない。</p>
+          </div>
+        </div>
+      </div>
+
+      <div class="card">
+        <h2>重複患者の統合と誤統合の分離</h2>
+        <div class="grid-3">
+          <div class="group-box-solid">
+            <div style="font-weight:700; font-size:13px; margin-bottom:4px;">統合中（M&amp;A等によるマージ）</div>
+            <p class="muted">通常は同一テナント内で重複しない。M&amp;A等でマージする場合は<strong>最新の情報を正解として採用</strong>。子の過去記録は親から参照し新イベントは親へ作成。</p>
+          </div>
+          <div class="group-box-solid">
+            <div style="font-weight:700; font-size:13px; margin-bottom:4px;">臨床プロファイル（頭書き）の合算</div>
+            <p class="muted">統合中は親・子双方のアレルギー・副作用・疾患・検査値を合算して処方監査・指導で参照し、登録元患者IDは保持。</p>
+          </div>
+          <div class="group-box-solid">
+            <div style="font-weight:700; font-size:13px; margin-bottom:4px;">分離時の復元ルール</div>
+            <p class="muted">統合前のイベント・プロファイルは元の患者へ戻り、統合後に追加された新イベントおよび親の基本情報更新は親に残す。</p>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- タブ3: R8報酬・制度対応 -->
+    <section id="tab-r8" class="tab-panel hidden">
+      <div class="card" style="overflow-x:auto;">
+        <h2>令和8年度調剤報酬点数表（R8）と臨床ドメインの対応</h2>
+        <table>
+          <thead>
+            <tr>
+              <th>点数区分</th>
+              <th>主な算定項目・制度要件</th>
+              <th>根拠を保持する領域</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td><strong>00 調剤基本料</strong></td>
+              <td>同時受付減算（注3）、分割調剤［保存困難(注9)・後発品お試し(注10)・医師分割指示(注11)］、在宅薬学総合体制加算(注12・13)、電子的調剤情報連携体制整備加算(注14)</td>
+              <td>レセコン入力・連携 / 調剤・鑑査 / 施設基準</td>
+            </tr>
+            <tr>
+              <td><strong>01 薬剤調製料</strong></td>
+              <td>服用時点同一＝1剤(4剤以上制限)、無菌製剤処理加算(注2)、麻薬・向精神薬等加算(注3)、時間外・休日・深夜/夜間休日等加算(注4・5)、自家製剤・予製剤・錠剤分割(注6)、計量混合(注7)</td>
+              <td>調剤・鑑査 / 店舗（営業時間・日別例外）</td>
+            </tr>
+            <tr>
+              <td><strong>10の2 調剤管理料</strong></td>
+              <td>服薬状況収集・薬学的分析・薬歴記録、<strong>調剤時残薬調整加算</strong>（7日分以上／6日分以下理由・在宅事前提案）、<strong>薬学的有害事象等防止加算</strong>（重複・相互作用照会変更・在宅事前提案）</td>
+              <td>処方監査・疑義照会 / 薬歴記載</td>
+            </tr>
+            <tr>
+              <td><strong>10の3 服薬管理指導料</strong></td>
+              <td>対面（3月以内手帳有無）、介護施設訪問(注4)、<strong>オンライン服薬指導(4イ〜ニ)</strong>、かかりつけ薬剤師（同意・フォローアップ加算・訪問加算）、麻薬・特定薬剤管理指導1/2/3（RMP等）・乳幼児・小児特定・吸入薬指導</td>
+              <td>服薬指導・交付 / 患者（同意・手帳） / フォローアップ</td>
+            </tr>
+            <tr>
+              <td><strong>14の2〜14の4</strong></td>
+              <td>外来服薬支援料1・2（一包化・施設連携加算）、服用薬剤調整支援料1・2（重複ポリファーマシー提案）、調剤後薬剤管理指導料（糖尿病・慢性心不全の電話等確認・文書提供）</td>
+              <td>服薬指導・交付 / 処方監査 / フォローアップ</td>
+            </tr>
+            <tr>
+              <td><strong>15〜15の10 在宅関連</strong></td>
+              <td>訪問薬剤管理指導（単一建物1/2〜9/10人以上、16km制限、月4回/週2月8回、週40回上限）、緊急訪問（夜間休日深夜・感染症）、緊急時等共同指導、退院時共同指導、在宅移行初期管理、医師同時指導、複数名訪問</td>
+              <td>在宅医療・訪問薬剤管理 / 保険・公費等（介護優先） / 店舗（緯度経度）</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </section>
+
+    <!-- タブ4: 全12領域一覧 -->
+    <section id="tab-contracts" class="tab-panel hidden">
+      <div class="card" style="overflow-x:auto;">
+        <h2>臨床・ケア 全12領域（03〜06）の責務と主要ファイル</h2>
+        <table>
+          <thead>
+            <tr>
+              <th>領域</th>
+              <th>ファイル</th>
+              <th>主な責務</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr><td><strong>患者</strong></td><td><code>03-patient-coverage/patient.md</code></td><td>共通患者識別、基本属性、臨床プロファイル（頭書き）、同意、家族管理、重複統合/分離</td></tr>
+            <tr><td><strong>保険・公費等</strong></td><td><code>03-patient-coverage/coverage.md</code></td><td>医療/介護保険、公費併用・上限、オン資照合、調剤日時点スナップショット</td></tr>
+            <tr><td><strong>レセコン入力・連携</strong></td><td><code>04-prescription-dispensing/reception-entry.md</code></td><td>受付入口、紙/QR/電子処方箋/NSIPS取込、受入禁止処方箋ガード、使用期間確認、同時受付・分割/リフィル識別</td></tr>
+            <tr><td><strong>処方箋と処方内容</strong></td><td><code>04-prescription-dispensing/prescription.md</code></td><td>紙/電子原本の区別、発行時原記載の保全、NSIPS再受信上書き方針</td></tr>
+            <tr><td><strong>処方監査・疑義照会</strong></td><td><code>04-prescription-dispensing/prescription-review.md</code></td><td>取りそろえ前確認、形式/薬学的監査、電子処方箋重複チェック証跡、疑義照会・残薬調整/有害事象防止</td></tr>
+            <tr><td><strong>調剤・鑑査</strong></td><td><code>04-prescription-dispensing/dispensing.md</code></td><td>具体的製品選択・変更、調剤手技・規制薬品、最終鑑査、調剤録元データ、在庫払出連携</td></tr>
+            <tr><td><strong>受付・相談イベント</strong></td><td><code>05-pharmaceutical-care/care-event.md</code></td><td>処方箋受付・相談・OTC・フォロー・在宅の出来事単位、薬歴確定時にイベントも完了（不足時は注意喚起）</td></tr>
+            <tr><td><strong>服薬指導・交付</strong></td><td><code>05-pharmaceutical-care/medication-counseling.md</code></td><td>対面/オンライン/訪問指導、かかりつけ・特定指導、薬剤交付・受取確認</td></tr>
+            <tr><td><strong>薬歴記載</strong></td><td><code>05-pharmaceutical-care/medication-history.md</code></td><td>SOAP・法定確認項目・申し送り、下書き/確定/訂正履歴、頭書きへの追記連動</td></tr>
+            <tr><td><strong>フォローアップ</strong></td><td><code>05-pharmaceutical-care/follow-up.md</code></td><td>計画・実施記録（元薬歴と別記録で関連づけ）、同一テナント他店舗への引継ぎ</td></tr>
+            <tr><td><strong>品質・インシデント</strong></td><td><code>05-pharmaceutical-care/quality.md</code></td><td>ヒヤリハット収集事業ベースの報告・調査・改善（管理主体は発生店舗の法人）</td></tr>
+            <tr><td><strong>在宅医療・訪問薬剤管理</strong></td><td><code>06-home-care/home-care.md</code></td><td>在宅療養契約、医療/介護保険切り分け、指導計画、単一建物・16km・回数上限、多職種共同指導</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </section>
+  </div>
+
+  <script>
+    const nodeDetails = {
+      patient: {
+        title: "患者 (Patient)",
+        badge: "正本: 患者 / patient.md",
+        summary: "テナント内の全店舗で共通の一人の患者として管理。すべてのイベント・薬歴の入口。",
+        points: [
+          "基本属性＋外部患者番号（全店舗共通）＋臨床プロファイル（頭書き）＋同意状態＋家族管理",
+          "頭書き: 体重/血液型/透析/妊娠授乳、アレルギー・副作用（ConfirmedStatus）、既往・現病歴、併用薬/OTC、検査値、配慮事項",
+          "家族管理: 自局患者同士の続柄/同居区分、患者外キーパーソン（緊急連絡・主介護者・代理受取）を統合親子とは別に保持",
+          "マージ時は双方の頭書きを合算し最新基本情報を正解として採用、分離時は登録元へ復元",
+          "登録・統合の入口はレセコン機能、基本情報編集はレセコン/薬歴双方から可能"
+        ]
+      },
+      coverage: {
+        title: "保険・公費等 (Coverage)",
+        badge: "正本: 保険・公費 / coverage.md",
+        summary: "医療保険・介護保険・公費負担医療の資格確認結果と調剤日時点の適用セットを保持。",
+        points: [
+          "処方箋の原記載とは別に、オン資/マイナ保険証等で確認した有効資格・オン資参照IDを管理",
+          "記号・番号のレセ電制約（スペース/中点/ハイフン禁止、合計38バイト以内、単一モード）",
+          "非破壊履歴管理と同月内資格変更の自動検知（レセプト分割トリガー）、第1〜第4公費優先順",
+          "調剤日時点の CoverageSnapshot により返戻・資格喪失時も当時を追跡"
+        ]
+      },
+      reception: {
+        title: "レセコン入力・連携",
+        badge: "入口: reception-entry.md",
+        summary: "窓口・オンライン・在宅・NSIPSからの受付入口。患者特定・資格確認・処方取込を行う。",
+        points: [
+          "紙スキャン、2次元シンボル(QR)、電子処方箋(取得・検証)、NSIPS受信を区別",
+          "受入禁止処方箋（二枚処方箋・翌週等交付予定・同意なき医療機関従業員持参・非保険医）をブロック",
+          "使用期間（原則4日以内）超過の調剤禁止、分割調剤（注9/10/11）・リフィル回数・同時受付を識別",
+          "外部NSIPS再受信時は受付・処方を自動更新し、確定済み薬歴は上書きしない"
+        ]
+      },
+      care_event: {
+        title: "受付・相談イベント (CareEvent)",
+        badge: "正本: イベント / care-event.md",
+        summary: "処方箋受付、来局・電話・OTC相談、フォローアップ、在宅訪問を表す業務上の出来事。",
+        points: [
+          "患者未登録・匿名のイベントは作成しない",
+          "薬歴記載者が確定するときにイベントも完了として扱う（不足事項がある場合は注意を促す）",
+          "複数者が記載することもあるが、確定した薬歴に追記という形にする",
+          "同じテナント・同じ患者なら別店舗のイベント同士も関連づけ可能"
+        ]
+      },
+      prescription: {
+        title: "処方箋と処方内容",
+        badge: "正本: 処方箋 / prescription.md",
+        summary: "紙・電子の両方に対応し、発行時の原記載と媒体固有情報を保全する。",
+        points: [
+          "一体型内部ではレセコンの処方入力を薬歴から直接参照",
+          "処方箋の原記載、疑義照会後の変更指示、実際の調剤実績を区別",
+          "変更不可欄・患者希望（選定療養）・リフィル/分割指示を構造化して保持"
+        ]
+      },
+      review: {
+        title: "処方監査・疑義照会",
+        badge: "正本: 監査・照会 / prescription-review.md",
+        summary: "取りそろえ前確認・形式/薬学的監査と処方医への疑義照会・事前提案の経緯を構造化する。",
+        points: [
+          "「薬を取りそろえる前の確認」は保険薬剤師のみ実施可（事務員の聴取のみで完了不可）",
+          "形式不備・曖昧用法・薬学的疑義検知時は疑義照会完了まで調剤確定への遷移をブロック（薬剤師法第24条）",
+          "疑義照会ID・残薬調整IDを単一ソースとして処方箋備考・調剤録・薬歴の3者一致を保証",
+          "変更時は処方箋原記載を二本線抹消相当で判読可能に保持し、変更経緯と確定指示を分離"
+        ]
+      },
+      dispensing: {
+        title: "調剤・鑑査",
+        badge: "正本: 調剤 / dispensing.md",
+        summary: "具体的製品の選択・調剤手技・最終鑑査を行い、調剤録と在庫払出の元データを作る。",
+        points: [
+          "保険調剤と自費等の調剤録分離、無資格調剤・代筆署名の禁止、確定後の追記型訂正履歴（DispensingRevision）",
+          "後発品・含量規格/類似別剤形変更の4要件検証、剤形別のレセ電IY用量定義とCZ剤分離を厳守",
+          "自家製剤（薬価収載品非存在・工程記録）・計量混合・無菌製剤・麻薬（有効期限内免許番号参照）を記録",
+          "供給不安対応記録（別紙様式4-1/4-2、2年保存）、処方箋原本＋電送情報のペア突合・3年保存管理"
+        ]
+      },
+      counseling: {
+        title: "服薬指導・交付",
+        badge: "正本: 指導・交付 / medication-counseling.md",
+        summary: "指導実施・特定指導・薬剤交付を記録し、薬歴記載および算定要件へ連携する。",
+        points: [
+          "来局対面・オンライン(R8区分10の3の4)・施設訪問・患家訪問を区別",
+          "薬剤情報提供文書（無関係事項禁止・後発品収載有無と自局備蓄品名/価格比較明記）、JAHIS出力制約",
+          "かかりつけ薬剤師同意（署名原本参照・24時間連絡先周知・時間外別薬剤師対応時の共有記録必須）を管理",
+          "麻薬・特定指導1(イ/ロ)・2(レジメン)・3(イRMP/ロ供給不足)・吸入器実技・乳幼児/小児特定指導と交付を記録"
+        ]
+      },
+      med_history: {
+        title: "薬歴記載",
+        badge: "正本: 薬歴 / medication-history.md",
+        summary: "R8算定・薬担規則の法定要件を満たすSOAP等の記録と、改ざん防止の確定・訂正履歴。",
+        points: [
+          "前回「継続的留意点（申し送り）」を未処理タスク（CarryOverPrecaution）として自動引き継ぎ（書きっぱなし防止）",
+          "加算コード別の構造化算定根拠（FeeJustification）と単一ソース疑義照会ID/残薬調整IDによる3者一致",
+          "薬歴確定＝イベント完了（不足時は注意喚起）、複数者記載時は確定薬歴への追記、代行入力の未承認滞留アラート",
+          "二本線抹消相当の追記型履歴、最終記入日＋3年（公費5年）起算の全記録保持と過去紙薬歴廃棄ロック、頭書き連動"
+        ]
+      },
+      follow_up: {
+        title: "フォローアップ",
+        badge: "正本: フォロー / follow-up.md",
+        summary: "調剤後の継続確認・評価・対応を、元の薬歴とは独立した別記録として管理する。",
+        points: [
+          "予定、実施、連絡不能、再予定を区別し、元の薬歴へ関連づける",
+          "一律一斉メールのみの登録禁止（個別の双方向確認・AI利用時は薬剤師確認必須）",
+          "調剤後薬剤管理指導料（糖尿病/心不全）は調剤同日不可・患者同意必須、同一テナント他店舗へ引継ぎ可能"
+        ]
+      },
+      home_care: {
+        title: "在宅医療・訪問薬剤管理",
+        badge: "正本: 在宅 / home-care.md",
+        summary: "医師の訪問指示と同意に基づく訪問計画・実施・多職種連携を管理する。",
+        points: [
+          "ライフサイクル（契約準備→ACTIVE→TERMINATED）、介護保険優先と医療保険との重複禁止（末期・緊急例外除く）",
+          "有効な医師訪問指示・同意・指導計画の事前条件、FAX事前調製時の訪問時処方箋原本受領・同一確認義務",
+          "単一建物診療患者人数（1 / 2〜9 / 10以上）、16km距離制限、月4回/週2月8回および薬剤師週40回上限",
+          "在宅移行初期管理料(訪問1のみ)・複数名訪問料(訪問1/緊急1・2のみ)・在宅協力薬局連携区分(調管/調時/支B)の整合"
+        ]
+      },
+      quality: {
+        title: "品質・インシデント",
+        badge: "正本: 品質 / quality.md",
+        summary: "薬局ヒヤリ・ハット事例収集・分析事業への報告をベースとした安全管理。",
+        points: [
+          "発生源（処方・調剤・交付）が臨床ケア領域に直結するため 05-pharmaceutical-care に配置",
+          "管理主体は発生店舗の開設法人（親法人へ自動委任しない・テナント境界順守）",
+          "緊急連絡機能・固定承認者は不要、訂正は履歴付きで原則物理削除不可"
+        ]
+      }
+    };
+
+    function renderNodeDetail(key) {
+      const d = nodeDetails[key];
+      if (!d) return;
+      document.getElementById("detail-content").innerHTML = `
+        <span class="badge" style="margin-bottom:8px;">${d.badge}</span>
+        <h3>${d.title}</h3>
+        <p class="muted" style="font-size:13px;">${d.summary}</p>
+        <ul class="points">
+          ${d.points.map(p => `<li><span>${p}</span></li>`).join("")}
+        </ul>
+      `;
+    }
+
+    document.querySelectorAll(".tab-btn").forEach(btn => {
+      btn.addEventListener("click", () => {
+        document.querySelectorAll(".tab-btn").forEach(b => b.classList.remove("active"));
+        btn.classList.add("active");
+        document.querySelectorAll(".tab-panel").forEach(p => p.classList.add("hidden"));
+        document.getElementById("tab-" + btn.dataset.tab).classList.remove("hidden");
+      });
+    });
+
+    document.querySelectorAll(".node-box").forEach(box => {
+      box.addEventListener("click", () => {
+        document.querySelectorAll(".node-box").forEach(b => {
+          b.classList.remove("active");
+          b.setAttribute("aria-pressed", "false");
+        });
+        box.classList.add("active");
+        box.setAttribute("aria-pressed", "true");
+        renderNodeDetail(box.dataset.node);
+      });
+    });
+
+    renderNodeDetail("patient");
+  </script>
+</body>
+</html>

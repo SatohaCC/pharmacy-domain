@@ -1,0 +1,311 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="color-scheme" content="light dark" />
+  <title>04 処方・調剤 ドメイン図解</title>
+  <style>
+    :root {
+      color-scheme: light dark;
+      --bg-light: #f8fafc; --bg-dark: #0f172a;
+      --surface-light: #ffffff; --surface-dark: #1e293b;
+      --surface-muted-light: #f1f5f9; --surface-muted-dark: #0f172a;
+      --fg-light: #0f172a; --fg-dark: #f8fafc;
+      --muted-light: #475569; --muted-dark: #94a3b8;
+      --border-light: #cbd5e1; --border-dark: #334155;
+      --primary-light: #0284c7; --primary-dark: #38bdf8;
+      --primary-soft-light: #e0f2fe; --primary-soft-dark: #082f49;
+      --bg: var(--bg-light); --surface: var(--surface-light); --surface-muted: var(--surface-muted-light);
+      --fg: var(--fg-light); --muted: var(--muted-light); --border: var(--border-light);
+      --primary: var(--primary-light); --primary-soft: var(--primary-soft-light);
+      @media (prefers-color-scheme: dark) {
+        --bg: var(--bg-dark); --surface: var(--surface-dark); --surface-muted: var(--surface-muted-dark);
+        --fg: var(--fg-dark); --muted: var(--muted-dark); --border: var(--border-dark);
+        --primary: var(--primary-dark); --primary-soft: var(--primary-soft-dark);
+      }
+      @supports (color: light-dark(white, black)) {
+        --bg: light-dark(var(--bg-light), var(--bg-dark));
+        --surface: light-dark(var(--surface-light), var(--surface-dark));
+        --surface-muted: light-dark(var(--surface-muted-light), var(--surface-muted-dark));
+        --fg: light-dark(var(--fg-light), var(--fg-dark));
+        --muted: light-dark(var(--muted-light), var(--muted-dark));
+        --border: light-dark(var(--border-light), var(--border-dark));
+        --primary: light-dark(var(--primary-light), var(--primary-dark));
+        --primary-soft: light-dark(var(--primary-soft-light), var(--primary-soft-dark));
+      }
+    }
+    * { box-sizing: border-box; }
+    body { margin: 0; background: var(--bg); color: var(--fg); font-family: "Hiragino Kaku Gothic ProN", "Yu Gothic UI", "Meiryo", system-ui, sans-serif; line-height: 1.6; }
+    .container { max-width: 1280px; margin: 0 auto; padding: 24px 16px 48px; }
+    h1 { font-size: 22px; margin: 0 0 6px; }
+    h2 { font-size: 16px; margin: 0 0 12px; }
+    h3 { font-size: 15px; margin: 0 0 8px; }
+    p { margin: 0; }
+    .muted { color: var(--muted); font-size: 13px; }
+    .badge { display: inline-flex; align-items: center; padding: 2px 8px; border-radius: 999px; font-size: 11px; font-weight: 700; background: var(--primary-soft); color: var(--primary); }
+    .domain-nav { display: flex; flex-wrap: wrap; gap: 6px; margin: 14px 0 16px; padding: 10px 12px; background: var(--surface); border: 1px solid var(--border); border-radius: 10px; font-size: 12px; }
+    .domain-nav a { color: var(--fg); text-decoration: none; padding: 4px 10px; border-radius: 6px; border: 1px solid var(--border); background: var(--surface-muted); font-weight: 600; }
+    .domain-nav a:hover, .domain-nav a[aria-current="page"] { border-color: var(--primary); color: var(--primary); background: var(--primary-soft); }
+    [role="tablist"] { display: flex; overflow-x: auto; scroll-snap-type: inline proximity; gap: 4px; border-bottom: 1px solid var(--border); margin-bottom: 16px; }
+    [role="tab"] { flex: none; scroll-snap-align: start; position: relative; padding: 10px 16px; border: none; background: transparent; color: var(--muted); font: inherit; font-size: 13px; font-weight: 600; cursor: pointer; }
+    [role="tab"][aria-selected="true"] { color: var(--primary); }
+    [role="tab"][aria-selected="true"]::after { content: ""; position: absolute; inset: auto 0 0; border-block-end: 3px solid var(--primary); }
+    .panel-inner { background: var(--surface); border: 1px solid var(--border); border-radius: 12px; padding: 18px; }
+    .layout-main { display: grid; grid-template-columns: 1fr 360px; gap: 16px; align-items: start; }
+    @media (max-width: 960px) { .layout-main { grid-template-columns: 1fr; } }
+    .group-box { border: 1px dashed var(--border); border-radius: 10px; padding: 12px; background: var(--surface-muted); margin-bottom: 12px; }
+    .group-label { font-size: 12px; font-weight: 700; color: var(--primary); margin-bottom: 8px; }
+    .grid-2 { display: grid; grid-template-columns: repeat(2, 1fr); gap: 10px; }
+    .grid-3 { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; }
+    @media (max-width: 700px) { .grid-2, .grid-3 { grid-template-columns: 1fr; } }
+    .node-box { width: 100%; text-align: left; background: var(--surface); border: 1.5px solid var(--border); border-radius: 10px; padding: 12px; color: var(--fg); font: inherit; cursor: pointer; }
+    .node-box:hover { border-color: var(--primary); }
+    .node-box[aria-pressed="true"] { border-color: var(--primary); background: var(--primary-soft); }
+    .node-header { display: flex; justify-content: space-between; align-items: center; gap: 6px; margin-bottom: 4px; }
+    .node-title { font-weight: 700; font-size: 14px; }
+    .detail-box { position: sticky; top: 16px; background: var(--surface-muted); border: 1px solid var(--border); border-radius: 10px; padding: 16px; }
+    .points { margin: 10px 0 0; padding-left: 18px; font-size: 13px; }
+    .points li { margin-bottom: 6px; }
+    .table-wrapper { overflow: auto; max-inline-size: 100%; max-block-size: min(500px, 80vh); container-type: inline-size; border: 1px solid var(--border); border-radius: 8px; }
+    table { width: 100%; border-collapse: separate; border-spacing: 0; font-size: 13px; }
+    thead { position: sticky; inset-block-start: 0; z-index: 1; background: var(--surface-muted); }
+    th, td { padding: 10px 12px; text-align: left; border-bottom: 1px solid var(--border); vertical-align: top; }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <header>
+      <div style="display:flex; align-items:center; gap:10px; flex-wrap:wrap; margin-bottom:4px;">
+        <span class="badge">04-prescription-dispensing / diagram.html</span>
+        <span class="muted">受付 (`reception_entry`) ・ 処方箋 (`prescription`) ・ 処方監査 (`prescription_review`) ・ 調剤 (`dispensing`)</span>
+      </div>
+      <h1>04 処方・調剤 ドメイン図解</h1>
+      <p class="muted">処方箋受付から保険薬剤師による取りそろえ前確認・疑義照会（3者単一ソースID）・変更調剤4要件・最終鑑査・調剤録までを可視化します。</p>
+    </header>
+
+    <nav class="domain-nav" aria-label="ドメイン別図解ナビゲーション">
+      <a href="../diagram.html">全体関係図 (01〜08)</a>
+      <a href="../01-organization/diagram.html">01 組織・基盤</a>
+      <a href="../02-reference/diagram.html">02 マスタ・外部参照</a>
+      <a href="../03-patient-coverage/diagram.html">03 患者・受給資格</a>
+      <a href="diagram.html" aria-current="page">04 処方・調剤</a>
+      <a href="../05-pharmaceutical-care/diagram.html">05 服薬指導・薬歴・継続ケア</a>
+      <a href="../06-home-care/diagram.html">06 在宅医療・訪問契約</a>
+      <a href="../07-reimbursement-billing/diagram.html">07 算定・会計・請求</a>
+      <a href="../08-inventory-retail/diagram.html">08 在庫・物販</a>
+    </nav>
+
+    <div role="tablist" aria-label="04 処方・調剤ビュー切替">
+      <button type="button" role="tab" id="tab-model" aria-selected="true">1. 処方・監査・調剤モデル構成</button>
+      <button type="button" role="tab" id="tab-receden" aria-selected="false">2. レセ電（SH/CZ/IY/TO）と変更調剤・調剤録ルール</button>
+    </div>
+
+    <div role="tabpanel" id="panel-model" aria-labelledby="tab-model">
+      <div class="panel-inner layout-main">
+        <div>
+          <div class="group-box">
+            <div class="group-label">受付・処方箋集約 (reception-entry.md / prescription.md)</div>
+            <div class="grid-2">
+              <button type="button" class="node-box" data-node="reception" aria-pressed="true">
+                <span class="node-header"><span class="node-title">処方箋受付 &amp; 受入禁止ガード</span><span class="badge">入口・同時受付</span></span>
+                <span class="muted">二枚処方箋等ブロック・4日使用期間・FAX原本突合・同時受付(注3)</span>
+              </button>
+              <button type="button" class="node-box" data-node="prescription" aria-pressed="false">
+                <span class="node-header"><span class="node-title">処方箋原記載 &amp; Rp構造</span><span class="badge">SHレコード</span></span>
+                <span class="muted">紙/電子原本分離・複数保険医の別SH分離・原記載の非破壊保全</span>
+              </button>
+            </div>
+          </div>
+
+          <div class="group-box">
+            <div class="group-label">処方監査・疑義照会集約 (prescription-review.md)：3者一致の単一ソース</div>
+            <div class="grid-2">
+              <button type="button" class="node-box" data-node="pre_check" aria-pressed="false">
+                <span class="node-header"><span class="node-title">取りそろえ前確認 &amp; 薬学的監査</span><span class="badge">保険薬剤師専権</span></span>
+                <span class="muted">事務員不可・5項目確認・禁忌/過量/重複/曖昧用法チェック</span>
+              </button>
+              <button type="button" class="node-box" data-node="inquiry" aria-pressed="false">
+                <span class="node-header"><span class="node-title">疑義照会 &amp; 残薬調整 (単一ID)</span><span class="badge">法24条ゲート</span></span>
+                <span class="muted">照会完了まで調剤確定ブロック・処方箋備考/調剤録/薬歴が単一ID引用</span>
+              </button>
+            </div>
+          </div>
+
+          <div class="group-box" style="margin-bottom:0;">
+            <div class="group-label">調剤・鑑査・調剤録集約 (dispensing.md)</div>
+            <div class="grid-3">
+              <button type="button" class="node-box" data-node="substitution" aria-pressed="false">
+                <span class="node-header"><span class="node-title">製品選択・変更調剤</span><span class="badge">CZ / IY / TO</span></span>
+                <span class="muted">後発品・含量規格/類似別剤形変更4要件・剤形別IY用量・選定療養</span>
+              </button>
+              <button type="button" class="node-box" data-node="compounding" aria-pressed="false">
+                <span class="node-header"><span class="node-title">特殊調製・麻薬・供給不安</span><span class="badge">手技・別紙4-1</span></span>
+                <span class="muted">自家製剤(収載品非存在/工程)・計量混合・麻薬免許ガード・2年保存</span>
+              </button>
+              <button type="button" class="node-box" data-node="record" aria-pressed="false">
+                <span class="node-header"><span class="node-title">最終鑑査・調剤録・処方箋記入</span><span class="badge">保険/自費分離</span></span>
+                <span class="muted">本人署名(代筆不可)・法定全項目・追記型訂正履歴(DispensingRevision)</span>
+              </button>
+            </div>
+          </div>
+        </div>
+
+        <aside class="detail-box" id="node-detail" aria-live="polite"></aside>
+      </div>
+    </div>
+
+    <div role="tabpanel" id="panel-receden" aria-labelledby="tab-receden" hidden="until-found">
+      <div class="panel-inner">
+        <h2>処方・調剤に係るレセ電レコード仕様と指導指摘ガード</h2>
+        <div tabindex="0" role="region" aria-label="処方・調剤レセ電レコード仕様一覧" class="table-wrapper">
+          <table>
+            <thead>
+              <tr>
+                <th>対象 / レコード</th>
+                <th>ドメイン上の厳格ルール・不変条件</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <th><code>SH</code>（処方基本）</th>
+                <td>同一の保険医療機関で一連の診療に基づき同一患者に交付され、受付回数1回とされた<strong>異なる保険医の処方箋</strong>は、それぞれ別の処方基本ブロック（<code>SH</code>）として記録する。</td>
+              </tr>
+              <tr>
+                <th><code>CZ</code>（調剤情報）</th>
+                <td>服用時点が同一であっても<strong>投薬日数が異なる内服薬は別剤（別の欄）</strong>として記録し、1剤とすべき内服薬の2剤分割算定を禁止する。処方箋受付回数は <code>KI</code> と必ず同一値にする。</td>
+              </tr>
+              <tr>
+                <th><code>IY</code>（医薬品用量）</th>
+                <td>・<strong>内服薬・湯薬</strong>：1日用量<br/>・<strong>内服用滴剤・注射薬・外用薬（貼付剤除く）</strong>：投薬全量<br/>・<strong>屯服薬</strong>：1回用量＋投薬全量<br/>・<strong>浸煎薬</strong>：投薬全量＋投薬日数<br/>・<strong>鎮痛消炎貼付剤</strong>：枚数としての投薬全量＋1日用量または投与日数</td>
+              </tr>
+              <tr>
+                <th><code>TO</code>（特定器材）</th>
+                <td>所定の価格で算定し、調剤報酬として請求できない特定保険医療材料や衛生材料を混入させない。</td>
+              </tr>
+              <tr>
+                <th>疑義照会・残薬調整の3者一致</th>
+                <td>処方監査で確定した単一の <code>PrescriptionInquiryId</code>・残薬調整IDを「処方箋備考欄」「調剤録」「薬歴」の3箇所が引用し、手入力の不一致を構造的に排除する。</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    const details = {
+      reception: {
+        title: "処方箋受付 & 受入禁止処方箋ガード",
+        badge: "reception-entry.md",
+        summary: "窓口・オンライン・在宅・NSIPSの受付入口と法的有効性の初期ゲート。",
+        points: [
+          "受入禁止ブロック: 二枚処方箋（期間上限超過・翌週/翌月交付予定）、同意なき医療機関職員持参、非保険医処方箋",
+          "使用期間確認: 交付日を含め原則4日以内（リフィル2回目以降は前後7日以内）超過の調剤禁止",
+          "FAX等の電送処方箋は仮受付とし、窓口持参または訪問時に処方箋原本を受領・同一確認するまで確定不可",
+          "同日・複数医療機関の同時受付を ConcurrentReceptionGroup で束ね、調剤基本料注3（80/100）へ連携"
+        ]
+      },
+      prescription: {
+        title: "処方箋原記載 & Rp構造 (PrescriptionDocument)",
+        badge: "prescription.md / SHレコード",
+        summary: "紙・電子処方箋の発行時原記載を不変に保持し、変更後指示・調剤実績と分離する。",
+        points: [
+          "変更不可欄、患者希望欄（長期収載品選定療養）、リフィル可否・回数、減数調剤指示を構造化保持",
+          "同一医療機関・受付1回で異なる保険医から交付された処方箋は別SHブロックとして分離",
+          "外部NSIPS再受信時は処方・受付取込データを最新化し、旧受信版は差分確認用履歴として保持"
+        ]
+      },
+      pre_check: {
+        title: "取りそろえ前確認 & 薬学的監査 (PrescriptionAudit)",
+        badge: "prescription-review.md / 保険薬剤師専権",
+        summary: "薬を取りそろえる前に保険薬剤師が行う5項目確認と適法性・安全性監査。",
+        points: [
+          "取りそろえ前確認（体質、疾患、併用薬/飲食物、服薬/残薬状況、体調変化）は保険薬剤師限定（事務員不可）",
+          "患者のアレルギー確認状態（ConfirmedStatus）が「未聴取」のままでは監査合格へ進めない",
+          "禁忌・承認外用法用量・使用期間限定薬超過・漫然長期・過量・相互作用・重複投薬・曖昧用法を検出"
+        ]
+      },
+      inquiry: {
+        title: "疑義照会 & 残薬調整（3者一致の単一ソースID）",
+        badge: "prescription-review.md / 法24条・23条2項",
+        summary: "疑義検知時の調剤確定ブロックと、処方箋・調剤録・薬歴の3者一致を保証する照会記録。",
+        points: [
+          "形式不備・曖昧用法（「医師の指示どおり」等）・薬学的疑義検知時は照会完了まで調剤確定をブロック",
+          "処方変更時は原記載を二本線抹消相当（判読可能）で保持し、変更前後の差分を記録",
+          "確定した疑義照会ID・残薬調整IDを調剤録（処方箋備考）と薬歴（加算根拠）が単一ソースとして引用",
+          "R8調剤時残薬調整加算（7日分以上／6日分以下理由）および薬学的有害事象等防止加算の根拠を構造化"
+        ]
+      },
+      substitution: {
+        title: "製品選択・変更調剤 (DispensedItem)",
+        badge: "dispensing.md / CZ・IY・TO",
+        summary: "確定処方指示に基づく具体的製品の選択と変更調剤4要件の検証。",
+        points: [
+          "一般名処方・変更可処方で後発品を調剤せず先発品を調剤した場合は合理的理由を必須記録（TK連携）",
+          "含量規格変更・類似別剤形変更の4要件: ①患者同意、②効能用法同一、③変更後薬剤料が高額化しないこと、④医療機関情報提供",
+          "CZ日数別剤分離とIY剤形別用量ルール（内服1日量・外用/注射全量・屯服1回＋全量・貼付剤枚数全量＋1日量/日数）を厳守"
+        ]
+      },
+      compounding: {
+        title: "特殊調製・麻薬・供給不安対応",
+        badge: "dispensing.md / 別紙様式4-1・4-2",
+        summary: "自家製剤・計量混合・一包化・無菌製剤の適格性検証と麻薬・供給不安対応の記録。",
+        points: [
+          "自家製剤加算: 同一剤形・同一規格の薬価収載品が存在しないこと（供給不足特例時は薬剤名と事情をTK記載）＋製剤工程記録が必須",
+          "計量混合調剤加算: 薬学的に問題ない旨の判断記録が必須。外来服薬支援料2（一包化）は全剤に(支B)を連携",
+          "麻薬調剤時は有効期限内の麻薬小売業免許番号を検証・抽出し、供給不安分譲記録（別紙様式4-1）は2年間保存管理"
+        ]
+      },
+      record: {
+        title: "最終鑑査・調剤録・調剤済処方箋記入 (DispensingRecord)",
+        badge: "dispensing.md / 法26条・薬担規則",
+        summary: "保険調剤と自費等を排他分離した法定調剤録の作成と追記型訂正履歴。",
+        points: [
+          "保険調剤と保険調剤以外（自費等）の調剤録混在を禁止",
+          "無資格調剤および事務員による処方箋代筆署名を禁止（調剤した保険薬剤師本人の署名/記名押印）",
+          "長期保存困難分割調剤（注9）時は受付時の医療機関照会＋調剤録への分割理由記載が必須",
+          "確定後の直接上書きを禁止し、二本線抹消相当の追記型訂正履歴（DispensingRevision）と原本＋電送情報ペア保管を管理"
+        ]
+      }
+    };
+
+    function renderNode(key) {
+      const d = details[key];
+      if (!d) return;
+      document.getElementById("node-detail").innerHTML = `
+        <span class="badge" style="margin-bottom:8px;">${d.badge}</span>
+        <h3>${d.title}</h3>
+        <p class="muted">${d.summary}</p>
+        <ul class="points">${d.points.map(p => `<li>${p}</li>`).join("")}</ul>
+      `;
+    }
+
+    document.querySelectorAll(".node-box").forEach(btn => {
+      btn.addEventListener("click", () => {
+        document.querySelectorAll(".node-box").forEach(b => b.setAttribute("aria-pressed", "false"));
+        btn.setAttribute("aria-pressed", "true");
+        renderNode(btn.dataset.node);
+      });
+    });
+
+    const tabs = Array.from(document.querySelectorAll('[role="tab"]'));
+    const panels = Array.from(document.querySelectorAll('[role="tabpanel"]'));
+    function activateTab(selectedTab) {
+      for (const tab of tabs) tab.setAttribute("aria-selected", String(tab === selectedTab));
+      for (const panel of panels) {
+        if (panel.getAttribute("aria-labelledby") === selectedTab.id) panel.removeAttribute("hidden");
+        else panel.setAttribute("hidden", "until-found");
+      }
+      selectedTab.scrollIntoView({ block: "nearest", inline: "nearest" });
+    }
+    tabs.forEach(tab => tab.addEventListener("click", () => activateTab(tab)));
+    panels.forEach(panel => panel.addEventListener("beforematch", () => {
+      const tab = document.getElementById(panel.getAttribute("aria-labelledby"));
+      if (tab) activateTab(tab);
+    }));
+    renderNode("reception");
+  </script>
+</body>
+</html>

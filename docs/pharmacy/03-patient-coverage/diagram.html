@@ -1,0 +1,317 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="color-scheme" content="light dark" />
+  <title>03 患者・受給資格 ドメイン図解</title>
+  <style>
+    :root {
+      color-scheme: light dark;
+      --bg-light: #f8fafc; --bg-dark: #0f172a;
+      --surface-light: #ffffff; --surface-dark: #1e293b;
+      --surface-muted-light: #f1f5f9; --surface-muted-dark: #0f172a;
+      --fg-light: #0f172a; --fg-dark: #f8fafc;
+      --muted-light: #475569; --muted-dark: #94a3b8;
+      --border-light: #cbd5e1; --border-dark: #334155;
+      --primary-light: #0284c7; --primary-dark: #38bdf8;
+      --primary-soft-light: #e0f2fe; --primary-soft-dark: #082f49;
+      --bg: var(--bg-light); --surface: var(--surface-light); --surface-muted: var(--surface-muted-light);
+      --fg: var(--fg-light); --muted: var(--muted-light); --border: var(--border-light);
+      --primary: var(--primary-light); --primary-soft: var(--primary-soft-light);
+      @media (prefers-color-scheme: dark) {
+        --bg: var(--bg-dark); --surface: var(--surface-dark); --surface-muted: var(--surface-muted-dark);
+        --fg: var(--fg-dark); --muted: var(--muted-dark); --border: var(--border-dark);
+        --primary: var(--primary-dark); --primary-soft: var(--primary-soft-dark);
+      }
+      @supports (color: light-dark(white, black)) {
+        --bg: light-dark(var(--bg-light), var(--bg-dark));
+        --surface: light-dark(var(--surface-light), var(--surface-dark));
+        --surface-muted: light-dark(var(--surface-muted-light), var(--surface-muted-dark));
+        --fg: light-dark(var(--fg-light), var(--fg-dark));
+        --muted: light-dark(var(--muted-light), var(--muted-dark));
+        --border: light-dark(var(--border-light), var(--border-dark));
+        --primary: light-dark(var(--primary-light), var(--primary-dark));
+        --primary-soft: light-dark(var(--primary-soft-light), var(--primary-soft-dark));
+      }
+    }
+    * { box-sizing: border-box; }
+    body { margin: 0; background: var(--bg); color: var(--fg); font-family: "Hiragino Kaku Gothic ProN", "Yu Gothic UI", "Meiryo", system-ui, sans-serif; line-height: 1.6; }
+    .container { max-width: 1280px; margin: 0 auto; padding: 24px 16px 48px; }
+    h1 { font-size: 22px; margin: 0 0 6px; }
+    h2 { font-size: 16px; margin: 0 0 12px; }
+    h3 { font-size: 15px; margin: 0 0 8px; }
+    p { margin: 0; }
+    .muted { color: var(--muted); font-size: 13px; }
+    .badge { display: inline-flex; align-items: center; padding: 2px 8px; border-radius: 999px; font-size: 11px; font-weight: 700; background: var(--primary-soft); color: var(--primary); }
+    .domain-nav { display: flex; flex-wrap: wrap; gap: 6px; margin: 14px 0 16px; padding: 10px 12px; background: var(--surface); border: 1px solid var(--border); border-radius: 10px; font-size: 12px; }
+    .domain-nav a { color: var(--fg); text-decoration: none; padding: 4px 10px; border-radius: 6px; border: 1px solid var(--border); background: var(--surface-muted); font-weight: 600; }
+    .domain-nav a:hover, .domain-nav a[aria-current="page"] { border-color: var(--primary); color: var(--primary); background: var(--primary-soft); }
+    [role="tablist"] { display: flex; overflow-x: auto; scroll-snap-type: inline proximity; gap: 4px; border-bottom: 1px solid var(--border); margin-bottom: 16px; }
+    [role="tab"] { flex: none; scroll-snap-align: start; position: relative; padding: 10px 16px; border: none; background: transparent; color: var(--muted); font: inherit; font-size: 13px; font-weight: 600; cursor: pointer; }
+    [role="tab"][aria-selected="true"] { color: var(--primary); }
+    [role="tab"][aria-selected="true"]::after { content: ""; position: absolute; inset: auto 0 0; border-block-end: 3px solid var(--primary); }
+    .panel-inner { background: var(--surface); border: 1px solid var(--border); border-radius: 12px; padding: 18px; }
+    .layout-main { display: grid; grid-template-columns: 1fr 360px; gap: 16px; align-items: start; }
+    @media (max-width: 960px) { .layout-main { grid-template-columns: 1fr; } }
+    .group-box { border: 1px dashed var(--border); border-radius: 10px; padding: 12px; background: var(--surface-muted); margin-bottom: 12px; }
+    .group-label { font-size: 12px; font-weight: 700; color: var(--primary); margin-bottom: 8px; }
+    .grid-2 { display: grid; grid-template-columns: repeat(2, 1fr); gap: 10px; }
+    .grid-3 { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; }
+    @media (max-width: 700px) { .grid-2, .grid-3 { grid-template-columns: 1fr; } }
+    .node-box { width: 100%; text-align: left; background: var(--surface); border: 1.5px solid var(--border); border-radius: 10px; padding: 12px; color: var(--fg); font: inherit; cursor: pointer; }
+    .node-box:hover { border-color: var(--primary); }
+    .node-box[aria-pressed="true"] { border-color: var(--primary); background: var(--primary-soft); }
+    .node-header { display: flex; justify-content: space-between; align-items: center; gap: 6px; margin-bottom: 4px; }
+    .node-title { font-weight: 700; font-size: 14px; }
+    .detail-box { position: sticky; top: 16px; background: var(--surface-muted); border: 1px solid var(--border); border-radius: 10px; padding: 16px; }
+    .points { margin: 10px 0 0; padding-left: 18px; font-size: 13px; }
+    .points li { margin-bottom: 6px; }
+    .table-wrapper { overflow: auto; max-inline-size: 100%; max-block-size: min(500px, 80vh); container-type: inline-size; border: 1px solid var(--border); border-radius: 8px; }
+    table { width: 100%; border-collapse: separate; border-spacing: 0; font-size: 13px; }
+    thead { position: sticky; inset-block-start: 0; z-index: 1; background: var(--surface-muted); }
+    th, td { padding: 10px 12px; text-align: left; border-bottom: 1px solid var(--border); vertical-align: top; }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <header>
+      <div style="display:flex; align-items:center; gap:10px; flex-wrap:wrap; margin-bottom:4px;">
+        <span class="badge">03-patient-coverage / diagram.html</span>
+        <span class="muted">患者 (`patient`) ・ 保険・公費等 (`coverage`)</span>
+      </div>
+      <h1>03 患者・受給資格 ドメイン図解</h1>
+      <p class="muted">テナント共通患者・臨床プロファイル（頭書き）・家族管理・M&amp;Aマージ/分離と、医療/介護/公費資格・レセ電レコード仕様を可視化します。</p>
+    </header>
+
+    <nav class="domain-nav" aria-label="ドメイン別図解ナビゲーション">
+      <a href="../diagram.html">全体関係図 (01〜08)</a>
+      <a href="../01-organization/diagram.html">01 組織・基盤</a>
+      <a href="../02-reference/diagram.html">02 マスタ・外部参照</a>
+      <a href="diagram.html" aria-current="page">03 患者・受給資格</a>
+      <a href="../04-prescription-dispensing/diagram.html">04 処方・調剤</a>
+      <a href="../05-pharmaceutical-care/diagram.html">05 服薬指導・薬歴・継続ケア</a>
+      <a href="../06-home-care/diagram.html">06 在宅医療・訪問契約</a>
+      <a href="../07-reimbursement-billing/diagram.html">07 算定・会計・請求</a>
+      <a href="../08-inventory-retail/diagram.html">08 在庫・物販</a>
+    </nav>
+
+    <div role="tablist" aria-label="03 患者・受給資格ビュー切替">
+      <button type="button" role="tab" id="tab-model" aria-selected="true">1. 患者・頭書き・資格モデル構成</button>
+      <button type="button" role="tab" id="tab-receden" aria-selected="false">2. レセ電患者レコード仕様 (RE/HO/KO/SN/JD/MF)</button>
+    </div>
+
+    <div role="tabpanel" id="panel-model" aria-labelledby="tab-model">
+      <div class="panel-inner layout-main">
+        <div>
+          <div class="group-box">
+            <div class="group-label">患者集約 (patient.md)：全店舗共通ID・頭書き・家族・M&amp;Aマージ/分離</div>
+            <div class="grid-2" style="margin-bottom:10px;">
+              <button type="button" class="node-box" data-node="patient_core" aria-pressed="true">
+                <span class="node-header"><span class="node-title">患者基本属性 &amp; 共通患者番号</span><span class="badge">REレコード</span></span>
+                <span class="muted">氏名・生年月日・性別・住所(麻薬時法27条必須)・外部患者番号対応</span>
+              </button>
+              <button type="button" class="node-box" data-node="head_note" aria-pressed="false">
+                <span class="node-header"><span class="node-title">臨床プロファイル（頭書き）</span><span class="badge">ConfirmedStatus</span></span>
+                <span class="muted">体重/腎機能・アレルギー確認状態・既往歴・併用薬/OTC・検査値・手帳</span>
+              </button>
+            </div>
+            <div class="grid-2">
+              <button type="button" class="node-box" data-node="family" aria-pressed="false">
+                <span class="node-header"><span class="node-title">家族関係・家族連絡先</span><span class="badge">2種分離</span></span>
+                <span class="muted">自局患者同士の続柄/同居区分 と 患者外キーパーソン（緊急/介護/代理）</span>
+              </button>
+              <button type="button" class="node-box" data-node="merge_split" aria-pressed="false">
+                <span class="node-header"><span class="node-title">M&amp;A患者マージ・誤統合分離</span><span class="badge">最新情報採用</span></span>
+                <span class="muted">親・子指定、最新基本情報採用＋頭書き合算、分離時の元所属復元</span>
+              </button>
+            </div>
+          </div>
+
+          <div class="group-box" style="margin-bottom:0;">
+            <div class="group-label">保険・公費等集約 (coverage.md)：非破壊履歴と調剤日スナップショット</div>
+            <div class="grid-3">
+              <button type="button" class="node-box" data-node="insurance" aria-pressed="false">
+                <span class="node-header"><span class="node-title">医療保険・介護保険資格</span><span class="badge">HOレコード</span></span>
+                <span class="muted">保険者番号・記号番号(38B/丸数字変換)・枝番・本人家族・特記</span>
+              </button>
+              <button type="button" class="node-box" data-node="public_exp" aria-pressed="false">
+                <span class="node-header"><span class="node-title">公費負担医療・限度額</span><span class="badge">KO / MF</span></span>
+                <span class="muted">第1〜第4公費優先順・負担者8桁/受給者7桁・窓口負担額区分(MF)</span>
+              </button>
+              <button type="button" class="node-box" data-node="snapshot" aria-pressed="false">
+                <span class="node-header"><span class="node-title">資格確認 &amp; 適用セット</span><span class="badge">SN / JD</span></span>
+                <span class="muted">オン資確認区分・月内資格変更検知・来局日31日スロット(JD)</span>
+              </button>
+            </div>
+          </div>
+        </div>
+
+        <aside class="detail-box" id="node-detail" aria-live="polite"></aside>
+      </div>
+    </div>
+
+    <div role="tabpanel" id="panel-receden" aria-labelledby="tab-receden" hidden="until-found">
+      <div class="panel-inner">
+        <h2>レセ電（調剤）患者関連レコードの記録・省略ルール</h2>
+        <div tabindex="0" role="region" aria-label="レセ電患者関連レコード仕様一覧" class="table-wrapper">
+          <table>
+            <thead>
+              <tr>
+                <th>レコード</th>
+                <th>主要データ項目</th>
+                <th>厳格な記録制約・省略ルール</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <th><code>RE</code>（レセプト共通）</th>
+                <td>氏名、生年月日、性別、年齢・所得区分特記</td>
+                <td>未就学者：<code>6歳</code> ／ 高齢受給者・後期高齢（一般・低所得）：<code>高一</code> ／ 7〜9割給付：<code>高7</code>・<code>高8</code>・<code>高9</code>。</td>
+              </tr>
+              <tr>
+                <th><code>HO</code>（保険者）</th>
+                <td>保険者番号、記号・番号、職務上の事由、受付回数、合計点数</td>
+                <td>記号＋番号は計38バイト以内、スペース・中点・ハイフン禁止、番号は単一モード。丸数字は「<code>港（２）</code>」へ変換。後期高齢者等は記号を省略。同一薬局の分割調剤2回目以降は受付回数にカウントしない。</td>
+              </tr>
+              <tr>
+                <th><code>KO</code>（公費）</th>
+                <td>公費負担者番号(8桁)、受給者番号(7桁)、受付回数、点数</td>
+                <td>複数公費併用時は第1〜第4公費の優先順位で記録する。</td>
+              </tr>
+              <tr>
+                <th><code>SN</code>（資格確認）</th>
+                <td>負担者種別(1桁)、確認区分(2桁)、確認後の保険者・記号・番号・枝番・受給者番号</td>
+                <td><strong>後期高齢者医療</strong>：記号・枝番を必ず省略。<br/><strong>公費負担医療</strong>：記号・番号・枝番を省略し受給者番号のみ記録（医療保険時は受給者番号を省略）。<br/>電子資格確認対象外：枝番を省略。</td>
+              </tr>
+              <tr>
+                <th><code>JD</code>（受診日等）</th>
+                <td>負担者種別 ＋ 1日〜31日の31スロット</td>
+                <td>処方箋受付があった日のスロットに受付区分を記録。振替・分割時に算定日情報不一致がある場合は区分コード <code>9</code>。</td>
+              </tr>
+              <tr>
+                <th><code>MF</code>（窓口負担額）</th>
+                <td>窓口負担額区分（数字2バイト固定）</td>
+                <td>未記録の場合は月途中資格喪失レセプトの「振替・分割」対象外（基準点数以下除く）となるため、原則として常時記録する。</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    const details = {
+      patient_core: {
+        title: "患者基本属性 & 外部患者番号対応",
+        badge: "patient.md / テナント共通",
+        summary: "同一テナント内の全店舗で一人の患者として一元管理するルート情報。",
+        points: [
+          "氏名（漢字・カナ：処方箋・資格確認書と一致）、生年月日、性別（RE・通則(4)ア必須）",
+          "住所は薬歴必須であり、麻薬処方・調剤時は薬剤師法第27条により処方箋・調剤録への記載も必須",
+          "レセコン共通患者番号はテナント内全店舗で共通とし、内部患者IDと対応づける",
+          "新規登録はレセコン機能が入口（処方箋なしの相談でも先に患者登録し、匿名イベントは作らない）"
+        ]
+      },
+      head_note: {
+        title: "臨床プロファイル（頭書き）",
+        badge: "patient.md / 安全監査・手帳",
+        summary: "来局を跨いで蓄積・更新され、処方監査と服薬指導の前提となる臨床情報。",
+        points: [
+          "アレルギー・副作用歴は ConfirmedStatus（未聴取 / なし確認済 / あり）を持ち、未聴取のまま監査完了不可",
+          "体重・身長・体表面積・血液型・腎機能(eGFR/Cr)・透析状況・妊娠/授乳有無",
+          "現病歴・既往歴・他科受診、併用薬・OTC(JAN/成分コード)・健康食品・相互作用飲食物(GFJ等)",
+          "お薬手帳プロファイル: 1冊活用 / 当日持参忘れ(指導料2説明・次回持参指導) / 不使用(理由必須) / 複数冊非統合(理由必須)"
+        ]
+      },
+      family: {
+        title: "家族関係・家族連絡先",
+        badge: "patient.md / 統合親子と完全分離",
+        summary: "服薬指導の相手特定、代理受取、在宅の同居同一世帯判定に用いる家族情報。",
+        points: [
+          "自局患者同士の家族: PatientFamilyRelation（続柄、同居/別居区分、期間）",
+          "患者外の家族・介護者: PatientFamilyContact（氏名、続柄、連絡先、役割［緊急連絡先・主介護者・代理受取・在宅立会］）",
+          "家族関係があることだけで別患者（特に成人家族）の薬歴閲覧を自動許可しない"
+        ]
+      },
+      merge_split: {
+        title: "M&A患者マージと誤統合分離",
+        badge: "patient.md / 非破壊統合",
+        summary: "M&A等で生じた重複患者を親（統合先）・子（統合元）で統合し、必要時に完全分離する。",
+        points: [
+          "基本情報は親・子の更新日時を比較し、最新の情報を正解として採用（統合前情報は履歴保持）",
+          "臨床プロファイル（頭書き）は統合中は親・子双方を合算して監査・参照し、登録元患者IDを維持",
+          "子の過去イベント・薬歴の患者IDは書き換えず統合関係経由で参照し、分離時は元の所属へきれいに戻す"
+        ]
+      },
+      insurance: {
+        title: "医療保険・介護保険資格 (InsuranceCoverage)",
+        badge: "coverage.md / HOレコード",
+        summary: "有効期間付きで非破壊履歴管理する医療保険・介護保険資格。",
+        points: [
+          "保険種別（社保・国保・後期高齢・介護保険・労災・自賠責等）、保険者番号、被保険者/被扶養者区分",
+          "記号・番号の合計38バイト以内、スペース・中点・ハイフン禁止、丸数字変換（港②→港（２））",
+          "介護保険の要支援・要介護度と認定有効期間を保持し、06-home-care の介護優先判定と TK 記載へ供給"
+        ]
+      },
+      public_exp: {
+        title: "公費負担医療・限度額 (PublicExpenseCoverage / CopaymentLimit)",
+        badge: "coverage.md / KO・MFレコード",
+        summary: "第1〜第4公費の優先順位・自己負担上限と窓口負担額区分を管理する。",
+        points: [
+          "法別番号(2桁)、公費負担者番号(8桁)、受給者番号(7桁)、第1〜第4公費の適用優先順",
+          "疾患限定公費における対象疾患薬剤と対象外薬剤の明細単位切り分け条件",
+          "窓口負担額区分（MFレコード：数字2バイト固定）を常時保持し、月途中資格喪失時の振替・分割に対応"
+        ]
+      },
+      snapshot: {
+        title: "資格確認記録 & 資格適用セット (CoverageSnapshot)",
+        badge: "coverage.md / SN・JDレコード",
+        summary: "調剤実施日時点で確認・適用した資格組合せの不変スナップショット。",
+        points: [
+          "処方箋原記載の保険文字列とは分離し、オン資/資格確認書で確認した有効資格と参照IDを記録",
+          "同一月内の資格変更を自動検知し、07-reimbursement-billing へレセプト分割トリガーを通知",
+          "保険/公費単位の当月来局日（1日〜31日スロット：JDレコード）を保持"
+        ]
+      }
+    };
+
+    function renderNode(key) {
+      const d = details[key];
+      if (!d) return;
+      document.getElementById("node-detail").innerHTML = `
+        <span class="badge" style="margin-bottom:8px;">${d.badge}</span>
+        <h3>${d.title}</h3>
+        <p class="muted">${d.summary}</p>
+        <ul class="points">${d.points.map(p => `<li>${p}</li>`).join("")}</ul>
+      `;
+    }
+
+    document.querySelectorAll(".node-box").forEach(btn => {
+      btn.addEventListener("click", () => {
+        document.querySelectorAll(".node-box").forEach(b => b.setAttribute("aria-pressed", "false"));
+        btn.setAttribute("aria-pressed", "true");
+        renderNode(btn.dataset.node);
+      });
+    });
+
+    const tabs = Array.from(document.querySelectorAll('[role="tab"]'));
+    const panels = Array.from(document.querySelectorAll('[role="tabpanel"]'));
+    function activateTab(selectedTab) {
+      for (const tab of tabs) tab.setAttribute("aria-selected", String(tab === selectedTab));
+      for (const panel of panels) {
+        if (panel.getAttribute("aria-labelledby") === selectedTab.id) panel.removeAttribute("hidden");
+        else panel.setAttribute("hidden", "until-found");
+      }
+      selectedTab.scrollIntoView({ block: "nearest", inline: "nearest" });
+    }
+    tabs.forEach(tab => tab.addEventListener("click", () => activateTab(tab)));
+    panels.forEach(panel => panel.addEventListener("beforematch", () => {
+      const tab = document.getElementById(panel.getAttribute("aria-labelledby"));
+      if (tab) activateTab(tab);
+    }));
+    renderNode("patient_core");
+  </script>
+</body>
+</html>

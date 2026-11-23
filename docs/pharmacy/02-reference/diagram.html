@@ -1,0 +1,323 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="color-scheme" content="light dark" />
+  <title>02 マスタ・外部参照 ドメイン図解</title>
+  <style>
+    :root {
+      color-scheme: light dark;
+      --bg-light: #f8fafc; --bg-dark: #0f172a;
+      --surface-light: #ffffff; --surface-dark: #1e293b;
+      --surface-muted-light: #f1f5f9; --surface-muted-dark: #0f172a;
+      --fg-light: #0f172a; --fg-dark: #f8fafc;
+      --muted-light: #475569; --muted-dark: #94a3b8;
+      --border-light: #cbd5e1; --border-dark: #334155;
+      --primary-light: #0284c7; --primary-dark: #38bdf8;
+      --primary-soft-light: #e0f2fe; --primary-soft-dark: #082f49;
+      --bg: var(--bg-light); --surface: var(--surface-light); --surface-muted: var(--surface-muted-light);
+      --fg: var(--fg-light); --muted: var(--muted-light); --border: var(--border-light);
+      --primary: var(--primary-light); --primary-soft: var(--primary-soft-light);
+      @media (prefers-color-scheme: dark) {
+        --bg: var(--bg-dark); --surface: var(--surface-dark); --surface-muted: var(--surface-muted-dark);
+        --fg: var(--fg-dark); --muted: var(--muted-dark); --border: var(--border-dark);
+        --primary: var(--primary-dark); --primary-soft: var(--primary-soft-dark);
+      }
+      @supports (color: light-dark(white, black)) {
+        --bg: light-dark(var(--bg-light), var(--bg-dark));
+        --surface: light-dark(var(--surface-light), var(--surface-dark));
+        --surface-muted: light-dark(var(--surface-muted-light), var(--surface-muted-dark));
+        --fg: light-dark(var(--fg-light), var(--fg-dark));
+        --muted: light-dark(var(--muted-light), var(--muted-dark));
+        --border: light-dark(var(--border-light), var(--border-dark));
+        --primary: light-dark(var(--primary-light), var(--primary-dark));
+        --primary-soft: light-dark(var(--primary-soft-light), var(--primary-soft-dark));
+      }
+    }
+    * { box-sizing: border-box; }
+    body { margin: 0; background: var(--bg); color: var(--fg); font-family: "Hiragino Kaku Gothic ProN", "Yu Gothic UI", "Meiryo", system-ui, sans-serif; line-height: 1.6; }
+    .container { max-width: 1280px; margin: 0 auto; padding: 24px 16px 48px; }
+    h1 { font-size: 22px; margin: 0 0 6px; }
+    h2 { font-size: 16px; margin: 0 0 12px; }
+    h3 { font-size: 15px; margin: 0 0 8px; }
+    p { margin: 0; }
+    .muted { color: var(--muted); font-size: 13px; }
+    .badge { display: inline-flex; align-items: center; padding: 2px 8px; border-radius: 999px; font-size: 11px; font-weight: 700; background: var(--primary-soft); color: var(--primary); }
+    .domain-nav { display: flex; flex-wrap: wrap; gap: 6px; margin: 14px 0 16px; padding: 10px 12px; background: var(--surface); border: 1px solid var(--border); border-radius: 10px; font-size: 12px; }
+    .domain-nav a { color: var(--fg); text-decoration: none; padding: 4px 10px; border-radius: 6px; border: 1px solid var(--border); background: var(--surface-muted); font-weight: 600; }
+    .domain-nav a:hover, .domain-nav a[aria-current="page"] { border-color: var(--primary); color: var(--primary); background: var(--primary-soft); }
+    [role="tablist"] { display: flex; overflow-x: auto; scroll-snap-type: inline proximity; gap: 4px; border-bottom: 1px solid var(--border); margin-bottom: 16px; }
+    [role="tab"] { flex: none; scroll-snap-align: start; position: relative; padding: 10px 16px; border: none; background: transparent; color: var(--muted); font: inherit; font-size: 13px; font-weight: 600; cursor: pointer; }
+    [role="tab"][aria-selected="true"] { color: var(--primary); }
+    [role="tab"][aria-selected="true"]::after { content: ""; position: absolute; inset: auto 0 0; border-block-end: 3px solid var(--primary); }
+    .panel-inner { background: var(--surface); border: 1px solid var(--border); border-radius: 12px; padding: 18px; }
+    .layout-main { display: grid; grid-template-columns: 1fr 360px; gap: 16px; align-items: start; }
+    @media (max-width: 960px) { .layout-main { grid-template-columns: 1fr; } }
+    .group-box { border: 1px dashed var(--border); border-radius: 10px; padding: 12px; background: var(--surface-muted); margin-bottom: 12px; }
+    .group-label { font-size: 12px; font-weight: 700; color: var(--primary); margin-bottom: 8px; }
+    .grid-2 { display: grid; grid-template-columns: repeat(2, 1fr); gap: 10px; }
+    .grid-3 { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; }
+    @media (max-width: 700px) { .grid-2, .grid-3 { grid-template-columns: 1fr; } }
+    .node-box { width: 100%; text-align: left; background: var(--surface); border: 1.5px solid var(--border); border-radius: 10px; padding: 12px; color: var(--fg); font: inherit; cursor: pointer; }
+    .node-box:hover { border-color: var(--primary); }
+    .node-box[aria-pressed="true"] { border-color: var(--primary); background: var(--primary-soft); }
+    .node-header { display: flex; justify-content: space-between; align-items: center; gap: 6px; margin-bottom: 4px; }
+    .node-title { font-weight: 700; font-size: 14px; }
+    .detail-box { position: sticky; top: 16px; background: var(--surface-muted); border: 1px solid var(--border); border-radius: 10px; padding: 16px; }
+    .points { margin: 10px 0 0; padding-left: 18px; font-size: 13px; }
+    .points li { margin-bottom: 6px; }
+    .table-wrapper { overflow: auto; max-inline-size: 100%; max-block-size: min(500px, 80vh); container-type: inline-size; border: 1px solid var(--border); border-radius: 8px; }
+    table { width: 100%; border-collapse: separate; border-spacing: 0; font-size: 13px; }
+    thead { position: sticky; inset-block-start: 0; z-index: 1; background: var(--surface-muted); }
+    th, td { padding: 10px 12px; text-align: left; border-bottom: 1px solid var(--border); vertical-align: top; }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <header>
+      <div style="display:flex; align-items:center; gap:10px; flex-wrap:wrap; margin-bottom:4px;">
+        <span class="badge">02-reference / diagram.html</span>
+        <span class="muted">医薬品情報マスタ (`medicine_catalog`) ・ 医療機関・外部関係者マスタ (`external_parties`)</span>
+      </div>
+      <h1>02 マスタ・外部参照 ドメイン図解</h1>
+      <p class="muted">一般名・調剤単位・包装単位の3層医薬品マスタ構造と、医療機関・保険医・介護施設・連携薬局マスタの境界を可視化します。</p>
+    </header>
+
+    <nav class="domain-nav" aria-label="ドメイン別図解ナビゲーション">
+      <a href="../diagram.html">全体関係図 (01〜08)</a>
+      <a href="../01-organization/diagram.html">01 組織・基盤</a>
+      <a href="diagram.html" aria-current="page">02 マスタ・外部参照</a>
+      <a href="../03-patient-coverage/diagram.html">03 患者・受給資格</a>
+      <a href="../04-prescription-dispensing/diagram.html">04 処方・調剤</a>
+      <a href="../05-pharmaceutical-care/diagram.html">05 服薬指導・薬歴・継続ケア</a>
+      <a href="../06-home-care/diagram.html">06 在宅医療・訪問契約</a>
+      <a href="../07-reimbursement-billing/diagram.html">07 算定・会計・請求</a>
+      <a href="../08-inventory-retail/diagram.html">08 在庫・物販</a>
+    </nav>
+
+    <div role="tablist" aria-label="02 マスタ・外部参照ビュー切替">
+      <button type="button" role="tab" id="tab-model" aria-selected="true">1. ドメインモデル構成図</button>
+      <button type="button" role="tab" id="tab-downstream" aria-selected="false">2. 下流コンテキストとの参照関係</button>
+    </div>
+
+    <div role="tabpanel" id="panel-model" aria-labelledby="tab-model">
+      <div class="panel-inner layout-main">
+        <div>
+          <div class="group-box">
+            <div class="group-label">医薬品情報マスタ (medicine-catalog.md)：3層分離と時点版管理</div>
+            <div class="grid-3" style="margin-bottom:10px;">
+              <button type="button" class="node-box" data-node="generic" aria-pressed="true">
+                <span class="node-header"><span class="node-title">1. 一般名・成分</span><span class="badge">処方指示層</span></span>
+                <span class="muted">一般名コード・成分・48薬効群・同効薬</span>
+              </button>
+              <button type="button" class="node-box" data-node="product" aria-pressed="false">
+                <span class="node-header"><span class="node-title">2. 調剤単位製品</span><span class="badge">調剤・算定層</span></span>
+                <span class="muted">YJコード・レセ電9桁(IY)・規格・剤形</span>
+              </button>
+              <button type="button" class="node-box" data-node="package" aria-pressed="false">
+                <span class="node-header"><span class="node-title">3. 包装・販売単位</span><span class="badge">在庫・物流層</span></span>
+                <span class="muted">GS1-128・JAN・PTP/瓶入数</span>
+              </button>
+            </div>
+            <div class="grid-3">
+              <button type="button" class="node-box" data-node="pricing" aria-pressed="false">
+                <span class="node-header"><span class="node-title">薬価・選定療養・経過措置</span><span class="badge">時点版管理</span></span>
+                <span class="muted">薬価世代・経過措置満了・長期収載品価格差</span>
+              </button>
+              <button type="button" class="node-box" data-node="safety" aria-pressed="false">
+                <span class="node-header"><span class="node-title">規制・安全プロファイル</span><span class="badge">監査根拠</span></span>
+                <span class="muted">麻薬/向精神薬/毒劇薬・ハイリスク・RMP・日数制限</span>
+              </button>
+              <button type="button" class="node-box" data-node="material" aria-pressed="false">
+                <span class="node-header"><span class="node-title">特定保険医療材料</span><span class="badge">TOレコード</span></span>
+                <span class="muted">特定器材9桁コード・請求不可衛生材料の除外</span>
+              </button>
+            </div>
+          </div>
+
+          <div class="group-box" style="margin-bottom:0;">
+            <div class="group-label">医療機関・外部関係者マスタ (external-parties.md)</div>
+            <div class="grid-2">
+              <button type="button" class="node-box" data-node="institution" aria-pressed="false">
+                <span class="node-header"><span class="node-title">保険医療機関・処方医</span><span class="badge">SHレコード</span></span>
+                <span class="muted">7桁機関コード・感染対策届出・保険医確認・麻薬施用者番号</span>
+              </button>
+              <button type="button" class="node-box" data-node="facility" aria-pressed="false">
+                <span class="node-header"><span class="node-title">介護施設・ケアマネ・連携薬局</span><span class="badge">在宅・分譲</span></span>
+                <span class="muted">施設種別(特養 vs サ高住等)・ケアマネ・在宅協力/分譲相手薬局</span>
+              </button>
+            </div>
+          </div>
+        </div>
+
+        <aside class="detail-box" id="node-detail" aria-live="polite"></aside>
+      </div>
+    </div>
+
+    <div role="tabpanel" id="panel-downstream" aria-labelledby="tab-downstream" hidden="until-found">
+      <div class="panel-inner">
+        <h2>マスタ参照による業務ガード一覧</h2>
+        <div tabindex="0" role="region" aria-label="マスタ参照による業務ガード一覧" class="table-wrapper">
+          <table>
+            <thead>
+              <tr>
+                <th>マスタ要素</th>
+                <th>参照する下流領域</th>
+                <th>適用されるドメイン不変条件・ガード</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <th>薬価経過措置満了日</th>
+                <td>04 調剤 / 07 算定・請求</td>
+                <td>調剤実施日時点で経過措置期間が満了している医薬品の選択・保険請求をブロックする。</td>
+              </tr>
+              <tr>
+                <th>長期収載品選定療養区分</th>
+                <td>04 調剤 / 05 指導 / 07 算定・会計</td>
+                <td>医療上の必要性か患者希望かを区別し、特別の料金（選定療養費）の算出および摘要欄（<code>TK</code>）理由抽出に用いる。</td>
+              </tr>
+              <tr>
+                <th>ハイリスク薬・RMP資材区分</th>
+                <td>05 服薬指導・薬歴記載</td>
+                <td>特定薬剤管理指導加算1（イ/ロ）および3（イ：RMP資材説明交付）の構造化算定根拠（<code>FeeJustification</code>）と連動する。</td>
+              </tr>
+              <tr>
+                <th>処方医の保険医フラグ・麻薬施用者番号</th>
+                <td>04 受付・処方監査</td>
+                <td>非保険医の処方箋による保険調剤をブロックし、麻薬処方時の麻薬施用者免許番号を検証する。</td>
+              </tr>
+              <tr>
+                <th>介護施設の施設種別</th>
+                <td>05 服薬指導 / 06 在宅 / 07 算定</td>
+                <td>特別養護老人ホーム（服薬管理指導料3・施設連携加算）と自宅・有料老人ホーム等（訪問薬剤管理指導料／居宅療養管理指導費）の算定区分を分岐させる。</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    const details = {
+      generic: {
+        title: "一般名・成分 (GenericDrugConcept)",
+        badge: "medicine-catalog.md / 第1層",
+        summary: "処方箋の一般名処方指示や成分レベルの薬学的監査に用いる概念。",
+        points: [
+          "一般名コード、成分名、48薬効群該当有無（地域支援加算の備蓄要件判定用）",
+          "同効薬グループ・標準用法用量範囲を保持し、重複投薬・過量投与監査の基準とする",
+          "配下の調剤単位製品（先発品・後発品・規格違い・類似別剤形）を束ねる"
+        ]
+      },
+      product: {
+        title: "調剤単位製品 (DispensingProduct)",
+        badge: "medicine-catalog.md / 第2層",
+        summary: "実際に調剤・算定・レセ電出力（IY）で使用する調剤単位（1錠・1g・1mL等）の製品マスタ。",
+        points: [
+          "YJコードおよびレセプト電算処理システム用コード（9桁）を保持",
+          "剤形区分（内服・湯薬・滴剤・屯服・浸煎・外用・鎮痛消炎貼付剤・注射等）によりレセ電IYの用量表現を決定",
+          "含量規格変更・類似別剤形変更時の薬剤料比較（変更後が高額にならないこと）の基準"
+        ]
+      },
+      package: {
+        title: "包装・販売単位 (PackageUnit)",
+        badge: "medicine-catalog.md / 第3層",
+        summary: "医薬品卸への発注・入庫検品・ピッキングバーコード照合・物販で用いる物流包装単位。",
+        points: [
+          "GS1-128コード（調剤包装単位・販売包装単位）およびJANコードを保持",
+          "包装形態（100錠PTP・バラ500錠・瓶等）と調剤単位への換算入数を保持",
+          "08-inventory-retail のロット・入出庫管理と直結"
+        ]
+      },
+      pricing: {
+        title: "薬価・選定療養・経過措置 (DrugPricingVersion)",
+        badge: "medicine-catalog.md / 有効期間管理",
+        summary: "調剤実施日時点（as_of）で有効な薬価・経過措置・選定療養区分を供給する。",
+        points: [
+          "半開区間 [valid_from, valid_to) で薬価改定履歴を管理",
+          "経過措置満了日を過ぎた医薬品の保険調剤確定をブロック",
+          "先発品・後発品・バイオ後続品・長期収載品（選定療養対象）区分を保持"
+        ]
+      },
+      safety: {
+        title: "規制・安全管理プロファイル (DrugSafetyProfile)",
+        badge: "medicine-catalog.md / 監査・帳簿連携",
+        summary: "処方監査・特殊加算・規制薬品受払帳簿の根拠となる安全性・法的規制属性。",
+        points: [
+          "麻薬・向精神薬（1〜3種）・覚醒剤原料・毒薬・劇薬・生物由来製品区分",
+          "ハイリスク薬（特定薬剤管理指導加算1対象）、RMP患者向け資材有無（同加算3イ対象）",
+          "投与日数制限（14日・30日・90日）、禁忌・相互作用、長期保存困難（分割調剤注9根拠）"
+        ]
+      },
+      material: {
+        title: "特定保険医療材料 (SpecificMedicalMaterial)",
+        badge: "medicine-catalog.md / TOレコード",
+        summary: "保険調剤として算定・請求可能な特定器材マスタ。",
+        points: [
+          "9桁の特定器材コード・所定価格・算定要件を保持",
+          "調剤報酬として請求できない衛生材料や容器は本マスタから除外し誤請求を防ぐ"
+        ]
+      },
+      institution: {
+        title: "保険医療機関・処方医 (MedicalInstitution / PrescribingPhysician)",
+        badge: "external-parties.md / SHレコード",
+        summary: "処方箋発行元の医療機関と処方医の適格性・連携属性を管理する。",
+        points: [
+          "都道府県番号(2桁)・点数表区分(1桁)・医療機関コード(7桁)、所在地、連絡先",
+          "対象医療機関の外来感染対策向上加算・感染対策向上加算届出状態（特別基本料Aでの連携強化加算判定用）",
+          "処方医の保険医確認フラグ（非保険医の保険調剤ブロック）と麻薬施用者免許番号"
+        ]
+      },
+      facility: {
+        title: "介護施設・ケアマネ・外部連携薬局",
+        badge: "external-parties.md / 在宅・地域連携",
+        summary: "在宅訪問先施設、多職種連携先、および医薬品供給不安時の連携薬局マスタ。",
+        points: [
+          "介護施設種別（特別養護老人ホーム vs 有料老人ホーム/サ高住等）と直線距離16km判定用の位置情報",
+          "居宅介護支援事業所・担当ケアマネジャー連絡先（居宅療養管理指導の報告先）",
+          "在宅協力薬局および医薬品分譲・在庫案内先薬局（別紙様式4-1/4-2、同一グループ外フラグ）"
+        ]
+      }
+    };
+
+    function renderNode(key) {
+      const d = details[key];
+      if (!d) return;
+      document.getElementById("node-detail").innerHTML = `
+        <span class="badge" style="margin-bottom:8px;">${d.badge}</span>
+        <h3>${d.title}</h3>
+        <p class="muted">${d.summary}</p>
+        <ul class="points">${d.points.map(p => `<li>${p}</li>`).join("")}</ul>
+      `;
+    }
+
+    document.querySelectorAll(".node-box").forEach(btn => {
+      btn.addEventListener("click", () => {
+        document.querySelectorAll(".node-box").forEach(b => b.setAttribute("aria-pressed", "false"));
+        btn.setAttribute("aria-pressed", "true");
+        renderNode(btn.dataset.node);
+      });
+    });
+
+    const tabs = Array.from(document.querySelectorAll('[role="tab"]'));
+    const panels = Array.from(document.querySelectorAll('[role="tabpanel"]'));
+    function activateTab(selectedTab) {
+      for (const tab of tabs) tab.setAttribute("aria-selected", String(tab === selectedTab));
+      for (const panel of panels) {
+        if (panel.getAttribute("aria-labelledby") === selectedTab.id) panel.removeAttribute("hidden");
+        else panel.setAttribute("hidden", "until-found");
+      }
+      selectedTab.scrollIntoView({ block: "nearest", inline: "nearest" });
+    }
+    tabs.forEach(tab => tab.addEventListener("click", () => activateTab(tab)));
+    panels.forEach(panel => panel.addEventListener("beforematch", () => {
+      const tab = document.getElementById(panel.getAttribute("aria-labelledby"));
+      if (tab) activateTab(tab);
+    }));
+    renderNode("generic");
+  </script>
+</body>
+</html>
