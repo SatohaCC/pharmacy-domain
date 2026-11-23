@@ -698,3 +698,11 @@ PR #6 のコードレビューで指摘された以下の2点を修正した。
 
 - **薬局提出用形式（`RECEIPTY.CYO`）と機関・保険者向け情報ファイル形式（CSV）の分離（[billing-claim.md](07-reimbursement-billing/billing-claim.md)・[07-reimbursement-billing/diagram.html](07-reimbursement-billing/diagram.html)・[diagram.html](diagram.html)）**: 薬局からの提出用シリアライズを `RECEIPTY.CYO`（ファイル先頭に `YK` 1件、各レセプトは `RE`〜`ST`、末尾に `GO`）として明確に分離し、`14_RECODEINFO_PHA.CSV` / `24_RECODEINFO_PHA.CSV`（各レセプト先頭 `MN` → `YK`）は審査支払機関・保険者からの取込/突合用フォーマットとして位置づけた。
 - **在宅医療における末期悪性腫瘍等の医療保険例外の限定（[home-care.md](06-home-care/home-care.md)・[06-home-care/diagram.html](06-home-care/diagram.html)）**: 要介護・要支援認定患者が自宅等に居住している場合は末期悪性腫瘍等であっても計画的な訪問薬剤管理は介護保険（居宅療養管理指導）優先とし、末期悪性腫瘍の計画訪問特例は特別養護老人ホーム等の入所時に限定した上で、自宅患者の医療保険適用は緊急訪問（15の2）・退院時共同指導（15の4）等の個別サービスに限定する分岐・記述へ修正した。
+
+
+## 医療情報システム アクセスログ・証跡管理要件（`access_log_requirements_spec.md`）の反映（2026-11-23）
+
+[access_log_requirements_spec.md](../reference/NotebookLM/access_log_requirements_spec.md)（医療情報システムの安全管理に関するガイドライン第7.0版、電子処方箋技術解説書等）を精査し、以下の要件を仕様へ反映した。
+
+- **アクセスログ・監査基盤要件（[tenant-access.md](01-organization/tenant-access.md)・[01-organization/diagram.html](01-organization/diagram.html)・[diagram.html](diagram.html)）**: ガイドライン第7.0版へ更新し、クライアント/サーバ双方での二要素認証原則実装（8文字以上 / なし時13文字以上）、ID台帳・定期棚卸し、端末OS管理者権限非要求、保守作業専用アカウントのアクセスログ、NTP標準時刻同期と Append-only 改ざん防止、外部接続先ログの一元集約、不審アクセス検知ビュー（営業時間外・退職予定/退職者ID・未承認代行滞留・大量患者閲覧・外部侵入痕跡）と緊急アラート、技術的監査計画と企画管理者への報告を追記。
+- **薬歴確定・更新証跡の強化（[medication-history.md](05-pharmaceutical-care/medication-history.md)）**: 作成者ID・確定者ID・NTP同期タイムスタンプ・代行入力管理情報（誰の代行を誰がいつ行ったかの都度記録）・更新前後スナップショットと更新の順序性を明記し、業務ドメインの真正性履歴とセキュリティアクセスログの二重保全を定義。
