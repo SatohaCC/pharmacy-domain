@@ -1,22 +1,33 @@
 """アプリケーション層の公開例外契約。"""
 
 import re
+from collections.abc import Mapping
+from types import MappingProxyType
 from typing import Literal
 
-from app.domain.foundation.exceptions import (
-    DomainAuthorizationError,
-    DomainConflictError,
-    DomainError,
-    DomainNotFoundError,
-    DomainValidationError,
-    ErrorDetails,
-    validate_error_details,
-)
-
+type ErrorDetailScalar = str | int | float | bool | None
+type ErrorDetails = Mapping[str, ErrorDetailScalar]
 type StateImpact = Literal["unchanged", "draft_preserved", "unknown"]
 
 _ERROR_CODE_PATTERN = re.compile(r"^[A-Z][A-Z0-9_]*$")
+_DETAIL_KEY_PATTERN = re.compile(r"^[a-z][a-z0-9_]*$")
+_CONTROL_CHAR_PATTERN = re.compile(r"[\x00-\x1f\x7f]")
 _VALID_STATE_IMPACTS: frozenset[str] = frozenset({"unchanged", "draft_preserved", "unknown"})
+
+
+def _validate_error_details(details: ErrorDetails | None) -> ErrorDetails:
+    if not details:
+        return MappingProxyType({})
+    normalized: dict[str, ErrorDetailScalar] = {}
+    for key, value in details.items():
+        if not isinstance(key, str) or not _DETAIL_KEY_PATTERN.fullmatch(key):
+            raise ValueError("details のキー形式が不正です。")
+        if value is not None and not isinstance(value, bool | int | float | str):
+            raise TypeError("details の値にはプリミティブ型のみ指定できます。")
+        if isinstance(value, str) and _CONTROL_CHAR_PATTERN.search(value):
+            raise ValueError("details の文字列値に制御文字は含められません。")
+        normalized[key] = value
+    return MappingProxyType(normalized)
 
 
 class ApplicationError(Exception):
@@ -48,7 +59,7 @@ class ApplicationError(Exception):
         self._message = message
         self._reason = reason if reason is not None else message
         self._action_hint = action_hint
-        self._details = validate_error_details(details)
+        self._details = _validate_error_details(details)
         self._state_impact: StateImpact = state_impact
 
     @property
@@ -198,56 +209,3 @@ class ApplicationConflictError(ApplicationError):
             details=details,
             state_impact=state_impact,
         )
-
-
-def from_domain_error(
-    exc: DomainError,
-    *,
-    state_impact: StateImpact = "unchanged",
-) -> ApplicationError:
-    """ドメイン例外をアプリケーション層の公開例外へ変換する。"""
-    if isinstance(exc, DomainNotFoundError):
-        return ApplicationNotFoundError(
-            exc.message,
-            code=exc.code,
-            reason=exc.reason,
-            action_hint=exc.action_hint,
-            details=exc.details,
-            state_impact=state_impact,
-        )
-    if isinstance(exc, DomainConflictError):
-        return ApplicationConflictError(
-            exc.message,
-            code=exc.code,
-            reason=exc.reason,
-            action_hint=exc.action_hint,
-            details=exc.details,
-            state_impact=state_impact,
-        )
-    if isinstance(exc, DomainAuthorizationError):
-        return ApplicationAuthorizationError(
-            exc.message,
-            code=exc.code,
-            reason=exc.reason,
-            action_hint=exc.action_hint,
-            details=exc.details,
-            state_impact=state_impact,
-            conceal_as_not_found=exc.conceal_as_not_found,
-        )
-    if isinstance(exc, DomainValidationError):
-        return ApplicationValidationError(
-            exc.message,
-            code=exc.code,
-            reason=exc.reason,
-            action_hint=exc.action_hint,
-            details=exc.details,
-            state_impact=state_impact,
-        )
-    return ApplicationError(
-        exc.message,
-        code=exc.code,
-        reason=exc.reason,
-        action_hint=exc.action_hint,
-        details=exc.details,
-        state_impact=state_impact,
-    )

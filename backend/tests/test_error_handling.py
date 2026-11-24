@@ -13,6 +13,7 @@ from fastapi import FastAPI, HTTPException
 from fastapi.testclient import TestClient
 from pydantic import BaseModel
 
+from app.application.error_mappers import from_domain_error
 from app.application.errors import (
     ApplicationAuthorizationError,
     ApplicationBadRequestError,
@@ -20,7 +21,6 @@ from app.application.errors import (
     ApplicationError,
     ApplicationNotFoundError,
     ApplicationValidationError,
-    from_domain_error,
 )
 from app.domain.foundation.exceptions import (
     DomainAuthorizationError,
@@ -325,6 +325,9 @@ def test_error_modules_respect_onion_layer_boundaries() -> None:
     assert all(
         not mod.startswith(("app.", "fastapi", "pydantic", "sqlalchemy")) for mod in domain_imports
     )
+
+    app_error_imports = imported_modules("app/application/errors.py")
+    assert all(not mod.startswith("app.domain") for mod in app_error_imports)
 
     for presentation_file in (
         "app/presentation/dto/error.py",
