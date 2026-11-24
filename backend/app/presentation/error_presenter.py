@@ -30,13 +30,14 @@ _REASSURANCE_BY_STATE_IMPACT: dict[StateImpact, str] = {
 
 @dataclass(frozen=True, slots=True)
 class ErrorPresentationSpec:
-    """エラーコード単位の5要素表示仕様。"""
+    """エラーコード単位の5要素表示仕様および境界ポリシー。"""
 
     title: str
     how_to_fix: str
     way_out: str = _DEFAULT_WAY_OUT
     reassurance: str | None = None
     actions: tuple[ErrorAction, ...] | None = None
+    conceal_as_not_found: bool = False
 
 
 _INPUT_ACTIONS = (
@@ -80,6 +81,18 @@ _ERROR_SPECS: dict[str, ErrorPresentationSpec] = {
         how_to_fix="記号と番号から空白や記号を取り除いて、再度入力してください。",
         way_out="資格確認書の記載が特殊な場合は、サポート窓口へお問い合わせください。",
         actions=_INPUT_ACTIONS,
+    ),
+    "CROSS_TENANT_ACCESS": ErrorPresentationSpec(
+        title="対象のデータが見つかりませんでした",
+        how_to_fix="URL や対象が正しいかご確認のうえ、一覧から再度お選びください。",
+        actions=_NOT_FOUND_ACTIONS,
+        conceal_as_not_found=True,
+    ),
+    "TENANT_FORBIDDEN": ErrorPresentationSpec(
+        title="対象のデータが見つかりませんでした",
+        how_to_fix="URL や対象が正しいかご確認のうえ、一覧から再度お選びください。",
+        actions=_NOT_FOUND_ACTIONS,
+        conceal_as_not_found=True,
     ),
     # 法人コンテキストカタログ
     "CORPORATION_NOT_FOUND": ErrorPresentationSpec(
@@ -180,19 +193,24 @@ def _to_details_dict(exc: ApplicationError) -> dict[str, ErrorDetailScalar] | No
 
 def present_application_error(exc: ApplicationError) -> tuple[int, ErrorResponse]:
     """ApplicationError を HTTP ステータスと 5要素 ErrorResponse へ変換する。"""
-    if isinstance(exc, ApplicationAuthorizationError) and exc.conceal_as_not_found:
+    spec = _ERROR_SPECS.get(exc.code)
+    if (
+        isinstance(exc, ApplicationAuthorizationError)
+        and spec is not None
+        and spec.conceal_as_not_found
+    ):
         reason = "指定されたリソースが見つかりません。"
         return (
             404,
             ErrorResponse(
                 code="NOT_FOUND",
                 detail=reason,
-                title="対象のデータが見つかりませんでした",
+                title=spec.title,
                 reassurance=_REASSURANCE_BY_STATE_IMPACT["unchanged"],
                 reason=reason,
-                how_to_fix="URL や対象が正しいかご確認のうえ、一覧から再度お選びください。",
-                way_out=_DEFAULT_WAY_OUT,
-                actions=list(_NOT_FOUND_ACTIONS),
+                how_to_fix=spec.how_to_fix,
+                way_out=spec.way_out,
+                actions=list(spec.actions or _NOT_FOUND_ACTIONS),
                 details=None,
             ),
         )
@@ -200,23 +218,22 @@ def present_application_error(exc: ApplicationError) -> tuple[int, ErrorResponse
     status_code, default_title, default_fix, default_actions = (
         _resolve_application_category_defaults(exc)
     )
-    spec = _ERROR_SPECS.get(exc.code)
     reassurance = (
         spec.reassurance
         if spec is not None and spec.reassurance is not None
         else _REASSURANCE_BY_STATE_IMPACT[exc.state_impact]
     )
-    how_to_fix = exc.action_hint or (spec.how_to_fix if spec is not None else default_fix)
+    how_to_fix = spec.how_to_fix if spec is not None else default_fix
     actions = spec.actions if spec is not None and spec.actions is not None else default_actions
 
     return (
         status_code,
         ErrorResponse(
             code=exc.code,
-            detail=exc.reason,
+            detail=exc.message,
             title=spec.title if spec is not None else default_title,
             reassurance=reassurance,
-            reason=exc.reason,
+            reason=exc.message,
             how_to_fix=how_to_fix,
             way_out=spec.way_out if spec is not None else _DEFAULT_WAY_OUT,
             actions=list(actions),

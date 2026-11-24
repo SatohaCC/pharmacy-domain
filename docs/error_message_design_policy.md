@@ -25,9 +25,9 @@
 
 | 層 | 責務 | 扱う情報 |
 | :--- | :--- | :--- |
-| **ドメイン層**<br>(`app/domain/foundation/exceptions.py`) | **何が・なぜルール違反か**を構造化して伝える。 | `code`（機械可読コード）、`reason`（業務ルール上の理由）、`action_hint`（修正の方向性）、安全な `details`（対象フィールド名等のスカラー値）、IDOR秘匿要否（`conceal_as_not_found`）。 |
-| **アプリケーション層**<br>(`app/application/errors.py`, `error_mappers.py`) | 公開例外契約（`ApplicationError` 階層）を定義し、`error_mappers.py` でドメイン例外を変換してトランザクション・保存状態の文脈を付与する（`errors.py` 自体は `app.domain` へ依存させず、`presentation` からの推移的依存を防ぐ）。 | `ApplicationError` 階層、`state_impact`（`"unchanged"` / `"draft_preserved"` / `"unknown"`）、`conceal_as_not_found`。 |
-| **プレゼンテーション層**<br>(`app/presentation/error_presenter.py`, `error_handlers.py`, `dto/error.py`) | アプリ例外＋リクエスト検証（422）・HTTP例外・予期しない例外（500）を統一 **5要素 `ErrorResponse`** へ組み立てる。 | `title`（見出し）、`reassurance`（安心材料）、`how_to_fix`（対処法）、`way_out`（連絡先）、エラー種別に応じた `actions`（ボタン）、`detail` / `errors`（後方互換）、およびサニタイズ。 |
+| **ドメイン層**<br>(`app/domain/foundation/exceptions.py`) | **何が・なぜルール違反か**を最小構造で伝える。 | `message`（業務ルール違反の事実）、`code`（機械可読コード）、安全な `details`（対象フィールド名等のスカラー値）。各サブクラスは `default_code` のみ宣言する。 |
+| **アプリケーション層**<br>(`app/application/errors.py`, `error_mappers.py`) | 公開例外契約（`ApplicationError` 階層）を定義し、`error_mappers.py` でドメイン例外を変換してトランザクション・保存状態の文脈を付与する（`errors.py` 自体は `app.domain` へ依存させず、`presentation` からの推移的依存を防ぐ）。 | `ApplicationError` 階層、`state_impact`（`"unchanged"` / `"draft_preserved"` / `"unknown"`）。 |
+| **プレゼンテーション層**<br>(`app/presentation/error_presenter.py`, `error_handlers.py`, `dto/error.py`) | アプリ例外＋リクエスト検証（422）・HTTP例外・予期しない例外（500）を統一 **5要素 `ErrorResponse`** へ組み立てる。 | `title`（見出し）、`reassurance`（安心材料）、`how_to_fix`（対処案内カタログ）、`way_out`（連絡先）、エラー種別に応じた `actions`（ボタン）、IDOR秘匿ポリシー（`conceal_as_not_found`）、`detail` / `errors`（後方互換）、およびサニタイズ。 |
 
 ### 例外クラスの使い分け
 
@@ -53,17 +53,15 @@
 
 1. **例外メッセージに PII・生入力値・生の識別子を絶対に埋め込まない**
    * **NG例**: `f"患者 {patient_name} の保険証番号 '{raw_number}' は不正です"`、`f"法人が見つかりません: {corporation_id}"`
-   * **OK例**: `reason="被保険者番号に空白やハイフンは使用できません。"`, `details={"field": "insurance_number"}`
+   * **OK例**: `message="被保険者番号に空白やハイフンは使用できません。"`, `details={"field": "insurance_number"}`
    * プリミティブ層で `MaskedPiiText` 等の `__str__` をマスク（`"***"`）化しておき、万が一フォーマット文字列に渡されても平文が漏れないようにする。
-   * 例外クラス自身の防御エラー（不正な `code` や不正な `details` キーを検出した `ValueError`）にも、渡された生の値を文字列埋め込みしない。
-2. **`details` の型とキーの厳格化**
-   * `details` は平坦な構造とし、キーは Allowlist（`^[a-z][a-z0-9_]*$`）、値は安全なスカラー型（`str | int | float | bool | None`）に制限する。ネストしたオブジェクト・配列・制御文字（`\x00-\x1f`, `\x7f`）の混入を拒否し、不変マッピング（`MappingProxyType`）として保持する。
+2. **例外生成時は落とさずサニタイズ＆フォールバックする（500化防止）**
+   * 例外クラスが呼ばれる時点はすでに異常系であるため、不正な `code`・空 `message`・不正な `details` を理由に `ValueError` / `TypeError` を送出すると、本来の業務エラーが握りつぶされて 500 エラーに化ける。
+   * そのため例外生成時は落とさず、空 `message` は既定文言へフォールバック、不正 `code`（`^[A-Z][A-Z0-9_]*$` 不一致）は `default_code` へフォールバック、`details` の不正キー（`^[a-z][a-z0-9_]*$` 不一致）・非スカラー・非有限 `float` は除外、文字列中の制御文字（`\x00-\x1f`, `\x7f`）は除去して `MappingProxyType` として保持する。厳格な検証は型ヒントとテストで担保する。
 3. **システム例外（500系）の完全サニタイズ**
    * DB接続エラー、SQL構文、ファイルパス、スタックトレースなどの予期しない例外はサーバー内部のセキュアログ（`X-Request-ID` 相関付き）にのみ記録し、ユーザー向けレスポンスでは固定の安全な文言へ変換する。5xx 系の `HTTPException` でも生 `detail` をそのまま露出しない。
 4. **IDOR対策（存在有無の推測防止）**
-   * 他テナント・他店舗や閲覧権限のない M&A 境界越えの `DomainAuthorizationError` / `ApplicationAuthorizationError` に `conceal_as_not_found=True` を指定した場合、プレゼンテーション層で `404 Not Found`（固定文言・`code="NOT_FOUND"`・`details=None`）へ統一マッピングし、リソースの存在有無を推測させない。
-5. **制御文字の排除**
-   * ログ出力やレスポンスに含める識別子・`code` は Allowlist（`^[A-Z][A-Z0-9_]*$`）で検証し、ログ注入（Log Injection）を防ぐ。
+   * 他テナント・他店舗や閲覧権限のない M&A 境界越えの認可エラー（`CROSS_TENANT_ACCESS` / `TENANT_FORBIDDEN` 等）は、プレゼンテーション層（`ErrorPresentationSpec.conceal_as_not_found=True`）のポリシーにより `404 Not Found`（固定文言・`code="NOT_FOUND"`・`details=None`）へ統一マッピングし、リソースの存在有無を推測させない。
 
 ---
 
@@ -85,133 +83,46 @@
 ```python
 """ドメイン層の基底例外定義。"""
 
-import re
-from collections.abc import Mapping
-from types import MappingProxyType
-
-type ErrorDetailScalar = str | int | float | bool | None
-type ErrorDetails = Mapping[str, ErrorDetailScalar]
-
-_ERROR_CODE_PATTERN = re.compile(r"^[A-Z][A-Z0-9_]*$")
-_DETAIL_KEY_PATTERN = re.compile(r"^[a-z][a-z0-9_]*$")
-_CONTROL_CHAR_PATTERN = re.compile(r"[\x00-\x1f\x7f]")
-
-
-def validate_error_details(details: ErrorDetails | None) -> ErrorDetails:
-    """安全なスカラー値とキーのみを許可し、不変マッピングを返す。"""
-    if not details:
-        return MappingProxyType({})
-    normalized: dict[str, ErrorDetailScalar] = {}
-    for key, value in details.items():
-        if not isinstance(key, str) or not _DETAIL_KEY_PATTERN.fullmatch(key):
-            raise ValueError("details のキー形式が不正です。")
-        if value is not None and not isinstance(value, bool | int | float | str):
-            raise TypeError("details の値にはプリミティブ型のみ指定できます。")
-        if isinstance(value, str) and _CONTROL_CHAR_PATTERN.search(value):
-            raise ValueError("details の文字列値に制御文字は含められません。")
-        normalized[key] = value
-    return MappingProxyType(normalized)
+from typing import ClassVar
 
 
 class DomainError(Exception):
     """ドメインルール違反の基底例外（UI都合やPIIを含めない）。"""
 
+    default_code: ClassVar[str] = "DOMAIN_ERROR"
+
     def __init__(
         self,
         message: str,
         *,
-        code: str = "DOMAIN_ERROR",
-        reason: str | None = None,
-        action_hint: str | None = None,
+        code: str | None = None,
         details: ErrorDetails | None = None,
     ) -> None:
-        if not message or not message.strip():
-            raise ValueError("例外メッセージは空にできません。")
-        if not _ERROR_CODE_PATTERN.fullmatch(code):
-            raise ValueError("不正なエラーコード形式です。")
-        if reason is not None and not reason.strip():
-            raise ValueError("reason は空にできません。")
-        if action_hint is not None and not action_hint.strip():
-            raise ValueError("action_hint は空にできません。")
+        resolved_message = _resolve_message(message, _DEFAULT_DOMAIN_MESSAGE)
+        super().__init__(resolved_message)
+        self._code = _resolve_code(code, self.default_code)
+        self._message = resolved_message
+        self._details = sanitize_error_details(details)
 
-        super().__init__(message)
-        self._code = code
-        self._message = message
-        self._reason = reason if reason is not None else message
-        self._action_hint = action_hint
-        self._details = validate_error_details(details)
 
-    @property
-    def code(self) -> str:
-        return self._code
+class DomainValidationError(DomainError):
+    """値や不変条件の検証失敗を表すドメイン例外。"""
 
-    @property
-    def message(self) -> str:
-        return self._message
-
-    @property
-    def reason(self) -> str:
-        return self._reason
-
-    @property
-    def action_hint(self) -> str | None:
-        return self._action_hint
-
-    @property
-    def details(self) -> ErrorDetails:
-        return self._details
+    default_code: ClassVar[str] = "VALIDATION_ERROR"
 
 
 class DomainAuthorizationError(DomainError):
     """ロール・資格・テナント境界などドメイン上の認可違反を表す例外。"""
 
-    def __init__(
-        self,
-        message: str,
-        *,
-        code: str = "FORBIDDEN",
-        reason: str | None = None,
-        action_hint: str | None = None,
-        details: ErrorDetails | None = None,
-        conceal_as_not_found: bool = False,
-    ) -> None:
-        super().__init__(
-            message,
-            code=code,
-            reason=reason,
-            action_hint=action_hint,
-            details=details,
-        )
-        self._conceal_as_not_found = conceal_as_not_found
-
-    @property
-    def conceal_as_not_found(self) -> bool:
-        return self._conceal_as_not_found
+    default_code: ClassVar[str] = "FORBIDDEN"
 ```
 
-### 5-2. アプリケーション層（`app/application/error_mappers.py`）
+### 5-2. アプリケーション層（`app/application/errors.py`, `error_mappers.py`）
 
 `app/application/errors.py` は `app.domain` へ依存しない純粋な公開例外契約のみを持ち、ドメイン例外からの変換は `app/application/error_mappers.py` に分離する（`import-linter` による `presentation` → `domain` の推移的依存禁止を満たすため）。
 
 ```python
 """ドメイン例外からアプリケーション層公開例外への変換ヘルパー。"""
-
-from app.application.errors import (
-    ApplicationAuthorizationError,
-    ApplicationConflictError,
-    ApplicationError,
-    ApplicationNotFoundError,
-    ApplicationValidationError,
-    StateImpact,
-)
-from app.domain.foundation.exceptions import (
-    DomainAuthorizationError,
-    DomainConflictError,
-    DomainError,
-    DomainNotFoundError,
-    DomainValidationError,
-)
-
 
 def from_domain_error(
     exc: DomainError,
@@ -223,49 +134,12 @@ def from_domain_error(
         return ApplicationNotFoundError(
             exc.message,
             code=exc.code,
-            reason=exc.reason,
-            action_hint=exc.action_hint,
             details=exc.details,
             state_impact=state_impact,
         )
-    if isinstance(exc, DomainConflictError):
-        return ApplicationConflictError(
-            exc.message,
-            code=exc.code,
-            reason=exc.reason,
-            action_hint=exc.action_hint,
-            details=exc.details,
-            state_impact=state_impact,
-        )
-    if isinstance(exc, DomainAuthorizationError):
-        return ApplicationAuthorizationError(
-            exc.message,
-            code=exc.code,
-            reason=exc.reason,
-            action_hint=exc.action_hint,
-            details=exc.details,
-            state_impact=state_impact,
-            conceal_as_not_found=exc.conceal_as_not_found,
-        )
-    if isinstance(exc, DomainValidationError):
-        return ApplicationValidationError(
-            exc.message,
-            code=exc.code,
-            reason=exc.reason,
-            action_hint=exc.action_hint,
-            details=exc.details,
-            state_impact=state_impact,
-        )
-    return ApplicationError(
-        exc.message,
-        code=exc.code,
-        reason=exc.reason,
-        action_hint=exc.action_hint,
-        details=exc.details,
-        state_impact=state_impact,
-    )
+    ...
 ```
 
 ### 5-3. プレゼンテーション層（`app/presentation/error_presenter.py`）
 
-プレゼンテーション層は `ApplicationError` のみを参照し（`DomainError` を直接 import しない）、IDOR 秘匿（`conceal_as_not_found` → `404 NOT_FOUND`）・`state_impact` に基づく安全な `reassurance`・コード別カタログ・カテゴリ別 `actions` を組み合わせて `ErrorResponse` を返す。
+プレゼンテーション層は `ApplicationError` のみを参照し（`DomainError` を直接 import しない）、IDOR 秘匿ポリシー（`ErrorPresentationSpec.conceal_as_not_found` → `404 NOT_FOUND`）・`state_impact` に基づく安全な `reassurance`・コード別カタログ（`title` / `how_to_fix` / `way_out`）・カテゴリ別 `actions` を組み合わせて `ErrorResponse` を返す。

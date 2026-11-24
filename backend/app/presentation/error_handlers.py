@@ -112,7 +112,10 @@ def register_exception_handlers(
     async def handle_unexpected_error(request: Request, _exc: Exception) -> JSONResponse:
         request_id = getattr(request.state, "request_id", None)
         if not isinstance(request_id, str) or not request_id:
-            request_id = request_id_context.get()
+            try:
+                request_id = request_id_context.get()
+            except LookupError:
+                request_id = "-"
         token = request_id_context.set(request_id)
         try:
             logger.exception("未処理の例外が発生しました")
