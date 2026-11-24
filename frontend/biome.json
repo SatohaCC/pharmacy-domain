@@ -131,13 +131,7 @@
               "options": {
                 "patterns": [
                   {
-                    "group": [
-                      "@ui-sdk/*",
-                      "@tanstack/react-query",
-                      "@/shared/ui/internal/*",
-                      "zod",
-                      "zod/**"
-                    ],
+                    "group": ["@ui-sdk/*", "@tanstack/react-query", "@/shared/ui/internal/*"],
                     "message": "Import UI primitives from @/shared/ui and non-UI library adapters from @/shared/lib."
                   }
                 ]
