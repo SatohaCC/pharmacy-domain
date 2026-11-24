@@ -1,6 +1,7 @@
+import { z } from "zod";
 import { ApiError, apiRequest } from "@/shared/lib/api/apiClient";
 import type { components } from "@/shared/lib/api/schema";
-import { parseZodResponse, z } from "@/shared/lib/api/zodResponse";
+import { parseZodResponse } from "@/shared/lib/api/zodResponse";
 
 export type TaskItem = components["schemas"]["TaskResponse"];
 export type TaskList = components["schemas"]["TaskListResponse"];

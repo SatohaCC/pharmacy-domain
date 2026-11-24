@@ -6,8 +6,8 @@
 
 - `shared/ui`: アトミックな最小部品。`@ui-sdk/react` などのヘッドレス UI ライブラリの import はここに閉じ込める。
 - `shared/components`: `shared/ui` を組み合わせた複合 Presentational 部品。`shared/ui` と `shared/styles` のみに依存する。
-- `shared/lib`: 非 UI 系の外部ライブラリ（`@tanstack/react-query` など）のアダプタ・ラッパーを閉じ込める層。`features/*` や `app/*` から外部ライブラリを直接 import しない。
-- `features/*` / `app/*`: データ取得・状態管理・ルーティングを担う。基本部品は `shared/ui`、複合部品は `shared/components`、非 UI 系ライブラリは `shared/lib` のアダプタを使う。`@ui-sdk/*` は直接 import しない。
+- `shared/lib`: 非 UI 系の外部ライブラリ（`@tanstack/react-query` など）のアダプタ・ラッパーを閉じ込める層。`features/*` や `app/*` から外部ライブラリを直接 import しない（スキーマ定義に使う `zod` は例外として直接 import を許可する）。
+- `features/*` / `app/*`: データ取得・状態管理・ルーティングを担う。基本部品は `shared/ui`、複合部品は `shared/components`、非 UI 系ライブラリは `shared/lib` のアダプタを使う（`zod` のみ直接 import 可。API 応答の共通エラー変換には `shared/lib/api/zodResponse` を利用する）。`@ui-sdk/*` は直接 import しない。
 
 ## 2. 移植性（禁止事項）
 

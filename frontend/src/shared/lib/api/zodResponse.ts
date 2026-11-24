@@ -1,8 +1,6 @@
 import type { ZodType } from "zod";
 import { ApiError } from "./apiClient";
 
-export { z } from "zod";
-
 /** Zod の検証失敗を API クライアントの応答エラーに変換する。 */
 export function parseZodResponse<T>(schema: ZodType<T>, data: unknown): T {
   const result = schema.safeParse(data);
