@@ -2,6 +2,32 @@ import type { paths } from "./schema";
 
 export type ApiErrorCode = "HTTP_ERROR" | "INVALID_RESPONSE";
 
+export type ApiErrorActionType =
+  | "cancel"
+  | "retry"
+  | "fix_input"
+  | "reload"
+  | "go_back"
+  | "save_draft"
+  | "contact_support";
+
+export interface ApiErrorAction {
+  label: string;
+  action_type: ApiErrorActionType;
+}
+
+export type ApiErrorDetailScalar = string | number | boolean | null;
+
+export interface ApiUserFacingError {
+  title: string;
+  reassurance: string;
+  reason: string;
+  how_to_fix: string;
+  way_out: string;
+  actions: readonly ApiErrorAction[];
+  details: Readonly<Record<string, ApiErrorDetailScalar>> | null;
+}
+
 export interface ApiValidationError {
   loc: readonly (string | number)[];
   msg: string;
@@ -15,6 +41,7 @@ export interface ApiErrorOptions {
   detail?: string | null;
   requestId?: string | null;
   errors?: readonly ApiValidationError[] | null;
+  userFacing?: ApiUserFacingError | null;
   cause?: unknown;
 }
 
@@ -26,6 +53,7 @@ export class ApiError extends Error {
   readonly detail: string | null;
   readonly requestId: string | null;
   readonly errors: readonly ApiValidationError[] | null;
+  readonly userFacing: ApiUserFacingError | null;
 
   constructor(
     message: string,
@@ -36,6 +64,7 @@ export class ApiError extends Error {
       detail = null,
       requestId = null,
       errors = null,
+      userFacing = null,
       cause,
     }: ApiErrorOptions,
   ) {
@@ -47,6 +76,7 @@ export class ApiError extends Error {
     this.detail = detail;
     this.requestId = requestId;
     this.errors = errors;
+    this.userFacing = userFacing;
   }
 }
 
@@ -64,6 +94,90 @@ export interface ApiFetchJsonOptions<T> extends ApiFetchBaseOptions {
 
 function isPlainObject(value: unknown): value is Record<string, unknown> {
   return typeof value === "object" && value !== null && !Array.isArray(value);
+}
+
+const VALID_ACTION_TYPES = new Set<string>([
+  "cancel",
+  "retry",
+  "fix_input",
+  "reload",
+  "go_back",
+  "save_draft",
+  "contact_support",
+]);
+
+function readNonEmptyString(value: unknown): string | null {
+  if (typeof value !== "string") {
+    return null;
+  }
+  const trimmed = value.trim();
+  return trimmed ? trimmed : null;
+}
+
+function parseErrorActions(raw: unknown): ApiErrorAction[] | null {
+  if (!Array.isArray(raw)) {
+    return null;
+  }
+  const actions: ApiErrorAction[] = [];
+  for (const item of raw) {
+    if (!isPlainObject(item)) {
+      continue;
+    }
+    const label = readNonEmptyString(item.label);
+    if (
+      !label ||
+      typeof item.action_type !== "string" ||
+      !VALID_ACTION_TYPES.has(item.action_type)
+    ) {
+      continue;
+    }
+    actions.push({
+      label,
+      action_type: item.action_type as ApiErrorActionType,
+    });
+  }
+  return actions;
+}
+
+function parseErrorDetails(raw: unknown): Record<string, ApiErrorDetailScalar> | null {
+  if (!isPlainObject(raw)) {
+    return null;
+  }
+  const details: Record<string, ApiErrorDetailScalar> = {};
+  for (const [key, value] of Object.entries(raw)) {
+    if (
+      value === null ||
+      typeof value === "string" ||
+      typeof value === "number" ||
+      typeof value === "boolean"
+    ) {
+      details[key] = value;
+    }
+  }
+  return Object.keys(details).length > 0 ? details : null;
+}
+
+function parseUserFacingError(parsed: Record<string, unknown>): ApiUserFacingError | null {
+  const title = readNonEmptyString(parsed.title);
+  const reassurance = readNonEmptyString(parsed.reassurance);
+  const reason = readNonEmptyString(parsed.reason);
+  const howToFix = readNonEmptyString(parsed.how_to_fix);
+  const wayOut = readNonEmptyString(parsed.way_out);
+  const actions = parseErrorActions(parsed.actions);
+
+  if (!title || !reassurance || !reason || !howToFix || !wayOut || actions === null) {
+    return null;
+  }
+
+  return {
+    title,
+    reassurance,
+    reason,
+    how_to_fix: howToFix,
+    way_out: wayOut,
+    actions,
+    details: parseErrorDetails(parsed.details),
+  };
 }
 
 function parseValidationErrors(raw: unknown): ApiValidationError[] | null {
@@ -89,6 +203,7 @@ async function buildHttpApiError(response: Response): Promise<ApiError> {
   let errorCode: string | null = null;
   let detail: string | null = null;
   let errors: ApiValidationError[] | null = null;
+  let userFacing: ApiUserFacingError | null = null;
 
   try {
     const rawText = await response.text();
@@ -98,8 +213,11 @@ async function buildHttpApiError(response: Response): Promise<ApiError> {
         if (typeof parsed.code === "string" && parsed.code.trim()) {
           errorCode = parsed.code.trim();
         }
+        userFacing = parseUserFacingError(parsed);
         if (typeof parsed.detail === "string" && parsed.detail.trim()) {
           detail = parsed.detail.trim();
+        } else if (userFacing) {
+          detail = userFacing.reason;
         }
         errors = parseValidationErrors(parsed.errors);
       }
@@ -117,6 +235,7 @@ async function buildHttpApiError(response: Response): Promise<ApiError> {
     detail,
     requestId,
     errors,
+    userFacing,
   });
 }
 
@@ -179,6 +298,7 @@ export async function apiFetchJson<T>(
         detail: error.detail,
         requestId: error.requestId ?? requestId,
         errors: error.errors,
+        userFacing: error.userFacing,
         cause: error.cause ?? error,
       });
     }
