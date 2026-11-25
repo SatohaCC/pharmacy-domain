@@ -10,9 +10,14 @@ from sqlalchemy.engine import Engine
 
 from app.application.corporate.commands import CorporationCommandService
 from app.application.corporate.queries import CorporationQueryService
+from app.application.corporate.relation_commands import CorporateRelationCommandService
+from app.application.corporate.relation_queries import CorporateRelationQueryService
 from app.infrastructure.clock import SystemClock, Uuid4Generator
 from app.infrastructure.config import Settings, load_settings
 from app.infrastructure.logging import configure_logging, request_id_context
+from app.infrastructure.persistence.corporate_relation_query import (
+    SqlAlchemyCorporateRelationQueryPort,
+)
 from app.infrastructure.persistence.corporation_query import SqlAlchemyCorporationQueryPort
 from app.infrastructure.persistence.database import create_app_engine
 from app.infrastructure.persistence.unit_of_work import SqlAlchemyCorporationUnitOfWorkFactory
@@ -20,6 +25,7 @@ from app.infrastructure.resources import ResourceRegistry
 from app.presentation.error_handlers import REQUEST_ID_HEADER, register_exception_handlers
 from app.presentation.middleware import AccessLogMiddleware, RequestIdMiddleware
 from app.presentation.routes import corporations_router, health_router
+from app.presentation.routes.corporate_relations import router as corporate_relations_router
 
 APP_ENGINE_RESOURCE_NAME = "app_engine"
 
@@ -55,13 +61,24 @@ def create_app(
                 )
 
             engine = registry.require(APP_ENGINE_RESOURCE_NAME, Engine)
+            uow_factory = SqlAlchemyCorporationUnitOfWorkFactory(engine)
+            clock = SystemClock()
+            id_generator = Uuid4Generator()
             application.state.corporation_commands = CorporationCommandService(
-                uow_factory=SqlAlchemyCorporationUnitOfWorkFactory(engine),
-                clock=SystemClock(),
-                id_generator=Uuid4Generator(),
+                uow_factory=uow_factory,
+                clock=clock,
+                id_generator=id_generator,
             )
             application.state.corporation_queries = CorporationQueryService(
                 query_gateway=SqlAlchemyCorporationQueryPort(engine),
+            )
+            application.state.corporate_relation_commands = CorporateRelationCommandService(
+                uow_factory=uow_factory,
+                clock=clock,
+                id_generator=id_generator,
+            )
+            application.state.corporate_relation_queries = CorporateRelationQueryService(
+                SqlAlchemyCorporateRelationQueryPort(engine),
             )
             yield
         finally:
@@ -98,6 +115,7 @@ def create_app(
 
     application.include_router(health_router)
     application.include_router(corporations_router)
+    application.include_router(corporate_relations_router)
     return application
 
 

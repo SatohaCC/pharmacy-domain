@@ -5,6 +5,8 @@ from typing import cast
 from fastapi import Request
 
 from app.application.corporate.contracts import (
+    CorporateRelationCommandPort,
+    CorporateRelationQueryPort,
     CorporationCommandPort,
     CorporationQueryPort,
 )
@@ -29,3 +31,19 @@ def get_corporation_queries(request: Request) -> CorporationQueryPort:
     if queries is None:
         raise RuntimeError("CorporationQueryService が初期化されていません。")
     return cast(CorporationQueryPort, queries)
+
+
+def get_corporate_relation_commands(request: Request) -> CorporateRelationCommandPort:
+    """配線済みの法人間関係の更新ポートを取得する。"""
+    commands = getattr(request.app.state, "corporate_relation_commands", None)
+    if commands is None:
+        raise RuntimeError("CorporateRelationCommandService が初期化されていません。")
+    return cast(CorporateRelationCommandPort, commands)
+
+
+def get_corporate_relation_queries(request: Request) -> CorporateRelationQueryPort:
+    """配線済みの法人間関係の参照ポートを取得する。"""
+    queries = getattr(request.app.state, "corporate_relation_queries", None)
+    if queries is None:
+        raise RuntimeError("CorporateRelationQueryService が初期化されていません。")
+    return cast(CorporateRelationQueryPort, queries)

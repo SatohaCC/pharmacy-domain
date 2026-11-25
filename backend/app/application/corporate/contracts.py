@@ -1,7 +1,7 @@
 """法人ユースケースの公開入出力モデルと Inbound Port。Presentation から Domain を隠蔽する。"""
 
 from dataclasses import dataclass
-from datetime import datetime
+from datetime import date, datetime
 from typing import Protocol
 
 
@@ -106,4 +106,96 @@ class CorporationQueryPort(Protocol):
 
     def list_corporations(self, query: ListCorporationsQuery) -> CorporationListResult:
         """条件に一致する法人一覧を取得する。"""
+        ...
+
+
+@dataclass(frozen=True, slots=True)
+class RegisterCorporateRelationInput:
+    """法人間関係の登録入力。親子関係の関係元は親法人。"""
+
+    source_corporation_id: str
+    target_corporation_id: str
+    relation_type: str
+    valid_from: date
+    evidence: str
+    valid_to: date | None = None
+    confirmation_status: str = "unverified"
+
+
+@dataclass(frozen=True, slots=True)
+class CorrectCorporateRelationInput:
+    """法人間関係の部分訂正入力。終了日の明示的な null は終了未定を表す。"""
+
+    valid_from: date | None = None
+    valid_to: date | None = None
+    evidence: str | None = None
+    confirmation_status: str | None = None
+    provided_fields: frozenset[str] | None = None
+
+
+@dataclass(frozen=True, slots=True)
+class ListCorporateRelationsQuery:
+    """法人間関係の検索条件。法人 ID は関係の両端に対して照合する。"""
+
+    corporation_id: str | None = None
+    as_of: date | None = None
+    recorded_as_of: datetime | None = None
+
+
+@dataclass(frozen=True, slots=True)
+class CorporateRelationRevisionItem:
+    """法人間関係の記録一件。"""
+
+    valid_from: date
+    valid_to: date | None
+    evidence: str
+    confirmation_status: str
+    recorded_at: datetime
+
+
+@dataclass(frozen=True, slots=True)
+class CorporateRelationItem(CorporateRelationRevisionItem):
+    """法人間関係の指定された改訂時点での状態。"""
+
+    id: str
+    source_corporation_id: str
+    target_corporation_id: str
+    relation_type: str
+
+
+class CorporateRelationCommandPort(Protocol):
+    """法人間関係の更新を公開する。"""
+
+    def register_relation(self, data: RegisterCorporateRelationInput) -> CorporateRelationItem:
+        """法人間関係を登録する。"""
+        ...
+
+    def correct_relation(
+        self, relation_id: str, data: CorrectCorporateRelationInput
+    ) -> CorporateRelationItem:
+        """指定の関係に訂正記録を追加する。"""
+        ...
+
+    def end_relation(self, relation_id: str, end_date: date) -> CorporateRelationItem:
+        """指定の関係を有効終了日で終了する。"""
+        ...
+
+
+class CorporateRelationQueryPort(Protocol):
+    """法人間関係と改訂履歴の読み取りを公開する。"""
+
+    def get_relation(
+        self, relation_id: str, recorded_as_of: datetime | None = None
+    ) -> CorporateRelationItem:
+        """指定の記録時点における関係を返す。"""
+        ...
+
+    def list_relations(
+        self, query: ListCorporateRelationsQuery
+    ) -> tuple[CorporateRelationItem, ...]:
+        """法人と有効日で絞り込んだ関係を返す。"""
+        ...
+
+    def list_revisions(self, relation_id: str) -> tuple[CorporateRelationRevisionItem, ...]:
+        """指定の関係の改訂を記録日時順に返す。"""
         ...
