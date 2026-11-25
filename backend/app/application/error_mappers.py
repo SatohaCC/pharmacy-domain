@@ -43,6 +43,7 @@ def from_domain_error(
             code=exc.code,
             details=exc.details,
             state_impact=state_impact,
+            conceal_as_not_found=exc.conceal_as_not_found,
         )
     if isinstance(exc, DomainValidationError):
         return ApplicationValidationError(

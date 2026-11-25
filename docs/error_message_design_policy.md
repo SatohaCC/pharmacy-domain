@@ -25,9 +25,9 @@
 
 | 層 | 責務 | 扱う情報 |
 | :--- | :--- | :--- |
-| **ドメイン層**<br>(`app/domain/foundation/exceptions.py`) | **何が・なぜルール違反か**を最小構造で伝える。 | `message`（業務ルール違反の事実）、`code`（機械可読コード）、安全な `details`（対象フィールド名等のスカラー値）。各サブクラスは `default_code` のみ宣言する。 |
-| **アプリケーション層**<br>(`app/application/errors.py`, `error_mappers.py`) | 公開例外契約（`ApplicationError` 階層）を定義し、`error_mappers.py` でドメイン例外を変換してトランザクション・保存状態の文脈を付与する（`errors.py` 自体は `app.domain` へ依存させず、`presentation` からの推移的依存を防ぐ）。 | `ApplicationError` 階層、`state_impact`（`"unchanged"` / `"draft_preserved"` / `"unknown"`）。 |
-| **プレゼンテーション層**<br>(`app/presentation/error_presenter.py`, `error_handlers.py`, `dto/error.py`) | アプリ例外＋リクエスト検証（422）・HTTP例外・予期しない例外（500）を統一 **5要素 `ErrorResponse`** へ組み立てる。 | `title`（見出し）、`reassurance`（安心材料）、`how_to_fix`（対処案内カタログ）、`way_out`（連絡先）、エラー種別に応じた `actions`（ボタン）、IDOR秘匿ポリシー（`conceal_as_not_found`）、`detail` / `errors`（後方互換）、およびサニタイズ。 |
+| **ドメイン層**<br>(`app/domain/foundation/exceptions.py`) | **何が・なぜルール違反か**を最小構造で伝える。 | `message`（業務ルール違反の事実）、`code`（機械可読コード）、`details`（対象フィールド名等のスカラー値）、IDOR秘匿要否（`DomainAuthorizationError.conceal_as_not_found`）。各サブクラスは `default_code` のみ宣言する。 |
+| **アプリケーション層**<br>(`app/application/errors.py`, `error_mappers.py`) | 公開例外契約（`ApplicationError` 階層）を定義し、`error_mappers.py` でドメイン例外を変換してトランザクション・保存状態の文脈を付与する（`errors.py` 自体は `app.domain` へ依存させず、`presentation` からの推移的依存を防ぐ）。 | `ApplicationError` 階層、`state_impact`（`"unchanged"` / `"draft_preserved"` / `"unknown"`）、`conceal_as_not_found`。 |
+| **プレゼンテーション層**<br>(`app/presentation/error_presenter.py`, `error_handlers.py`, `dto/error.py`) | アプリ例外＋リクエスト検証（422）・HTTP例外・予期しない例外（500）を統一 **5要素 `ErrorResponse`** へ組み立て、HTTP 出力境界で一元的にサニタイズする。 | `title`（見出し）、`reassurance`（安心材料）、`how_to_fix`（対処案内カタログ）、`way_out`（連絡先）、エラー種別に応じた `actions`（ボタン）、`detail` / `errors`（後方互換）、および出力サニタイズ。 |
 
 ### 例外クラスの使い分け
 
@@ -55,13 +55,16 @@
    * **NG例**: `f"患者 {patient_name} の保険証番号 '{raw_number}' は不正です"`、`f"法人が見つかりません: {corporation_id}"`
    * **OK例**: `message="被保険者番号に空白やハイフンは使用できません。"`, `details={"field": "insurance_number"}`
    * プリミティブ層で `MaskedPiiText` 等の `__str__` をマスク（`"***"`）化しておき、万が一フォーマット文字列に渡されても平文が漏れないようにする。
-2. **例外生成時は落とさずサニタイズ＆フォールバックする（500化防止）**
-   * 例外クラスが呼ばれる時点はすでに異常系であるため、不正な `code`・空 `message`・不正な `details` を理由に `ValueError` / `TypeError` を送出すると、本来の業務エラーが握りつぶされて 500 エラーに化ける。
-   * そのため例外生成時は落とさず、空 `message` は既定文言へフォールバック、不正 `code`（`^[A-Z][A-Z0-9_]*$` 不一致）は `default_code` へフォールバック、`details` の不正キー（`^[a-z][a-z0-9_]*$` 不一致）・非スカラー・非有限 `float` は除外、文字列中の制御文字（`\x00-\x1f`, `\x7f`）は除去して `MappingProxyType` として保持する。厳格な検証は型ヒントとテストで担保する。
+2. **例外クラスは薄く保ち、出力サニタイズは HTTP 境界（`error_presenter.py`）に一元化する**
+   * 例外生成の瞬間はすでに異常系に入っているため、Domain / Application 例外クラスでは `ValueError` / `TypeError` を送出せず素直に属性を保持する（本番での 500 化と重複コードの排除）。
+   * 外部境界である `error_presenter.py` で一元的に以下を実施する：
+     * 空・制御文字のみの `message` は既定文言へフォールバックし、制御文字（`\x00-\x1f`, `\x7f`）を除去する。
+     * `code` は Allowlist（`^[A-Z][A-Z0-9_]*$`）で検証し、不一致時は `default_code` へフォールバックする。
+     * `details` はキー Allowlist（`^[a-z][a-z0-9_]*$`）・安全なスカラー型・有限数値（`math.isfinite`）のみを残し、文字列値の制御文字を除去する。
 3. **システム例外（500系）の完全サニタイズ**
    * DB接続エラー、SQL構文、ファイルパス、スタックトレースなどの予期しない例外はサーバー内部のセキュアログ（`X-Request-ID` 相関付き）にのみ記録し、ユーザー向けレスポンスでは固定の安全な文言へ変換する。5xx 系の `HTTPException` でも生 `detail` をそのまま露出しない。
 4. **IDOR対策（存在有無の推測防止）**
-   * 他テナント・他店舗や閲覧権限のない M&A 境界越えの認可エラー（`CROSS_TENANT_ACCESS` / `TENANT_FORBIDDEN` 等）は、プレゼンテーション層（`ErrorPresentationSpec.conceal_as_not_found=True`）のポリシーにより `404 Not Found`（固定文言・`code="NOT_FOUND"`・`details=None`）へ統一マッピングし、リソースの存在有無を推測させない。
+   * 他テナント・他店舗や閲覧権限のない M&A 境界越えの `DomainAuthorizationError(..., conceal_as_not_found=True)` / `ApplicationAuthorizationError(..., conceal_as_not_found=True)` は、プレゼンテーション層で `404 Not Found`（固定文言・`code="NOT_FOUND"`・`details=None`）へ統一マッピングし、リソースの存在有無を推測させない。
 
 ---
 
@@ -69,9 +72,8 @@
 
 | `code` | 1. 見出し (`title`) | 2. 安心材料 (`reassurance`) | 3. 原因 (`reason`) | 4. 対処法 (`how_to_fix`) | 5. 逃げ道 (`way_out`) |
 | :--- | :--- | :--- | :--- | :--- | :--- |
-| `MISSING_RESIDUAL_STATUS` | 薬歴を確定できませんでした | 入力中の下書きデータは保持されています。 | 残薬確認の結果が未入力のため確定できませんでした。 | 残薬がない場合でも「残薬なし」と入力して、再度確定してください。 | 操作方法が不明な場合は、管理薬剤師へご確認ください。 |
-| `PROXY_APPROVAL_REQUIRED` | レセプト請求へ進めません | 入力済みの調剤・薬歴記録は保存されています。 | 事務員が代行入力した薬歴が保険薬剤師により未承認のため、請求対象に含められません。 | 担当の保険薬剤師に内容確認と承認を依頼してください。 | 承認権限に関する問題は、システム管理者へご連絡ください。 |
-| `FORBIDDEN_SEPARATOR_IN_INSURANCE_ID` | 保険資格を登録できませんでした | 既存のデータは変更されていません。 | 記号・番号に空白・中点・ハイフンが含まれているためレセ電仕様に適合しません。 | 記号と番号から空白や記号を取り除いて、再度入力してください。 | 資格確認書の記載が特殊な場合は、サポート窓口へお問い合わせください。 |
+| `CORPORATION_NOT_FOUND` | 法人情報が見つかりませんでした | 既存のデータは変更されていません。 | 指定された法人が見つかりません。 | 対象が削除または変更されていないか一覧画面で確認のうえ、再度選択してください。 | 問題が解決しない場合は、管理薬剤師またはサポート窓口へお問い合わせください。 |
+| `DUPLICATE_CORPORATE_NUMBER` | 法人情報を登録・更新できませんでした | 既存のデータは変更されていません。 | 同じ法人番号の法人が既に存在します。 | 法人番号に誤りがないか確認し、既存の法人情報と重複していないかご確認ください。 | 問題が解決しない場合は、管理薬剤師またはサポート窓口へお問い合わせください。 |
 | `INTERNAL_SERVER_ERROR` | 処理を完了できませんでした | 処理結果が確定できていない可能性があります。最新の状態をご確認ください。 | サーバー内部の一時的な問題により処理を完了できませんでした。 | しばらく時間をおいてから、最新の状態を確認のうえ再度お試しください。 | 問題が繰り返し発生する場合は、サポート窓口へお問い合わせください。 |
 
 ---
@@ -83,11 +85,16 @@
 ```python
 """ドメイン層の基底例外定義。"""
 
+from collections.abc import Mapping
+from types import MappingProxyType
 from typing import ClassVar
+
+type ErrorDetailScalar = str | int | float | bool | None
+type ErrorDetails = Mapping[str, ErrorDetailScalar]
 
 
 class DomainError(Exception):
-    """ドメインルール違反の基底例外（UI都合やPIIを含めない）。"""
+    """ドメインルール違反の基底例外（PIIや秘密値は含めない）。"""
 
     default_code: ClassVar[str] = "DOMAIN_ERROR"
 
@@ -98,23 +105,31 @@ class DomainError(Exception):
         code: str | None = None,
         details: ErrorDetails | None = None,
     ) -> None:
-        resolved_message = _resolve_message(message, _DEFAULT_DOMAIN_MESSAGE)
-        super().__init__(resolved_message)
-        self._code = _resolve_code(code, self.default_code)
-        self._message = resolved_message
-        self._details = sanitize_error_details(details)
+        super().__init__(message)
+        self.message = message
+        self.code = code or self.default_code
+        self.details: ErrorDetails = (
+            MappingProxyType(dict(details)) if details else MappingProxyType({})
+        )
 
 
 class DomainValidationError(DomainError):
-    """値や不変条件の検証失敗を表すドメイン例外。"""
-
     default_code: ClassVar[str] = "VALIDATION_ERROR"
 
 
 class DomainAuthorizationError(DomainError):
-    """ロール・資格・テナント境界などドメイン上の認可違反を表す例外。"""
-
     default_code: ClassVar[str] = "FORBIDDEN"
+
+    def __init__(
+        self,
+        message: str,
+        *,
+        code: str | None = None,
+        details: ErrorDetails | None = None,
+        conceal_as_not_found: bool = False,
+    ) -> None:
+        super().__init__(message, code=code, details=details)
+        self.conceal_as_not_found = conceal_as_not_found
 ```
 
 ### 5-2. アプリケーション層（`app/application/errors.py`, `error_mappers.py`）
@@ -130,16 +145,17 @@ def from_domain_error(
     state_impact: StateImpact = "unchanged",
 ) -> ApplicationError:
     """ドメイン例外をアプリケーション層の公開例外へ変換する。"""
-    if isinstance(exc, DomainNotFoundError):
-        return ApplicationNotFoundError(
+    if isinstance(exc, DomainAuthorizationError):
+        return ApplicationAuthorizationError(
             exc.message,
             code=exc.code,
             details=exc.details,
             state_impact=state_impact,
+            conceal_as_not_found=exc.conceal_as_not_found,
         )
     ...
 ```
 
 ### 5-3. プレゼンテーション層（`app/presentation/error_presenter.py`）
 
-プレゼンテーション層は `ApplicationError` のみを参照し（`DomainError` を直接 import しない）、IDOR 秘匿ポリシー（`ErrorPresentationSpec.conceal_as_not_found` → `404 NOT_FOUND`）・`state_impact` に基づく安全な `reassurance`・コード別カタログ（`title` / `how_to_fix` / `way_out`）・カテゴリ別 `actions` を組み合わせて `ErrorResponse` を返す。
+プレゼンテーション層は `ApplicationError` のみを参照し（`DomainError` を直接 import しない）、IDOR 秘匿（`conceal_as_not_found` → `404 NOT_FOUND`）・`state_impact` に基づく安全な `reassurance`・コード別カタログ・カテゴリ別 `actions`・境界サニタイズを組み合わせて `ErrorResponse` を返す。
