@@ -40,48 +40,31 @@ from app.presentation.error_presenter import (
 _BACKEND_ROOT = Path(__file__).resolve().parents[1]
 
 
-def test_domain_error_sanitizes_and_falls_back_without_raising() -> None:
+def test_domain_error_keeps_minimal_attributes_and_immutable_details() -> None:
     err = DomainValidationError(
-        "被保険者番号に空白やハイフンは使用できません。",
-        code="FORBIDDEN_SEPARATOR_IN_INSURANCE_ID",
-        details={"field": "insurance_number", "max_length": 20, "nullable": False},
+        "法人番号は 13 桁の半角数字で指定してください。",
+        code="INVALID_CORPORATE_NUMBER",
+        details={"field": "corporate_number", "length": 13, "nullable": False},
     )
 
-    assert err.code == "FORBIDDEN_SEPARATOR_IN_INSURANCE_ID"
-    assert err.message == "被保険者番号に空白やハイフンは使用できません。"
+    assert err.code == "INVALID_CORPORATE_NUMBER"
+    assert err.message == "法人番号は 13 桁の半角数字で指定してください。"
     assert dict(err.details) == {
-        "field": "insurance_number",
-        "max_length": 20,
+        "field": "corporate_number",
+        "length": 13,
         "nullable": False,
     }
     with pytest.raises(TypeError):
         cast(Any, err.details)["field"] = "mutated"
 
-    # 異常系での二次例外（500化）を防ぐため、不正入力は落とさずサニタイズ・フォールバックする。
-    empty_msg = DomainValidationError("   \n\t  ")
-    assert empty_msg.code == "VALIDATION_ERROR"
-    assert empty_msg.message == "ドメインルール違反が発生しました。"
+    assert DomainValidationError("検証エラー").code == "VALIDATION_ERROR"
+    assert DomainNotFoundError("未検出").code == "NOT_FOUND"
+    assert DomainConflictError("競合").code == "CONFLICT"
+    assert DomainError("汎用").code == "DOMAIN_ERROR"
 
-    bad_code = DomainConflictError("競合しました。", code="bad-code\nSECRET")
-    assert bad_code.code == "CONFLICT"
-
-    sanitized = DomainError(
-        "制御文字\n付きメッセージ",
-        details=cast(
-            Any,
-            {
-                "valid_key": "name\ninjected",
-                "userId": 123,
-                "nested": {"a": 1},
-                "nan_val": float("nan"),
-                "inf_val": float("inf"),
-                "ok_float": 1.5,
-            },
-        ),
-    )
-    assert sanitized.code == "DOMAIN_ERROR"
-    assert sanitized.message == "制御文字付きメッセージ"
-    assert dict(sanitized.details) == {"valid_key": "nameinjected", "ok_float": 1.5}
+    auth_err = DomainAuthorizationError("アクセス不可", conceal_as_not_found=True)
+    assert auth_err.code == "FORBIDDEN"
+    assert auth_err.conceal_as_not_found is True
 
 
 def test_from_domain_error_preserves_metadata_and_maps_categories() -> None:
@@ -108,6 +91,7 @@ def test_from_domain_error_preserves_metadata_and_maps_categories() -> None:
             DomainAuthorizationError(
                 "他店舗データにはアクセスできません。",
                 code="CROSS_TENANT_ACCESS",
+                conceal_as_not_found=True,
             ),
             ApplicationAuthorizationError,
             "CROSS_TENANT_ACCESS",
@@ -132,36 +116,63 @@ def test_from_domain_error_preserves_metadata_and_maps_categories() -> None:
         assert dict(app_err.details) == dict(domain_err.details)
         assert app_err.state_impact == "draft_preserved"
 
-    # 不正な state_impact / 空メッセージ / 不正 code も落とさずフォールバックする。
-    fallback_app = ApplicationError(
-        "  ",
-        code="invalid-app-code",
-        state_impact=cast(Any, "invalid_impact"),
+    auth_app_err = from_domain_error(
+        DomainAuthorizationError("アクセス不可", conceal_as_not_found=True)
     )
-    assert fallback_app.code == "APPLICATION_ERROR"
-    assert fallback_app.message == "処理を実行できませんでした。"
-    assert fallback_app.state_impact == "unchanged"
+    assert isinstance(auth_app_err, ApplicationAuthorizationError)
+    assert auth_app_err.conceal_as_not_found is True
 
 
-def test_error_presenter_builds_independent_five_elements_and_idor_concealment() -> None:
-    app_err = ApplicationValidationError(
-        "記号・番号に空白が含まれています。",
-        code="FORBIDDEN_SEPARATOR_IN_INSURANCE_ID",
-        details={"field": "insurance_number"},
+def test_error_presenter_sanitizes_at_boundary_and_handles_idor_concealment() -> None:
+    app_err = ApplicationConflictError(
+        "同じ法人番号の法人が既に存在します。",
+        code="DUPLICATE_CORPORATE_NUMBER",
+        details={"field": "corporate_number"},
         state_impact="draft_preserved",
     )
     status_code, response = present_application_error(app_err)
 
-    assert status_code == 422
-    assert response.code == "FORBIDDEN_SEPARATOR_IN_INSURANCE_ID"
-    assert response.detail == "記号・番号に空白が含まれています。"
-    assert response.title == "保険資格を登録できませんでした"
+    assert status_code == 409
+    assert response.code == "DUPLICATE_CORPORATE_NUMBER"
+    assert response.detail == "同じ法人番号の法人が既に存在します。"
+    assert response.title == "法人情報を登録・更新できませんでした"
     assert response.reassurance == "入力中の下書きデータは保持されています。"
     assert not response.reassurance.endswith("ですが、")
-    assert response.reason == "記号・番号に空白が含まれています。"
-    assert response.how_to_fix == "記号と番号から空白や記号を取り除いて、再度入力してください。"
-    assert response.details == {"field": "insurance_number"}
+    assert response.reason == "同じ法人番号の法人が既に存在します。"
+    assert (
+        response.how_to_fix
+        == "法人番号に誤りがないか確認し、既存の法人情報と重複していないかご確認ください。"
+    )
+    assert response.details == {"field": "corporate_number"}
     assert [a.action_type for a in response.actions] == ["fix_input", "cancel"]
+
+    # 不正な code・制御文字・空メッセージ・不正 details・不正 state_impact は境界で安全化する。
+    dirty_err = ApplicationValidationError(
+        "  制御文字\n付きメッセージ  ",
+        code="bad-code\nSECRET",
+        details=cast(
+            Any,
+            {
+                "valid_key": "name\ninjected",
+                "userId": 123,
+                "nested": {"a": 1},
+                "nan_val": float("nan"),
+                "inf_val": float("inf"),
+                "ok_float": 1.5,
+            },
+        ),
+        state_impact=cast(Any, "invalid_impact"),
+    )
+    dirty_status, dirty_response = present_application_error(dirty_err)
+    assert dirty_status == 422
+    assert dirty_response.code == "VALIDATION_ERROR"
+    assert dirty_response.detail == "制御文字付きメッセージ"
+    assert dirty_response.reassurance == "既存のデータは変更されていません。"
+    assert dirty_response.details == {"valid_key": "nameinjected", "ok_float": 1.5}
+
+    empty_status, empty_response = present_application_error(ApplicationError("  \n\t "))
+    assert empty_status == 400
+    assert empty_response.detail == "処理を実行できませんでした。"
 
     # 通常の認可エラーは 403 FORBIDDEN を返すこと。
     forbidden_err = ApplicationAuthorizationError("承認権限がありません。")
@@ -169,11 +180,12 @@ def test_error_presenter_builds_independent_five_elements_and_idor_concealment()
     assert forbidden_status == 403
     assert forbidden_response.code == "FORBIDDEN"
 
-    # Presentation 層の IDOR 秘匿ポリシー対象コードは 404 NOT_FOUND に統一し、details も落とすこと。
+    # IDOR 秘匿フラグ指定時は 404 NOT_FOUND に統一し、details も落とすこと。
     idor_err = ApplicationAuthorizationError(
         "他店舗の患者です。",
         code="CROSS_TENANT_ACCESS",
         details={"tenant": "other-pharmacy"},
+        conceal_as_not_found=True,
     )
     idor_status, idor_response = present_application_error(idor_err)
     assert idor_status == 404
@@ -239,6 +251,7 @@ def test_register_exception_handlers_integrates_all_error_paths() -> None:
             "別テナントのリソースです。",
             code="TENANT_FORBIDDEN",
             details={"secret_hint": "exists"},
+            conceal_as_not_found=True,
         )
 
     @app.get("/http-503")

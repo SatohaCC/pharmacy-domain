@@ -1,5 +1,8 @@
 """プレゼンテーション層における5要素エラーレスポンス変換。"""
 
+import math
+import re
+from collections.abc import Mapping
 from dataclasses import dataclass
 
 from app.application.errors import (
@@ -20,6 +23,11 @@ from app.presentation.dto.error import (
 
 _DEFAULT_WAY_OUT = "問題が解決しない場合は、管理薬剤師またはサポート窓口へお問い合わせください。"
 _SUPPORT_WAY_OUT = "問題が繰り返し発生する場合は、サポート窓口へお問い合わせください。"
+_DEFAULT_MESSAGE = "処理を実行できませんでした。"
+
+_ERROR_CODE_PATTERN = re.compile(r"^[A-Z][A-Z0-9_]*$")
+_DETAIL_KEY_PATTERN = re.compile(r"^[a-z][a-z0-9_]*$")
+_CONTROL_CHAR_PATTERN = re.compile(r"[\x00-\x1f\x7f]")
 
 _REASSURANCE_BY_STATE_IMPACT: dict[StateImpact, str] = {
     "unchanged": "既存のデータは変更されていません。",
@@ -30,14 +38,13 @@ _REASSURANCE_BY_STATE_IMPACT: dict[StateImpact, str] = {
 
 @dataclass(frozen=True, slots=True)
 class ErrorPresentationSpec:
-    """エラーコード単位の5要素表示仕様および境界ポリシー。"""
+    """エラーコード単位の5要素表示仕様。"""
 
     title: str
     how_to_fix: str
     way_out: str = _DEFAULT_WAY_OUT
     reassurance: str | None = None
     actions: tuple[ErrorAction, ...] | None = None
-    conceal_as_not_found: bool = False
 
 
 _INPUT_ACTIONS = (
@@ -62,39 +69,6 @@ _SYSTEM_ACTIONS = (
 )
 
 _ERROR_SPECS: dict[str, ErrorPresentationSpec] = {
-    # 薬局ドメイン共通カタログ
-    "MISSING_RESIDUAL_STATUS": ErrorPresentationSpec(
-        title="薬歴を確定できませんでした",
-        how_to_fix="残薬がない場合でも「残薬なし」と入力して、再度確定してください。",
-    ),
-    "PROXY_APPROVAL_REQUIRED": ErrorPresentationSpec(
-        title="レセプト請求へ進めません",
-        how_to_fix="担当の保険薬剤師に内容確認と承認を依頼してください。",
-        way_out="承認権限に関する問題は、システム管理者へご連絡ください。",
-        actions=(
-            ErrorAction(label="前の画面へ戻る", action_type="go_back"),
-            ErrorAction(label="サポートへ問い合わせ", action_type="contact_support"),
-        ),
-    ),
-    "FORBIDDEN_SEPARATOR_IN_INSURANCE_ID": ErrorPresentationSpec(
-        title="保険資格を登録できませんでした",
-        how_to_fix="記号と番号から空白や記号を取り除いて、再度入力してください。",
-        way_out="資格確認書の記載が特殊な場合は、サポート窓口へお問い合わせください。",
-        actions=_INPUT_ACTIONS,
-    ),
-    "CROSS_TENANT_ACCESS": ErrorPresentationSpec(
-        title="対象のデータが見つかりませんでした",
-        how_to_fix="URL や対象が正しいかご確認のうえ、一覧から再度お選びください。",
-        actions=_NOT_FOUND_ACTIONS,
-        conceal_as_not_found=True,
-    ),
-    "TENANT_FORBIDDEN": ErrorPresentationSpec(
-        title="対象のデータが見つかりませんでした",
-        how_to_fix="URL や対象が正しいかご確認のうえ、一覧から再度お選びください。",
-        actions=_NOT_FOUND_ACTIONS,
-        conceal_as_not_found=True,
-    ),
-    # 法人コンテキストカタログ
     "CORPORATION_NOT_FOUND": ErrorPresentationSpec(
         title="法人情報が見つかりませんでした",
         how_to_fix="対象が削除または変更されていないか一覧画面で確認のうえ、再度選択してください。",
@@ -137,6 +111,38 @@ _HTTP_STATUS_TITLES: dict[int, str] = {
     422: "入力内容を確認してください",
     429: "リクエストが集中しています",
 }
+
+
+def _sanitize_code(code: str, fallback: str) -> str:
+    if isinstance(code, str) and _ERROR_CODE_PATTERN.fullmatch(code):
+        return code
+    return fallback
+
+
+def _sanitize_text(text: str, fallback: str = _DEFAULT_MESSAGE) -> str:
+    if not isinstance(text, str):
+        return fallback
+    cleaned = _CONTROL_CHAR_PATTERN.sub("", text).strip()
+    return cleaned if cleaned else fallback
+
+
+def _sanitize_details(
+    details: Mapping[str, ErrorDetailScalar],
+) -> dict[str, ErrorDetailScalar] | None:
+    if not details:
+        return None
+    normalized: dict[str, ErrorDetailScalar] = {}
+    for key, value in details.items():
+        if not isinstance(key, str) or not _DETAIL_KEY_PATTERN.fullmatch(key):
+            continue
+        if value is None or isinstance(value, bool | int):
+            normalized[key] = value
+        elif isinstance(value, float):
+            if math.isfinite(value):
+                normalized[key] = value
+        elif isinstance(value, str):
+            normalized[key] = _CONTROL_CHAR_PATTERN.sub("", value)
+    return normalized or None
 
 
 def _resolve_application_category_defaults(
@@ -185,32 +191,21 @@ def _resolve_application_category_defaults(
     )
 
 
-def _to_details_dict(exc: ApplicationError) -> dict[str, ErrorDetailScalar] | None:
-    if not exc.details:
-        return None
-    return dict(exc.details)
-
-
 def present_application_error(exc: ApplicationError) -> tuple[int, ErrorResponse]:
     """ApplicationError を HTTP ステータスと 5要素 ErrorResponse へ変換する。"""
-    spec = _ERROR_SPECS.get(exc.code)
-    if (
-        isinstance(exc, ApplicationAuthorizationError)
-        and spec is not None
-        and spec.conceal_as_not_found
-    ):
+    if isinstance(exc, ApplicationAuthorizationError) and exc.conceal_as_not_found:
         reason = "指定されたリソースが見つかりません。"
         return (
             404,
             ErrorResponse(
                 code="NOT_FOUND",
                 detail=reason,
-                title=spec.title,
+                title="対象のデータが見つかりませんでした",
                 reassurance=_REASSURANCE_BY_STATE_IMPACT["unchanged"],
                 reason=reason,
-                how_to_fix=spec.how_to_fix,
-                way_out=spec.way_out,
-                actions=list(spec.actions or _NOT_FOUND_ACTIONS),
+                how_to_fix="URL や対象が正しいかご確認のうえ、一覧から再度お選びください。",
+                way_out=_DEFAULT_WAY_OUT,
+                actions=list(_NOT_FOUND_ACTIONS),
                 details=None,
             ),
         )
@@ -218,10 +213,15 @@ def present_application_error(exc: ApplicationError) -> tuple[int, ErrorResponse
     status_code, default_title, default_fix, default_actions = (
         _resolve_application_category_defaults(exc)
     )
+    safe_code = _sanitize_code(exc.code, exc.default_code)
+    safe_message = _sanitize_text(exc.message)
+    spec = _ERROR_SPECS.get(safe_code)
     reassurance = (
         spec.reassurance
         if spec is not None and spec.reassurance is not None
-        else _REASSURANCE_BY_STATE_IMPACT[exc.state_impact]
+        else _REASSURANCE_BY_STATE_IMPACT.get(
+            exc.state_impact, _REASSURANCE_BY_STATE_IMPACT["unchanged"]
+        )
     )
     how_to_fix = spec.how_to_fix if spec is not None else default_fix
     actions = spec.actions if spec is not None and spec.actions is not None else default_actions
@@ -229,15 +229,15 @@ def present_application_error(exc: ApplicationError) -> tuple[int, ErrorResponse
     return (
         status_code,
         ErrorResponse(
-            code=exc.code,
-            detail=exc.message,
+            code=safe_code,
+            detail=safe_message,
             title=spec.title if spec is not None else default_title,
             reassurance=reassurance,
-            reason=exc.message,
+            reason=safe_message,
             how_to_fix=how_to_fix,
             way_out=spec.way_out if spec is not None else _DEFAULT_WAY_OUT,
             actions=list(actions),
-            details=_to_details_dict(exc),
+            details=_sanitize_details(exc.details),
         ),
     )
 
@@ -265,10 +265,11 @@ def present_http_error(
     detail: str | None = None,
 ) -> ErrorResponse:
     """HTTP 例外を 5要素 ErrorResponse へ変換する（5xx は内部詳細をサニタイズする）。"""
+    safe_code = _sanitize_code(code, f"HTTP_{status_code}")
     if status_code >= 500:
         reason = "サーバー側の一時的な問題により処理を完了できませんでした。"
         return ErrorResponse(
-            code=code,
+            code=safe_code,
             detail=reason,
             title="処理を完了できませんでした",
             reassurance=_REASSURANCE_BY_STATE_IMPACT["unknown"],
@@ -278,11 +279,7 @@ def present_http_error(
             actions=list(_SYSTEM_ACTIONS),
         )
 
-    safe_reason = (
-        detail.strip()
-        if isinstance(detail, str) and detail.strip()
-        else "リクエストを処理できませんでした。"
-    )
+    safe_reason = _sanitize_text(detail or "", "リクエストを処理できませんでした。")
     title = _HTTP_STATUS_TITLES.get(status_code, "リクエストを処理できませんでした")
     if status_code == 404:
         how_to_fix = "URL や指定した対象が正しいかご確認のうえ、前の画面へお戻りください。"
@@ -303,7 +300,7 @@ def present_http_error(
         actions = _INPUT_ACTIONS
 
     return ErrorResponse(
-        code=code,
+        code=safe_code,
         detail=safe_reason,
         title=title,
         reassurance=_REASSURANCE_BY_STATE_IMPACT["unchanged"],
