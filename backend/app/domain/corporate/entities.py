@@ -65,6 +65,24 @@ class Corporation:
                 "解散または合併消滅した法人の基本情報は変更できません。",
                 details={"current_status": self.status.value},
             )
+        return self.correct_profile(
+            name=name,
+            address=address,
+            corporate_number=corporate_number,
+            clear_corporate_number=clear_corporate_number,
+            updated_at=updated_at,
+        )
+
+    def correct_profile(
+        self,
+        *,
+        name: CorporationName | None = None,
+        address: CorporateAddress | None = None,
+        corporate_number: CorporateNumber | None = None,
+        clear_corporate_number: bool = False,
+        updated_at: AwareDatetime,
+    ) -> Corporation:
+        """既に確認済みの基本情報を、当時の存続状態を保って訂正する。"""
         if (
             name is None
             and address is None

@@ -230,6 +230,10 @@ export interface paths {
   "/api/corporations/{corporation_id}": {
     get: {
       parameters: {
+        query: {
+          as_of?: string | null;
+          recorded_as_of?: string | null;
+        };
         path: {
           corporation_id: string;
         };
@@ -247,7 +251,7 @@ export interface paths {
         };
         422: {
           content: {
-            "application/json": components["schemas"]["HTTPValidationError"];
+            "application/json": components["schemas"]["ErrorResponse"];
           };
         };
       };
@@ -261,6 +265,112 @@ export interface paths {
       requestBody: {
         content: {
           "application/json": components["schemas"]["CorporationUpdateRequest"];
+        };
+      };
+      responses: {
+        200: {
+          content: {
+            "application/json": components["schemas"]["CorporationResponse"];
+          };
+        };
+        400: {
+          content: {
+            "application/json": components["schemas"]["ErrorResponse"];
+          };
+        };
+        404: {
+          content: {
+            "application/json": components["schemas"]["ErrorResponse"];
+          };
+        };
+        409: {
+          content: {
+            "application/json": components["schemas"]["ErrorResponse"];
+          };
+        };
+        422: {
+          content: {
+            "application/json": components["schemas"]["ErrorResponse"];
+          };
+        };
+      };
+    };
+  };
+  "/api/corporations/{corporation_id}/history": {
+    get: {
+      parameters: {
+        path: {
+          corporation_id: string;
+        };
+      };
+      responses: {
+        200: {
+          content: {
+            "application/json": Array<components["schemas"]["CorporationHistoryResponse"]>;
+          };
+        };
+        404: {
+          content: {
+            "application/json": components["schemas"]["ErrorResponse"];
+          };
+        };
+        422: {
+          content: {
+            "application/json": components["schemas"]["ErrorResponse"];
+          };
+        };
+      };
+    };
+    patch: {
+      parameters: {
+        path: {
+          corporation_id: string;
+        };
+      };
+      requestBody: {
+        content: {
+          "application/json": components["schemas"]["CorporationHistoryCorrectionRequest"];
+        };
+      };
+      responses: {
+        200: {
+          content: {
+            "application/json": components["schemas"]["CorporationHistoryResponse"];
+          };
+        };
+        400: {
+          content: {
+            "application/json": components["schemas"]["ErrorResponse"];
+          };
+        };
+        404: {
+          content: {
+            "application/json": components["schemas"]["ErrorResponse"];
+          };
+        };
+        409: {
+          content: {
+            "application/json": components["schemas"]["ErrorResponse"];
+          };
+        };
+        422: {
+          content: {
+            "application/json": components["schemas"]["ErrorResponse"];
+          };
+        };
+      };
+    };
+  };
+  "/api/corporations/{corporation_id}/merge": {
+    post: {
+      parameters: {
+        path: {
+          corporation_id: string;
+        };
+      };
+      requestBody: {
+        content: {
+          "application/json": components["schemas"]["CorporationMergerRequest"];
         };
       };
       responses: {
@@ -392,11 +502,34 @@ export interface components {
       address?: string;
       category: "corporation" | "individual";
       corporate_number?: string | null;
+      evidence?: string | null;
       name: string;
+      valid_from?: string | null;
+    };
+    CorporationHistoryCorrectionRequest: {
+      address?: string | null;
+      as_of: string;
+      corporate_number?: string | null;
+      evidence: string;
+      name?: string | null;
+    };
+    CorporationHistoryResponse: {
+      corporation: components["schemas"]["CorporationResponse"];
+      evidence: string | null;
+      kind: "legacy" | "registration" | "profile" | "correction" | "dissolution" | "merger";
+      recorded_at: string;
+      surviving_corporation_id: string | null;
+      valid_from: string;
+      valid_to: string | null;
     };
     CorporationListResponse: {
       items: Array<components["schemas"]["CorporationResponse"]>;
       total: number;
+    };
+    CorporationMergerRequest: {
+      effective_date: string;
+      evidence: string;
+      surviving_corporation_id: string;
     };
     CorporationResponse: {
       address: string;
@@ -409,12 +542,16 @@ export interface components {
       updated_at: string;
     };
     CorporationStatusChangeRequest: {
+      effective_date?: string | null;
+      evidence?: string | null;
       status: "active" | "dissolved" | "merged_out";
     };
     CorporationUpdateRequest: {
       address?: string | null;
       corporate_number?: string | null;
+      evidence?: string | null;
       name?: string | null;
+      valid_from?: string | null;
     };
     ErrorAction: {
       action_type: components["schemas"]["ErrorActionType"];

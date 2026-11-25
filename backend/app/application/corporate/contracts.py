@@ -13,6 +13,8 @@ class RegisterCorporationInput:
     name: str
     corporate_number: str | None = None
     address: str = ""
+    valid_from: date | None = None
+    evidence: str | None = None
 
 
 @dataclass(frozen=True, slots=True)
@@ -23,6 +25,8 @@ class UpdateCorporationInput:
     address: str | None = None
     corporate_number: str | None = None
     provided_fields: frozenset[str] | None = None
+    valid_from: date | None = None
+    evidence: str | None = None
 
 
 @dataclass(frozen=True, slots=True)
@@ -30,6 +34,9 @@ class ChangeCorporationStatusInput:
     """法人存続状態変更コマンドの入力。"""
 
     status: str
+    effective_date: date | None = None
+    evidence: str | None = None
+    surviving_corporation_id: str | None = None
 
 
 @dataclass(frozen=True, slots=True)
@@ -61,6 +68,19 @@ class CorporationListResult:
 
     items: tuple[CorporationItem, ...]
     total: int
+
+
+@dataclass(frozen=True, slots=True)
+class CorporationHistoryItem:
+    """有効期間・記録日時・根拠を持つ法人の履歴項目。"""
+
+    corporation: CorporationItem
+    valid_from: date
+    valid_to: date | None
+    recorded_at: datetime
+    kind: str
+    evidence: str | None
+    surviving_corporation_id: str | None
 
 
 class CorporationCommandPort(Protocol):
@@ -96,6 +116,12 @@ class CorporationCommandPort(Protocol):
         """法人の存続状態を変更する。"""
         ...
 
+    def correct_history(
+        self, corporation_id: str, as_of: date, data: UpdateCorporationInput
+    ) -> CorporationHistoryItem:
+        """指定日で有効だった基本情報を訂正し、訂正前の履歴を保持する。"""
+        ...
+
 
 class CorporationQueryPort(Protocol):
     """プレゼンテーション層へ公開する法人参照系（Query）ポート。"""
@@ -106,6 +132,16 @@ class CorporationQueryPort(Protocol):
 
     def list_corporations(self, query: ListCorporationsQuery) -> CorporationListResult:
         """条件に一致する法人一覧を取得する。"""
+        ...
+
+    def get_corporation_at(
+        self, corporation_id: str, as_of: date, recorded_as_of: datetime | None = None
+    ) -> CorporationHistoryItem:
+        """指定日時点に把握していた法人を取得する。"""
+        ...
+
+    def list_history(self, corporation_id: str) -> tuple[CorporationHistoryItem, ...]:
+        """法人の履歴を記録順で返す。"""
         ...
 
 

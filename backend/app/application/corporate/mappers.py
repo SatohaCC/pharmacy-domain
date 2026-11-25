@@ -1,6 +1,6 @@
 """法人コンテキストにおける Domain と Application 契約の変換ヘルパー。"""
 
-from app.application.corporate.contracts import CorporationItem
+from app.application.corporate.contracts import CorporationHistoryItem, CorporationItem
 from app.application.foundation.error_mappers import from_domain_error
 from app.application.foundation.errors import (
     ApplicationBadRequestError,
@@ -13,6 +13,7 @@ from app.domain.corporate.exceptions import (
     InvalidCorporationTransitionError,
     InvalidCorporationUpdateError,
 )
+from app.domain.corporate.history import CorporationHistoryRecord
 from app.domain.corporate.value_objects import CorporationCategory, CorporationStatus
 from app.domain.foundation.exceptions import DomainError
 
@@ -48,6 +49,23 @@ def to_corporation_item(corporation: Corporation) -> CorporationItem:
         status=corporation.status.value,
         created_at=corporation.created_at.value,
         updated_at=corporation.updated_at.value,
+    )
+
+
+def to_corporation_history_item(record: CorporationHistoryRecord) -> CorporationHistoryItem:
+    """有効期間つきの法人記録を公開契約に変換する。"""
+    return CorporationHistoryItem(
+        corporation=to_corporation_item(record.corporation),
+        valid_from=record.period.valid_from,
+        valid_to=record.period.valid_to,
+        recorded_at=record.recorded_at.value,
+        kind=record.kind.value,
+        evidence=record.evidence.value if record.evidence is not None else None,
+        surviving_corporation_id=(
+            record.surviving_corporation_id.value
+            if record.surviving_corporation_id is not None
+            else None
+        ),
     )
 
 

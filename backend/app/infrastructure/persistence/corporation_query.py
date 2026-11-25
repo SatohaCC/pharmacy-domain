@@ -9,6 +9,9 @@ from app.application.corporate.contracts import (
     CorporationListResult,
     ListCorporationsQuery,
 )
+from app.domain.corporate.history import CorporationHistoryRecord
+from app.domain.corporate.identifiers import CorporationId
+from app.infrastructure.persistence.corporation_repository import SqlAlchemyCorporationRepository
 from app.infrastructure.persistence.database import corporations_table
 
 
@@ -70,3 +73,13 @@ class SqlAlchemyCorporationQueryPort:
 
         items = tuple(_row_to_item(row) for row in rows)
         return CorporationListResult(items=items, total=len(items))
+
+    def get_history(
+        self, corporation_id: CorporationId
+    ) -> tuple[CorporationHistoryRecord, ...] | None:
+        """法人の存在と履歴を同じ読み取りトランザクションで取得する。"""
+        with self._engine.connect() as connection:
+            repository = SqlAlchemyCorporationRepository(connection)
+            if repository.get(corporation_id) is None:
+                return None
+            return repository.history(corporation_id)

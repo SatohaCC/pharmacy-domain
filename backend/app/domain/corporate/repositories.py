@@ -3,6 +3,7 @@
 from typing import Protocol
 
 from app.domain.corporate.entities import CorporateRelation, Corporation
+from app.domain.corporate.history import CorporationHistoryRecord
 from app.domain.corporate.identifiers import CorporateRelationId, CorporationId
 from app.domain.corporate.primitives import CorporateNumber
 from app.domain.foundation.value_objects import EffectiveDateRange
@@ -30,6 +31,14 @@ class CorporationRepository(Protocol):
 
     def save(self, corporation: Corporation) -> None:
         """既存法人の変更を保存する。"""
+        ...
+
+    def history(self, corporation_id: CorporationId) -> tuple[CorporationHistoryRecord, ...]:
+        """法人の変更記録を追記順に取得する。"""
+        ...
+
+    def append_history(self, record: CorporationHistoryRecord) -> None:
+        """変更記録を法人集約と同じトランザクションで追記する。"""
         ...
 
 
