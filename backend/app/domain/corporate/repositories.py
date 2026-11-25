@@ -2,9 +2,10 @@
 
 from typing import Protocol
 
-from app.domain.corporate.entities import Corporation
-from app.domain.corporate.identifiers import CorporationId
+from app.domain.corporate.entities import CorporateRelation, Corporation
+from app.domain.corporate.identifiers import CorporateRelationId, CorporationId
 from app.domain.corporate.primitives import CorporateNumber
+from app.domain.foundation.value_objects import EffectiveDateRange
 
 
 class CorporationRepository(Protocol):
@@ -29,4 +30,24 @@ class CorporationRepository(Protocol):
 
     def save(self, corporation: Corporation) -> None:
         """既存法人の変更を保存する。"""
+        ...
+
+
+class CorporateRelationRepository(Protocol):
+    """法人間関係と改訂履歴を永続化する契約。"""
+
+    def add(self, relation: CorporateRelation) -> None:
+        """新規の関係と最初の記録を追加する。"""
+        ...
+
+    def get(self, relation_id: CorporateRelationId) -> CorporateRelation | None:
+        """識別子に一致する関係と改訂履歴を取得する。"""
+        ...
+
+    def list_overlapping(self, period: EffectiveDateRange) -> tuple[CorporateRelation, ...]:
+        """最新記録の適用期間が指定区間と重複する関係を取得する。"""
+        ...
+
+    def save(self, relation: CorporateRelation) -> None:
+        """既存の関係の改訂を追記する。"""
         ...

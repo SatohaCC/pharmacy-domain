@@ -8,6 +8,7 @@ from app.domain.foundation.primitives import NonEmptyString, StringPrimitive
 
 _MAX_NAME_LENGTH = 200
 _MAX_ADDRESS_LENGTH = 500
+_MAX_EVIDENCE_LENGTH = 1000
 _CORPORATE_NUMBER_PATTERN = re.compile(r"[0-9]{13}")
 _CONTROL_CHAR_PATTERN = re.compile(r"[\x00-\x1f\x7f]")
 
@@ -63,4 +64,17 @@ class CorporateAddress(StringPrimitive):
             raise DomainValidationError(
                 f"所在地は {_MAX_ADDRESS_LENGTH} 文字以内で指定してください。",
                 details={"field": "address"},
+            )
+
+
+@dataclass(frozen=True, slots=True)
+class RelationEvidence(NonEmptyString):
+    """法人間関係の確認に用いた事実や契約の根拠。"""
+
+    def validate(self) -> None:
+        super().validate()
+        if len(self.value) > _MAX_EVIDENCE_LENGTH:
+            raise DomainValidationError(
+                f"根拠メモは {_MAX_EVIDENCE_LENGTH} 文字以内で指定してください。",
+                details={"field": "evidence"},
             )
