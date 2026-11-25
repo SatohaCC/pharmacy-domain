@@ -5,7 +5,7 @@ import re
 from collections.abc import Mapping
 from dataclasses import dataclass
 
-from app.application.errors import (
+from app.application.foundation.errors import (
     ApplicationAuthorizationError,
     ApplicationBadRequestError,
     ApplicationConflictError,

@@ -1,8 +1,8 @@
 from fastapi import HTTPException
 from fastapi.testclient import TestClient
 
-from app.core.config import Settings
-from app.core.errors import AppError
+from app.application.foundation.errors import ApplicationNotFoundError
+from app.infrastructure.config import Settings
 from app.main import create_app
 
 
@@ -32,12 +32,12 @@ def test_health_check_uses_injected_settings() -> None:
     }
 
 
-def test_app_error_handler_returns_structured_error_response() -> None:
+def test_application_error_handler_returns_structured_error_response() -> None:
     app = create_app(Settings())
 
     @app.get("/api/test-error")
     def raise_error() -> None:
-        raise AppError("対象のリソースが見つかりません", code="NOT_FOUND", status_code=404)
+        raise ApplicationNotFoundError("対象のリソースが見つかりません", code="NOT_FOUND")
 
     client = TestClient(app)
 
@@ -47,6 +47,17 @@ def test_app_error_handler_returns_structured_error_response() -> None:
     assert response.json() == {
         "code": "NOT_FOUND",
         "detail": "対象のリソースが見つかりません",
+        "title": "対象のデータが見つかりませんでした",
+        "reassurance": "既存のデータは変更されていません。",
+        "reason": "対象のリソースが見つかりません",
+        "how_to_fix": (
+            "対象が削除または変更されていないかご確認のうえ、一覧から再度お選びください。"
+        ),
+        "way_out": "問題が解決しない場合は、管理薬剤師またはサポート窓口へお問い合わせください。",
+        "actions": [
+            {"label": "一覧へ戻る", "action_type": "go_back"},
+            {"label": "サポートへ問い合わせ", "action_type": "contact_support"},
+        ],
     }
 
 
@@ -64,10 +75,16 @@ def test_validation_error_returns_unified_error_response() -> None:
     assert response.status_code == 422
     payload = response.json()
     assert payload["code"] == "VALIDATION_ERROR"
-    assert payload["detail"] == "入力内容に誤りがあります"
+    assert payload["detail"] == "入力内容に誤りがあります。"
+    assert payload["title"] == "入力内容を確認してください"
+    assert payload["reassurance"] == "既存のデータは変更されていません。"
+    assert payload["reason"] == "入力内容に誤りがあります。"
     assert isinstance(payload["errors"], list)
-    assert payload["errors"][0]["loc"] == ["path", "item_id"]
-    assert payload["errors"][0]["type"] == "int_parsing"
+    assert payload["errors"][0] == {
+        "loc": ["path", "item_id"],
+        "msg": "整数で入力してください。",
+        "type": "int_parsing",
+    }
 
 
 def test_http_404_and_405_return_unified_error_response() -> None:
@@ -78,12 +95,33 @@ def test_http_404_and_405_return_unified_error_response() -> None:
     method_not_allowed = client.post("/api/health")
 
     assert not_found.status_code == 404
-    assert not_found.json() == {"code": "NOT_FOUND", "detail": "Not Found"}
+    assert not_found.json() == {
+        "code": "NOT_FOUND",
+        "detail": "Not Found",
+        "title": "対象のデータまたはページが見つかりませんでした",
+        "reassurance": "既存のデータは変更されていません。",
+        "reason": "Not Found",
+        "how_to_fix": "URL や指定した対象が正しいかご確認のうえ、前の画面へお戻りください。",
+        "way_out": "問題が解決しない場合は、管理薬剤師またはサポート窓口へお問い合わせください。",
+        "actions": [
+            {"label": "一覧へ戻る", "action_type": "go_back"},
+            {"label": "サポートへ問い合わせ", "action_type": "contact_support"},
+        ],
+    }
 
     assert method_not_allowed.status_code == 405
     assert method_not_allowed.json() == {
         "code": "METHOD_NOT_ALLOWED",
         "detail": "Method Not Allowed",
+        "title": "許可されていない操作です",
+        "reassurance": "既存のデータは変更されていません。",
+        "reason": "Method Not Allowed",
+        "how_to_fix": "入力内容や操作手順をご確認のうえ、もう一度お試しください。",
+        "way_out": "問題が解決しない場合は、管理薬剤師またはサポート窓口へお問い合わせください。",
+        "actions": [
+            {"label": "入力を修正する", "action_type": "fix_input"},
+            {"label": "キャンセル", "action_type": "cancel"},
+        ],
     }
     assert "GET" in method_not_allowed.headers.get("allow", "")
 

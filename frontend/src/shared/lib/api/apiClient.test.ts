@@ -1,5 +1,6 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { ApiError, apiFetchJson, apiFetchVoid, apiRequest } from "./apiClient";
+import type { components } from "./schema";
 
 describe("apiFetchJson", () => {
   afterEach(() => {
@@ -240,18 +241,22 @@ describe("apiRequest", () => {
   });
 
   it("パスパラメータ付き OpenAPI パスを展開・URL エンコードして呼び出せる", async () => {
-    const fetchMock = vi
-      .spyOn(globalThis, "fetch")
-      .mockResolvedValue(new Response(null, { status: 204 }));
+    const fetchMock = vi.spyOn(globalThis, "fetch").mockResolvedValue(
+      new Response(JSON.stringify({ id: "corp/1 2" }), {
+        status: 200,
+        headers: { "Content-Type": "application/json" },
+      }),
+    );
 
-    await apiRequest("/api/tasks/{task_id}", {
-      method: "delete",
-      params: { task_id: "task/1 2" },
+    await apiRequest("/api/corporations/{corporation_id}", {
+      method: "get",
+      params: { corporation_id: "corp/1 2" },
+      parse: (raw) => raw as components["schemas"]["CorporationResponse"],
     });
 
     expect(fetchMock).toHaveBeenCalledWith(
-      "/api/tasks/task%2F1%202",
-      expect.objectContaining({ method: "DELETE", cache: "no-store" }),
+      "/api/corporations/corp%2F1%202",
+      expect.objectContaining({ method: "GET", cache: "no-store" }),
     );
   });
 
@@ -261,8 +266,11 @@ describe("apiRequest", () => {
       void apiRequest("/api/non-existent", { method: "get", parse: (raw) => raw });
       // @ts-expect-error /api/health に定義されていない HTTP メソッドは許可しない
       void apiRequest("/api/health", { method: "post", parse: (raw) => raw });
-      // @ts-expect-error {task_id} パラメータが必須のパスで params 欠落は許可しない
-      void apiRequest("/api/tasks/{task_id}", { method: "delete" });
+      // @ts-expect-error {corporation_id} パラメータが必須のパスで params 欠落は許可しない
+      void apiRequest("/api/corporations/{corporation_id}", {
+        method: "get",
+        parse: (raw) => raw as components["schemas"]["CorporationResponse"],
+      });
       // @ts-expect-error パスパラメータのないパスで params 指定は許可しない
       void apiRequest("/api/health", { method: "get", params: { id: "1" }, parse: (raw) => raw });
     };
