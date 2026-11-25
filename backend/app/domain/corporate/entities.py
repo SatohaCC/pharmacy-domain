@@ -1,19 +1,26 @@
 """法人コンテキストの集約ルート（Aggregate Root）。"""
 
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
+from datetime import UTC, date
 
 from app.domain.corporate.exceptions import (
     EmptyCorporationUpdateError,
     InvalidCorporationTransitionError,
     InvalidCorporationUpdateError,
+    SelfCorporateRelationError,
 )
-from app.domain.corporate.identifiers import CorporationId
+from app.domain.corporate.identifiers import CorporateRelationId, CorporationId
 from app.domain.corporate.primitives import (
     CorporateAddress,
     CorporateNumber,
     CorporationName,
 )
-from app.domain.corporate.value_objects import CorporationCategory, CorporationStatus
+from app.domain.corporate.value_objects import (
+    CorporateRelationRevision,
+    CorporateRelationType,
+    CorporationCategory,
+    CorporationStatus,
+)
 from app.domain.foundation.exceptions import DomainValidationError
 from app.domain.foundation.primitives import AwareDatetime
 
@@ -137,4 +144,58 @@ class Corporation:
             status=next_status,
             created_at=self.created_at,
             updated_at=updated_at,
+        )
+
+
+@dataclass(frozen=True, slots=True)
+class CorporateRelation:
+    """法人間関係の両端・種別と追記型の改訂履歴を保持する集約。"""
+
+    id: CorporateRelationId
+    source_corporation_id: CorporationId
+    target_corporation_id: CorporationId
+    relation_type: CorporateRelationType
+    revisions: tuple[CorporateRelationRevision, ...]
+
+    def __post_init__(self) -> None:
+        if self.source_corporation_id == self.target_corporation_id:
+            raise SelfCorporateRelationError()
+        if not self.revisions:
+            raise DomainValidationError("法人間関係には少なくとも1件の記録が必要です。")
+        if any(
+            earlier.recorded_at.value.astimezone(UTC) >= later.recorded_at.value.astimezone(UTC)
+            for earlier, later in zip(self.revisions, self.revisions[1:], strict=False)
+        ):
+            raise DomainValidationError(
+                "記録日時は直前の記録より後の日時である必要があります。",
+                details={"field": "recorded_at"},
+            )
+
+    @property
+    def current(self) -> CorporateRelationRevision:
+        """最新の適用期間・根拠・確認状態を返す。"""
+        return self.revisions[-1]
+
+    def revision_at(self, recorded_as_of: AwareDatetime) -> CorporateRelationRevision | None:
+        """指定された記録日時までに把握していた改訂を返す。"""
+        cutoff = recorded_as_of.value.astimezone(UTC)
+        return next(
+            (
+                revision
+                for revision in reversed(self.revisions)
+                if revision.recorded_at.value.astimezone(UTC) <= cutoff
+            ),
+            None,
+        )
+
+    def correct(self, revision: CorporateRelationRevision) -> CorporateRelation:
+        """訂正前の記録を保ったまま、訂正後の記録を追加する。"""
+        return replace(self, revisions=(*self.revisions, revision))
+
+    def end(self, *, end_date: date, recorded_at: AwareDatetime) -> CorporateRelation:
+        """指定日で関係を終了し、それまでの記録を保持する。"""
+        return self.correct(
+            replace(
+                self.current, period=self.current.period.close_at(end_date), recorded_at=recorded_at
+            )
         )
