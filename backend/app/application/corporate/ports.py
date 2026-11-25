@@ -1,5 +1,6 @@
 """法人ユースケースが所有する Outbound Port 定義。"""
 
+from datetime import date
 from types import TracebackType
 from typing import Protocol
 
@@ -8,7 +9,10 @@ from app.application.corporate.contracts import (
     CorporationListResult,
     ListCorporationsQuery,
 )
-from app.domain.corporate.repositories import CorporationRepository
+from app.domain.corporate.entities import CorporateRelation
+from app.domain.corporate.identifiers import CorporateRelationId, CorporationId
+from app.domain.corporate.repositories import CorporateRelationRepository, CorporationRepository
+from app.domain.foundation.primitives import AwareDatetime
 
 
 class CorporationUnitOfWork(Protocol):
@@ -58,4 +62,42 @@ class CorporationQueryGateway(Protocol):
 
     def list_corporations(self, query: ListCorporationsQuery) -> CorporationListResult:
         """条件に一致する法人投影一覧を返す。"""
+        ...
+
+
+class CorporateRelationUnitOfWork(CorporationUnitOfWork, Protocol):
+    """法人の存在確認と関係の検証・変更を同じ書き込み境界に置く。"""
+
+    @property
+    def relations(self) -> CorporateRelationRepository:
+        """同一トランザクションに属する法人間関係リポジトリを返す。"""
+        ...
+
+    def __enter__(self) -> CorporateRelationUnitOfWork:
+        """DB の書き込み権を取得して操作を開始する。"""
+        ...
+
+
+class CorporateRelationUnitOfWorkFactory(Protocol):
+    """書き込み操作ごとに法人間関係のトランザクションを生成する。"""
+
+    def __call__(self) -> CorporateRelationUnitOfWork:
+        """新しい Unit of Work を返す。"""
+        ...
+
+
+class CorporateRelationQueryGateway(Protocol):
+    """読み取り側の法人間関係の取得条件を定義する。"""
+
+    def get(self, relation_id: CorporateRelationId) -> CorporateRelation | None:
+        """関係と記録履歴を取得する。"""
+        ...
+
+    def list_relations(
+        self,
+        corporation_id: CorporationId | None,
+        as_of: date | None,
+        recorded_as_of: AwareDatetime | None,
+    ) -> tuple[CorporateRelation, ...]:
+        """有効日・記録日時・関係する法人で絞り込む。"""
         ...

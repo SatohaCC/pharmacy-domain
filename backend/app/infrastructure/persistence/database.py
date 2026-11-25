@@ -10,6 +10,8 @@ import sqlalchemy as sa
 from sqlalchemy import (
     CheckConstraint,
     Column,
+    Date,
+    ForeignKey,
     Index,
     MetaData,
     Table,
@@ -47,6 +49,32 @@ Index(
     corporations_table.c.corporate_number,
     unique=True,
     sqlite_where=sa.text("corporate_number IS NOT NULL"),
+)
+
+corporate_relations_table = Table(
+    "corporate_relations",
+    metadata,
+    Column("id", Text, primary_key=True),
+    Column("source_corporation_id", Text, ForeignKey("corporations.id"), nullable=False),
+    Column("target_corporation_id", Text, ForeignKey("corporations.id"), nullable=False),
+    Column("relation_type", Text, nullable=False),
+    CheckConstraint("source_corporation_id <> target_corporation_id"),
+    CheckConstraint("relation_type IN ('parent_child', 'affiliate', 'fc_vc')"),
+    Index("idx_corporate_relations_source", "source_corporation_id"),
+    Index("idx_corporate_relations_target", "target_corporation_id"),
+)
+
+corporate_relation_revisions_table = Table(
+    "corporate_relation_revisions",
+    metadata,
+    Column("relation_id", Text, ForeignKey("corporate_relations.id"), primary_key=True),
+    Column("recorded_at", Text, primary_key=True),
+    Column("valid_from", Date, nullable=False),
+    Column("valid_to", Date),
+    Column("evidence", Text, nullable=False),
+    Column("confirmation_status", Text, nullable=False),
+    CheckConstraint("valid_to IS NULL OR valid_from < valid_to"),
+    CheckConstraint("confirmation_status IN ('unverified', 'verified')"),
 )
 
 

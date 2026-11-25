@@ -7,6 +7,9 @@ from sqlalchemy import Connection, Engine, RootTransaction
 from sqlalchemy.exc import OperationalError
 
 from app.application.foundation.errors import ApplicationConflictError
+from app.infrastructure.persistence.corporate_relation_repository import (
+    SqlAlchemyCorporateRelationRepository,
+)
 from app.infrastructure.persistence.corporation_repository import (
     SqlAlchemyCorporationRepository,
 )
@@ -22,11 +25,17 @@ class SqlAlchemyCorporationUnitOfWork:
         self._transaction: RootTransaction | None = None
         self._committed = False
         self._corporations: SqlAlchemyCorporationRepository
+        self._relations: SqlAlchemyCorporateRelationRepository
 
     @property
     def corporations(self) -> SqlAlchemyCorporationRepository:
         """同一トランザクション内の法人集約リポジトリを返す。"""
         return self._corporations
+
+    @property
+    def relations(self) -> SqlAlchemyCorporateRelationRepository:
+        """同一トランザクション内の法人間関係リポジトリを返す。"""
+        return self._relations
 
     def __enter__(self) -> SqlAlchemyCorporationUnitOfWork:
         connection = self._engine.connect()
@@ -49,6 +58,7 @@ class SqlAlchemyCorporationUnitOfWork:
         self._transaction = transaction
         self._committed = False
         self._corporations = SqlAlchemyCorporationRepository(connection)
+        self._relations = SqlAlchemyCorporateRelationRepository(connection)
         return self
 
     def __exit__(

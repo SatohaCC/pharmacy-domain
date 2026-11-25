@@ -3,6 +3,183 @@
  */
 
 export interface paths {
+  "/api/corporate-relations": {
+    get: {
+      parameters: {
+        query: {
+          as_of?: string | null;
+          corporation_id?: string | null;
+          recorded_as_of?: string | null;
+        };
+      };
+      responses: {
+        200: {
+          content: {
+            "application/json": components["schemas"]["CorporateRelationListResponse"];
+          };
+        };
+        422: {
+          content: {
+            "application/json": components["schemas"]["ErrorResponse"];
+          };
+        };
+      };
+    };
+    post: {
+      requestBody: {
+        content: {
+          "application/json": components["schemas"]["CorporateRelationCreateRequest"];
+        };
+      };
+      responses: {
+        201: {
+          content: {
+            "application/json": components["schemas"]["CorporateRelationResponse"];
+          };
+        };
+        404: {
+          content: {
+            "application/json": components["schemas"]["ErrorResponse"];
+          };
+        };
+        409: {
+          content: {
+            "application/json": components["schemas"]["ErrorResponse"];
+          };
+        };
+        422: {
+          content: {
+            "application/json": components["schemas"]["ErrorResponse"];
+          };
+        };
+      };
+    };
+  };
+  "/api/corporate-relations/{relation_id}": {
+    get: {
+      parameters: {
+        query: {
+          recorded_as_of?: string | null;
+        };
+        path: {
+          relation_id: string;
+        };
+      };
+      responses: {
+        200: {
+          content: {
+            "application/json": components["schemas"]["CorporateRelationResponse"];
+          };
+        };
+        404: {
+          content: {
+            "application/json": components["schemas"]["ErrorResponse"];
+          };
+        };
+        422: {
+          content: {
+            "application/json": components["schemas"]["ErrorResponse"];
+          };
+        };
+      };
+    };
+    patch: {
+      parameters: {
+        path: {
+          relation_id: string;
+        };
+      };
+      requestBody: {
+        content: {
+          "application/json": components["schemas"]["CorporateRelationCorrectionRequest"];
+        };
+      };
+      responses: {
+        200: {
+          content: {
+            "application/json": components["schemas"]["CorporateRelationResponse"];
+          };
+        };
+        404: {
+          content: {
+            "application/json": components["schemas"]["ErrorResponse"];
+          };
+        };
+        409: {
+          content: {
+            "application/json": components["schemas"]["ErrorResponse"];
+          };
+        };
+        422: {
+          content: {
+            "application/json": components["schemas"]["ErrorResponse"];
+          };
+        };
+      };
+    };
+  };
+  "/api/corporate-relations/{relation_id}/end": {
+    post: {
+      parameters: {
+        path: {
+          relation_id: string;
+        };
+      };
+      requestBody: {
+        content: {
+          "application/json": components["schemas"]["CorporateRelationEndRequest"];
+        };
+      };
+      responses: {
+        200: {
+          content: {
+            "application/json": components["schemas"]["CorporateRelationResponse"];
+          };
+        };
+        404: {
+          content: {
+            "application/json": components["schemas"]["ErrorResponse"];
+          };
+        };
+        409: {
+          content: {
+            "application/json": components["schemas"]["ErrorResponse"];
+          };
+        };
+        422: {
+          content: {
+            "application/json": components["schemas"]["ErrorResponse"];
+          };
+        };
+      };
+    };
+  };
+  "/api/corporate-relations/{relation_id}/history": {
+    get: {
+      parameters: {
+        path: {
+          relation_id: string;
+        };
+      };
+      responses: {
+        200: {
+          content: {
+            "application/json": Array<components["schemas"]["CorporateRelationRevisionResponse"]>;
+          };
+        };
+        404: {
+          content: {
+            "application/json": components["schemas"]["ErrorResponse"];
+          };
+        };
+        422: {
+          content: {
+            "application/json": components["schemas"]["ErrorResponse"];
+          };
+        };
+      };
+    };
+  };
   "/api/corporations": {
     get: {
       parameters: {
@@ -171,6 +348,46 @@ export interface paths {
 
 export interface components {
   schemas: {
+    CorporateRelationCorrectionRequest: {
+      confirmation_status?: "unverified" | "verified";
+      evidence?: string;
+      valid_from?: string;
+      valid_to?: string | null;
+    };
+    CorporateRelationCreateRequest: {
+      confirmation_status?: "unverified" | "verified";
+      evidence: string;
+      relation_type: "parent_child" | "affiliate" | "fc_vc";
+      source_corporation_id: string;
+      target_corporation_id: string;
+      valid_from: string;
+      valid_to?: string | null;
+    };
+    CorporateRelationEndRequest: {
+      valid_to: string;
+    };
+    CorporateRelationListResponse: {
+      items: Array<components["schemas"]["CorporateRelationResponse"]>;
+      total: number;
+    };
+    CorporateRelationResponse: {
+      confirmation_status: "unverified" | "verified";
+      evidence: string;
+      id: string;
+      recorded_at: string;
+      relation_type: "parent_child" | "affiliate" | "fc_vc";
+      source_corporation_id: string;
+      target_corporation_id: string;
+      valid_from: string;
+      valid_to: string | null;
+    };
+    CorporateRelationRevisionResponse: {
+      confirmation_status: "unverified" | "verified";
+      evidence: string;
+      recorded_at: string;
+      valid_from: string;
+      valid_to: string | null;
+    };
     CorporationCreateRequest: {
       address?: string;
       category: "corporation" | "individual";
