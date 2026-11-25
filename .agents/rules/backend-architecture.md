@@ -19,7 +19,19 @@
 - Engine 等の共有資源は起動時に `app.state.resources`（`ResourceRegistry`）へ登録し、終了時の `lifespan` で `aclose_all()` により逆順で解放する。
 - DB 接続・トランザクション（`UnitOfWork`）は操作単位で生成し、並行操作間で共有しない。
 
-## 3. 検証
+## 3. テスト配置
+
+`backend/tests/` 配下は `backend/app/` の層・コンテキスト構造をミラーし、層をまたぐ結合検証用に `integration/` を設ける。
+
+- `tests/domain/<context>/`: `app/domain/<context>/` の単体テスト（DB・フレームワーク非依存）
+- `tests/application/<context>/`: `app/application/<context>/` のユースケース単体テスト（Fake ポート等で検証）
+- `tests/infrastructure/`: `app/infrastructure/` の単体・永続化テスト（設定・ログ・資源管理・`persistence/` の DB / Repository / QueryPort）
+- `tests/presentation/`: `app/presentation/` の単体・ハンドラテスト（プレゼンター・例外ハンドラ・マッパー等）
+- `tests/integration/`: Composition Root（`create_app()`）経由の HTTP API フロー、並行制御、lifespan / DI、可観測性、層境界チェックなど複数層をまたぐ統合テスト
+
+`tests/` 配下の各サブディレクトリには `__init__.py` を配置し、`pytest` / `mypy` のモジュール名衝突を防ぐ。
+
+## 4. 検証
 
 変更後は以下を実行して通過を確認する。
 
