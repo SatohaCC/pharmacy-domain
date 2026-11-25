@@ -11,16 +11,17 @@ from app.domain.foundation.exceptions import (
 )
 from app.domain.foundation.identifiers import EntityId
 from app.domain.foundation.primitives import (
+    AwareDatetime,
     DomainPrimitive,
     FiniteFloatPrimitive,
     IntPrimitive,
     MaskedPiiString,
     NonEmptyString,
     StringPrimitive,
-    ensure_aware_datetime,
 )
 
 __all__ = [
+    "AwareDatetime",
     "DomainAuthorizationError",
     "DomainConflictError",
     "DomainError",
@@ -35,5 +36,4 @@ __all__ = [
     "MaskedPiiString",
     "NonEmptyString",
     "StringPrimitive",
-    "ensure_aware_datetime",
 ]

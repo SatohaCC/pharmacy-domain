@@ -7,6 +7,7 @@ from typing import Any, cast
 import pytest
 
 from app.domain.foundation import (
+    AwareDatetime,
     DomainPrimitive,
     DomainValidationError,
     EntityId,
@@ -15,7 +16,6 @@ from app.domain.foundation import (
     MaskedPiiString,
     NonEmptyString,
     StringPrimitive,
-    ensure_aware_datetime,
 )
 
 
@@ -111,10 +111,10 @@ def test_entity_id_and_numeric_primitives_and_datetime() -> None:
     with pytest.raises(DomainValidationError, match="有限"):
         _SampleFloat(float("inf"))
 
-    aware = datetime(2026, 11, 25, 9, 0, tzinfo=UTC)
-    assert ensure_aware_datetime(aware, field_name="created_at") == aware
+    aware = AwareDatetime(datetime(2026, 11, 25, 9, 0, tzinfo=UTC))
+    assert AwareDatetime.parse("2026-11-25T09:00:00+00:00") == aware
+    assert aware < AwareDatetime(datetime(2026, 11, 25, 9, 1, tzinfo=UTC))
     with pytest.raises(DomainValidationError, match="タイムゾーン"):
-        ensure_aware_datetime(
-            datetime.fromisoformat("2026-11-25T09:00:00"),
-            field_name="created_at",
-        )
+        AwareDatetime.parse("2026-11-25T09:00:00")
+    with pytest.raises(DomainValidationError, match="形式"):
+        AwareDatetime.parse("not-a-datetime")

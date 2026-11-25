@@ -110,8 +110,22 @@ class FiniteFloatPrimitive(DomainPrimitive[float]):
         return cls(float(raw))
 
 
-def ensure_aware_datetime(value: datetime, *, field_name: str = "datetime") -> datetime:
-    """日時がタイムゾーン情報（aware）を持つことを検証して返す。"""
-    if value.tzinfo is None or value.utcoffset() is None:
-        raise DomainValidationError(f"{field_name} にはタイムゾーン付きの日時を指定してください。")
-    return value
+@dataclass(frozen=True, slots=True, order=True)
+class AwareDatetime(DomainPrimitive[datetime]):
+    """タイムゾーン情報（aware）を持つ日時の Domain Primitive。"""
+
+    def validate(self) -> None:
+        if not isinstance(self.value, datetime):
+            raise DomainValidationError("日時を指定してください。")
+        if self.value.tzinfo is None or self.value.utcoffset() is None:
+            raise DomainValidationError("タイムゾーン付きの日時を指定してください。")
+
+    @classmethod
+    def parse(cls, raw: datetime | str) -> Self:
+        """日時または ISO 8601 文字列を検証してインスタンスを生成する。"""
+        if isinstance(raw, str):
+            try:
+                return cls(datetime.fromisoformat(raw))
+            except ValueError as exc:
+                raise DomainValidationError("日時の形式が不正です。") from exc
+        return cls(raw)
