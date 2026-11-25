@@ -74,6 +74,57 @@ describe("apiFetchJson", () => {
       detail: "入力内容に誤りがあります",
       requestId: "req-422-trace",
       errors: [{ loc: ["body", "name"], msg: "Field required", type: "missing" }],
+      userFacing: null,
+    });
+  });
+
+  it("5要素 ErrorResponse を userFacing としてパースし、不正な action_type や非スカラー details を安全に除外する", async () => {
+    vi.spyOn(globalThis, "fetch").mockResolvedValue(
+      new Response(
+        JSON.stringify({
+          code: "FORBIDDEN_SEPARATOR_IN_INSURANCE_ID",
+          title: "保険資格を登録できませんでした",
+          reassurance: "既存のデータは変更されていません。",
+          reason: "記号・番号に空白が含まれています。",
+          how_to_fix: "空白を取り除いて再度入力してください。",
+          way_out: "サポート窓口へお問い合わせください。",
+          actions: [
+            { label: "入力を修正する", action_type: "fix_input" },
+            { label: "未知アクション", action_type: "unknown_action" },
+          ],
+          details: {
+            field: "insurance_number",
+            nested: { secret: "ignored" },
+          },
+        }),
+        {
+          status: 422,
+          headers: {
+            "Content-Type": "application/json",
+            "X-Request-ID": "req-five-elements",
+          },
+        },
+      ),
+    );
+
+    const promise = apiFetchJson("/api/sample", { parse: (data) => data });
+
+    await expect(promise).rejects.toMatchObject({
+      message: "記号・番号に空白が含まれています。",
+      status: 422,
+      code: "HTTP_ERROR",
+      errorCode: "FORBIDDEN_SEPARATOR_IN_INSURANCE_ID",
+      detail: "記号・番号に空白が含まれています。",
+      requestId: "req-five-elements",
+      userFacing: {
+        title: "保険資格を登録できませんでした",
+        reassurance: "既存のデータは変更されていません。",
+        reason: "記号・番号に空白が含まれています。",
+        how_to_fix: "空白を取り除いて再度入力してください。",
+        way_out: "サポート窓口へお問い合わせください。",
+        actions: [{ label: "入力を修正する", action_type: "fix_input" }],
+        details: { field: "insurance_number" },
+      },
     });
   });
 
