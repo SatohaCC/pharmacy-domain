@@ -10,7 +10,7 @@ from alembic import command
 from alembic.config import Config
 from fastapi.testclient import TestClient
 from httpx import Response
-from sqlalchemy import Connection, Engine, event
+from sqlalchemy import Connection, Engine, event, text
 
 from app.infrastructure.config import Settings
 from app.infrastructure.persistence.unit_of_work import SqlAlchemyCorporationUnitOfWork
@@ -47,11 +47,18 @@ def relations_api(tmp_path: Path) -> Iterator[tuple[TestClient, Engine, str]]:
         with engine.begin() as connection:
             config.attributes["connection"] = connection
             command.upgrade(config, "0001_create_corporations")
-        legacy_id = _create_corporation(client, "移行前の法人")
+            connection.execute(
+                text(
+                    "INSERT INTO corporations "
+                    "(id, category, name, address, status, created_at, updated_at) "
+                    "VALUES ('legacy', 'corporation', '移行前の法人', '', 'active', "
+                    "'2025-01-01T00:00:00+00:00', '2025-01-01T00:00:00+00:00')"
+                )
+            )
         with engine.begin() as connection:
             config.attributes["connection"] = connection
             command.upgrade(config, "head")
-        yield client, engine, legacy_id
+        yield client, engine, "legacy"
 
 
 def test_revision_history_and_business_date_filters_survive_migration(

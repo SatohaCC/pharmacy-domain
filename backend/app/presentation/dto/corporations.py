@@ -1,9 +1,9 @@
 """法人 API 用の公開 DTO。"""
 
-from datetime import datetime
+from datetime import date, datetime
 from typing import Literal
 
-from pydantic import BaseModel
+from pydantic import BaseModel, ConfigDict
 
 
 class CorporationCreateRequest(BaseModel):
@@ -13,6 +13,8 @@ class CorporationCreateRequest(BaseModel):
     name: str
     corporate_number: str | None = None
     address: str = ""
+    valid_from: date | None = None
+    evidence: str | None = None
 
 
 class CorporationUpdateRequest(BaseModel):
@@ -21,12 +23,38 @@ class CorporationUpdateRequest(BaseModel):
     name: str | None = None
     address: str | None = None
     corporate_number: str | None = None
+    valid_from: date | None = None
+    evidence: str | None = None
 
 
 class CorporationStatusChangeRequest(BaseModel):
     """法人存続状態変更リクエスト DTO。"""
 
     status: Literal["active", "dissolved", "merged_out"]
+    effective_date: date | None = None
+    evidence: str | None = None
+
+
+class CorporationHistoryCorrectionRequest(BaseModel):
+    """指定日を含む既知の有効期間について、変更前の記録を保持して訂正する。"""
+
+    model_config = ConfigDict(extra="forbid")
+
+    as_of: date
+    evidence: str
+    name: str | None = None
+    address: str | None = None
+    corporate_number: str | None = None
+
+
+class CorporationMergerRequest(BaseModel):
+    """吸収合併の存続法人、効力日、根拠を記録する。"""
+
+    model_config = ConfigDict(extra="forbid")
+
+    surviving_corporation_id: str
+    effective_date: date
+    evidence: str
 
 
 class CorporationResponse(BaseModel):
@@ -47,3 +75,15 @@ class CorporationListResponse(BaseModel):
 
     items: list[CorporationResponse]
     total: int
+
+
+class CorporationHistoryResponse(BaseModel):
+    """法人の有効期間・記録日時と当時のスナップショット。"""
+
+    corporation: CorporationResponse
+    valid_from: date
+    valid_to: date | None
+    recorded_at: datetime
+    kind: Literal["legacy", "registration", "profile", "correction", "dissolution", "merger"]
+    evidence: str | None
+    surviving_corporation_id: str | None

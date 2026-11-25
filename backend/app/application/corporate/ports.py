@@ -10,6 +10,7 @@ from app.application.corporate.contracts import (
     ListCorporationsQuery,
 )
 from app.domain.corporate.entities import CorporateRelation
+from app.domain.corporate.history import CorporationHistoryRecord
 from app.domain.corporate.identifiers import CorporateRelationId, CorporationId
 from app.domain.corporate.repositories import CorporateRelationRepository, CorporationRepository
 from app.domain.foundation.primitives import AwareDatetime
@@ -62,6 +63,12 @@ class CorporationQueryGateway(Protocol):
 
     def list_corporations(self, query: ListCorporationsQuery) -> CorporationListResult:
         """条件に一致する法人投影一覧を返す。"""
+        ...
+
+    def get_history(
+        self, corporation_id: CorporationId
+    ) -> tuple[CorporationHistoryRecord, ...] | None:
+        """法人が存在すれば変更履歴、存在しなければ None を返す。"""
         ...
 
 

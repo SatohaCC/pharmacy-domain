@@ -13,6 +13,7 @@ from sqlalchemy import (
     Date,
     ForeignKey,
     Index,
+    Integer,
     MetaData,
     Table,
     Text,
@@ -75,6 +76,29 @@ corporate_relation_revisions_table = Table(
     Column("confirmation_status", Text, nullable=False),
     CheckConstraint("valid_to IS NULL OR valid_from < valid_to"),
     CheckConstraint("confirmation_status IN ('unverified', 'verified')"),
+)
+
+corporation_history_table = Table(
+    "corporation_history",
+    metadata,
+    Column("sequence", Integer, primary_key=True),
+    Column("corporation_id", Text, ForeignKey("corporations.id"), nullable=False),
+    Column("valid_from", Date, nullable=False),
+    Column("valid_to", Date),
+    Column("name", Text, nullable=False),
+    Column("corporate_number", Text),
+    Column("address", Text, nullable=False),
+    Column("status", Text, nullable=False),
+    Column("recorded_at", Text, nullable=False),
+    Column("kind", Text, nullable=False),
+    Column("evidence", Text),
+    Column("surviving_corporation_id", Text, ForeignKey("corporations.id")),
+    CheckConstraint("valid_to IS NULL OR valid_from < valid_to"),
+    CheckConstraint("status IN ('active', 'dissolved', 'merged_out')"),
+    CheckConstraint(
+        "surviving_corporation_id IS NULL OR surviving_corporation_id <> corporation_id"
+    ),
+    Index("idx_corporation_history_records", "corporation_id", "sequence"),
 )
 
 

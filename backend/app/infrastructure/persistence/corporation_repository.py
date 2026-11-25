@@ -10,6 +10,11 @@ from app.domain.corporate.exceptions import (
     CorporationNotFoundError,
     DuplicateCorporateNumberError,
 )
+from app.domain.corporate.history import (
+    CorporationChangeKind,
+    CorporationEvidence,
+    CorporationHistoryRecord,
+)
 from app.domain.corporate.identifiers import CorporationId
 from app.domain.corporate.primitives import (
     CorporateAddress,
@@ -19,7 +24,8 @@ from app.domain.corporate.primitives import (
 from app.domain.corporate.value_objects import CorporationCategory, CorporationStatus
 from app.domain.foundation.exceptions import DomainConflictError
 from app.domain.foundation.primitives import AwareDatetime
-from app.infrastructure.persistence.database import corporations_table
+from app.domain.foundation.value_objects import EffectiveDateRange
+from app.infrastructure.persistence.database import corporation_history_table, corporations_table
 
 
 def _parse_iso_utc(raw: str) -> AwareDatetime:
@@ -40,6 +46,28 @@ def _row_to_corporation(row: RowMapping) -> Corporation:
         status=CorporationStatus(str(row["status"])),
         created_at=_parse_iso_utc(str(row["created_at"])),
         updated_at=_parse_iso_utc(str(row["updated_at"])),
+    )
+
+
+def _row_to_history_record(row: RowMapping) -> CorporationHistoryRecord:
+    value = row["corporate_number"]
+    evidence = row["evidence"]
+    survivor = row["surviving_corporation_id"]
+    return CorporationHistoryRecord(
+        corporation=Corporation(
+            id=CorporationId(row["corporation_id"]),
+            category=CorporationCategory(row["category"]),
+            name=CorporationName(row["name"]),
+            corporate_number=CorporateNumber(value) if value is not None else None,
+            address=CorporateAddress(row["address"]),
+            status=CorporationStatus(row["status"]),
+            created_at=_parse_iso_utc(row["created_at"]),
+            updated_at=_parse_iso_utc(row["recorded_at"]),
+        ),
+        period=EffectiveDateRange(row["valid_from"], row["valid_to"]),
+        kind=CorporationChangeKind(row["kind"]),
+        evidence=CorporationEvidence(evidence) if evidence is not None else None,
+        surviving_corporation_id=CorporationId(survivor) if survivor is not None else None,
     )
 
 
@@ -127,3 +155,36 @@ class SqlAlchemyCorporationRepository:
             ) from exc
         if result.rowcount == 0:
             raise CorporationNotFoundError()
+
+    def history(self, corporation_id: CorporationId) -> tuple[CorporationHistoryRecord, ...]:
+        """法人履歴を同じ接続から追記順に復元する。"""
+        records = corporation_history_table
+        stmt = (
+            select(records, corporations_table.c.category, corporations_table.c.created_at)
+            .join(corporations_table, records.c.corporation_id == corporations_table.c.id)
+            .where(records.c.corporation_id == corporation_id.value)
+            .order_by(records.c.sequence)
+        )
+        return tuple(
+            _row_to_history_record(row) for row in self._connection.execute(stmt).mappings()
+        )
+
+    def append_history(self, record: CorporationHistoryRecord) -> None:
+        """現在行と同じ接続に有効期間と記録時点を持つ変更を追加する。"""
+        state = record.corporation
+        number, survivor = state.corporate_number, record.surviving_corporation_id
+        self._connection.execute(
+            insert(corporation_history_table).values(
+                corporation_id=state.id.value,
+                valid_from=record.period.valid_from,
+                valid_to=record.period.valid_to,
+                name=state.name.value,
+                corporate_number=number.value if number is not None else None,
+                address=state.address.value,
+                status=state.status.value,
+                recorded_at=record.recorded_at.value.isoformat(),
+                kind=record.kind.value,
+                evidence=record.evidence.value if record.evidence is not None else None,
+                surviving_corporation_id=survivor.value if survivor is not None else None,
+            )
+        )

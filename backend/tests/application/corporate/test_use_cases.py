@@ -20,6 +20,7 @@ from app.application.foundation.errors import (
     ApplicationValidationError,
 )
 from app.domain.corporate.entities import Corporation
+from app.domain.corporate.history import CorporationHistoryRecord
 from app.domain.corporate.identifiers import CorporationId
 from app.domain.corporate.primitives import CorporateNumber
 
@@ -43,9 +44,15 @@ class _SequentialIdGenerator:
 
 
 class _FakeCorporationRepository:
-    def __init__(self, committed: dict[str, Corporation]) -> None:
+    def __init__(
+        self,
+        committed: dict[str, Corporation],
+        history: dict[str, tuple[CorporationHistoryRecord, ...]],
+    ) -> None:
         self._committed = committed
         self._working: dict[str, Corporation] = dict(committed)
+        self._committed_history = history
+        self._working_history = dict(history)
 
     def add(self, corporation: Corporation) -> None:
         self._working[corporation.id.value] = corporation
@@ -69,16 +76,29 @@ class _FakeCorporationRepository:
     def save(self, corporation: Corporation) -> None:
         self._working[corporation.id.value] = corporation
 
+    def history(self, corporation_id: CorporationId) -> tuple[CorporationHistoryRecord, ...]:
+        return self._working_history.get(corporation_id.value, ())
+
+    def append_history(self, record: CorporationHistoryRecord) -> None:
+        identifier = record.corporation.id
+        self._working_history[identifier.value] = (*self.history(identifier), record)
+
     def flush_to_committed(self) -> None:
         self._committed.clear()
         self._committed.update(self._working)
+        self._committed_history.update(self._working_history)
 
 
 class _FakeCorporationUnitOfWork:
-    def __init__(self, committed: dict[str, Corporation], events: list[str]) -> None:
+    def __init__(
+        self,
+        committed: dict[str, Corporation],
+        events: list[str],
+        history: dict[str, tuple[CorporationHistoryRecord, ...]],
+    ) -> None:
         self._events = events
         self._is_committed = False
-        self._corporations = _FakeCorporationRepository(committed)
+        self._corporations = _FakeCorporationRepository(committed, history)
 
     @property
     def corporations(self) -> _FakeCorporationRepository:
@@ -108,8 +128,18 @@ class _FakeCorporationUnitOfWork:
 
 
 class _FakeCorporationQueryPort:
-    def __init__(self, committed: dict[str, Corporation]) -> None:
+    def __init__(
+        self,
+        committed: dict[str, Corporation],
+        history: dict[str, tuple[CorporationHistoryRecord, ...]],
+    ) -> None:
         self._committed = committed
+        self._history = history
+
+    def get_history(
+        self, corporation_id: CorporationId
+    ) -> tuple[CorporationHistoryRecord, ...] | None:
+        return self._history.get(corporation_id.value)
 
     def get_corporation(self, corporation_id: str) -> CorporationItem | None:
         corp = self._committed.get(corporation_id)
@@ -149,15 +179,16 @@ class _FakeCorporationQueryPort:
 
 def test_corporation_use_cases_register_duplicate_check_and_status_transition() -> None:
     store: dict[str, Corporation] = {}
+    history: dict[str, tuple[CorporationHistoryRecord, ...]] = {}
     events: list[str] = []
     fixed_now = datetime(2026, 11, 21, 10, 0, tzinfo=UTC)
 
     commands = CorporationCommandService(
-        uow_factory=lambda: _FakeCorporationUnitOfWork(store, events),
+        uow_factory=lambda: _FakeCorporationUnitOfWork(store, events, history),
         clock=_FixedClock(fixed_now),
         id_generator=_SequentialIdGenerator(),
     )
-    queries = CorporationQueryService(query_gateway=_FakeCorporationQueryPort(store))
+    queries = CorporationQueryService(query_gateway=_FakeCorporationQueryPort(store, history))
 
     created = commands.register_corporation(
         RegisterCorporationInput(

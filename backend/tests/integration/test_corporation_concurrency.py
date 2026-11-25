@@ -108,6 +108,8 @@ def test_concurrent_profile_update_checks_committed_status(
     saved = client.get(corporation_path).json()
     assert saved["status"] == "dissolved"
     assert saved["name"] == "法人"
+    history = client.get(f"{corporation_path}/history").json()
+    assert [record["kind"] for record in history] == ["registration", "dissolution"]
 
 
 def test_status_change_reports_conflict_when_write_lock_wait_expires(
