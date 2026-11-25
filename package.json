@@ -16,7 +16,7 @@
     "build": "pnpm --filter frontend build",
     "lint": "pnpm lint:frontend && pnpm lint:backend",
     "lint:frontend": "pnpm --filter frontend lint",
-    "lint:backend": "pnpm -C backend exec ruff check . && pnpm -C backend exec lint-imports --no-cache",
+    "lint:backend": "pnpm -C backend exec ruff check . && pnpm -C backend exec lint-imports --cache-dir ../.cache/import-linter",
     "format": "pnpm format:frontend && pnpm format:backend",
     "format:frontend": "pnpm --filter frontend format",
     "format:backend": "pnpm -C backend exec ruff format .",
