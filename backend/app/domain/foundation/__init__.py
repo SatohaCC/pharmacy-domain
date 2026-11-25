@@ -19,6 +19,7 @@ from app.domain.foundation.primitives import (
     NonEmptyString,
     StringPrimitive,
 )
+from app.domain.foundation.value_objects import EffectiveDateRange
 
 __all__ = [
     "AwareDatetime",
@@ -28,6 +29,7 @@ __all__ = [
     "DomainNotFoundError",
     "DomainPrimitive",
     "DomainValidationError",
+    "EffectiveDateRange",
     "EntityId",
     "ErrorDetailScalar",
     "ErrorDetails",
