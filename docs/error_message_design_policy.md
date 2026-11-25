@@ -26,7 +26,7 @@
 | 層 | 責務 | 扱う情報 |
 | :--- | :--- | :--- |
 | **ドメイン層**<br>(`app/domain/foundation/exceptions.py`) | **何が・なぜルール違反か**を最小構造で伝える。 | `message`（業務ルール違反の事実）、`code`（機械可読コード）、`details`（対象フィールド名等のスカラー値）、IDOR秘匿要否（`DomainAuthorizationError.conceal_as_not_found`）。各サブクラスは `default_code` のみ宣言する。 |
-| **アプリケーション層**<br>(`app/application/errors.py`, `error_mappers.py`) | 公開例外契約（`ApplicationError` 階層）を定義し、`error_mappers.py` でドメイン例外を変換してトランザクション・保存状態の文脈を付与する（`errors.py` 自体は `app.domain` へ依存させず、`presentation` からの推移的依存を防ぐ）。 | `ApplicationError` 階層、`state_impact`（`"unchanged"` / `"draft_preserved"` / `"unknown"`）、`conceal_as_not_found`。 |
+| **アプリケーション層**<br>(`app/application/foundation/errors.py`, `error_mappers.py`) | 公開例外契約（`ApplicationError` 階層）を定義し、`error_mappers.py` でドメイン例外を変換してトランザクション・保存状態の文脈を付与する（`errors.py` 自体は `app.domain` へ依存させず、`presentation` からの推移的依存を防ぐ）。 | `ApplicationError` 階層、`state_impact`（`"unchanged"` / `"draft_preserved"` / `"unknown"`）、`conceal_as_not_found`。 |
 | **プレゼンテーション層**<br>(`app/presentation/error_presenter.py`, `error_handlers.py`, `dto/error.py`) | アプリ例外＋リクエスト検証（422）・HTTP例外・予期しない例外（500）を統一 **5要素 `ErrorResponse`** へ組み立て、HTTP 出力境界で一元的にサニタイズする。 | `title`（見出し）、`reassurance`（安心材料）、`how_to_fix`（対処案内カタログ）、`way_out`（連絡先）、エラー種別に応じた `actions`（ボタン）、`detail` / `errors`（後方互換）、および出力サニタイズ。 |
 
 ### 例外クラスの使い分け
@@ -132,9 +132,9 @@ class DomainAuthorizationError(DomainError):
         self.conceal_as_not_found = conceal_as_not_found
 ```
 
-### 5-2. アプリケーション層（`app/application/errors.py`, `error_mappers.py`）
+### 5-2. アプリケーション層（`app/application/foundation/errors.py`, `error_mappers.py`）
 
-`app/application/errors.py` は `app.domain` へ依存しない純粋な公開例外契約のみを持ち、ドメイン例外からの変換は `app/application/error_mappers.py` に分離する（`import-linter` による `presentation` → `domain` の推移的依存禁止を満たすため）。
+`app/application/foundation/errors.py` は `app.domain` へ依存しない純粋な公開例外契約のみを持ち、ドメイン例外からの変換は `app/application/foundation/error_mappers.py` に分離する（`import-linter` による `presentation` → `domain` の推移的依存禁止および公開契約のみの参照制限を満たすため）。
 
 ```python
 """ドメイン例外からアプリケーション層公開例外への変換ヘルパー。"""

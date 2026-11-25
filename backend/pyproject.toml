@@ -30,8 +30,12 @@ cache-dir = "../.cache/ruff"
 select = ["E", "F", "I", "UP", "B", "SIM", "DTZ", "TID251"]
 
 [tool.ruff.lint.per-file-ignores]
-# 外部の値を取得するルーターやアダプターと、テストのセットアップを許可する。
-"!app/services/**" = ["TID251"]
+# 外層のインフラ・プレゼンテーション・起動点・マイグレーション・テストでは現在時刻や ID 生成、環境変数参照を許可する。
+"app/infrastructure/**" = ["TID251"]
+"app/presentation/**" = ["TID251"]
+"app/main.py" = ["TID251"]
+"migrations/**" = ["TID251"]
+"tests/**" = ["TID251"]
 
 [tool.ruff.lint.flake8-tidy-imports.banned-api]
 "datetime.date.today".msg = "基準日をサービスの引数で受け取ってください。"
@@ -67,22 +71,94 @@ root_package = "app"
 include_external_packages = true
 
 [[tool.importlinter.contracts]]
-name = "Backend layered architecture"
-type = "layers"
-layers = [
-    "app.routers",
-    "app.services",
-    "app.clients",
+name = "Domain layer must remain pure"
+type = "forbidden"
+source_modules = [
+    "app.domain",
+]
+forbidden_modules = [
+    "app.application",
+    "app.infrastructure",
+    "app.presentation",
+    "app.main",
+    "fastapi",
+    "pydantic",
+    "pydantic_settings",
+    "sqlalchemy",
+    "alembic",
 ]
 
 [[tool.importlinter.contracts]]
-name = "Business and adapter layers must not depend on FastAPI"
+name = "Application layer must not depend on outer layers or frameworks"
 type = "forbidden"
 source_modules = [
-    "app.services",
-    "app.clients",
-    "app.core",
+    "app.application",
 ]
 forbidden_modules = [
+    "app.infrastructure",
+    "app.presentation",
+    "app.main",
+    "fastapi",
+    "pydantic",
+    "pydantic_settings",
+    "sqlalchemy",
+    "alembic",
+]
+
+[[tool.importlinter.contracts]]
+name = "Presentation layer must not depend on Domain, Infrastructure, or Composition Root"
+type = "forbidden"
+source_modules = [
+    "app.presentation",
+]
+forbidden_modules = [
+    "app.domain",
+    "app.infrastructure",
+    "app.main",
+    "sqlalchemy",
+    "alembic",
+]
+
+[[tool.importlinter.contracts]]
+name = "Presentation layer may only import Application public contracts"
+type = "forbidden"
+source_modules = [
+    "app.presentation",
+]
+forbidden_modules = [
+    "app.application",
+]
+ignore_imports = [
+    "app.presentation.** -> app.application.foundation.errors",
+    "app.presentation.** -> app.application.*.contracts",
+]
+unmatched_ignore_imports_alerting = "none"
+
+[[tool.importlinter.contracts]]
+name = "Application public contracts must remain self-contained"
+type = "forbidden"
+source_modules = [
+    "app.application.foundation.errors",
+    "app.application.*.contracts",
+]
+forbidden_modules = [
+    "app.domain",
+    "app.application.foundation.error_mappers",
+    "app.application.foundation.ports",
+    "app.application.*.commands",
+    "app.application.*.queries",
+    "app.application.*.ports",
+    "app.application.*.mappers",
+]
+
+[[tool.importlinter.contracts]]
+name = "Infrastructure layer must not depend on Presentation or FastAPI"
+type = "forbidden"
+source_modules = [
+    "app.infrastructure",
+]
+forbidden_modules = [
+    "app.presentation",
+    "app.main",
     "fastapi",
 ]

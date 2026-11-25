@@ -9,7 +9,7 @@ from fastapi.responses import JSONResponse
 from fastapi.utils import is_body_allowed_for_status_code
 from starlette.exceptions import HTTPException as StarletteHTTPException
 
-from app.application.errors import ApplicationError
+from app.application.foundation.errors import ApplicationError
 from app.presentation.dto.error import ValidationErrorDetail
 from app.presentation.error_presenter import (
     present_application_error,

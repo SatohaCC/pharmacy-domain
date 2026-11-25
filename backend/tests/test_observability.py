@@ -6,9 +6,10 @@ import os
 import pytest
 from fastapi.testclient import TestClient
 
-from app.core.config import Settings, load_settings
-from app.core.logging import JsonLogFormatter, request_id_context
-from app.main import REQUEST_ID_HEADER, create_app
+from app.infrastructure.config import Settings, load_settings
+from app.infrastructure.logging import JsonLogFormatter, request_id_context
+from app.main import create_app
+from app.presentation.error_handlers import REQUEST_ID_HEADER
 
 
 def test_request_id_is_generated_when_header_is_missing() -> None:
@@ -207,7 +208,16 @@ def test_unhandled_exception_returns_500_error_response_with_request_id_and_json
     assert response.headers.get_list(REQUEST_ID_HEADER) == ["req-500-trace"]
     assert response.json() == {
         "code": "INTERNAL_SERVER_ERROR",
-        "detail": "サーバー内部でエラーが発生しました",
+        "detail": "サーバー内部の一時的な問題により処理を完了できませんでした。",
+        "title": "処理を完了できませんでした",
+        "reassurance": "処理結果が確定できていない可能性があります。最新の状態をご確認ください。",
+        "reason": "サーバー内部の一時的な問題により処理を完了できませんでした。",
+        "how_to_fix": "しばらく時間をおいてから、最新の状態を確認のうえ再度お試しください。",
+        "way_out": "問題が繰り返し発生する場合は、サポート窓口へお問い合わせください。",
+        "actions": [
+            {"label": "再試行", "action_type": "retry"},
+            {"label": "サポートへ問い合わせ", "action_type": "contact_support"},
+        ],
     }
 
     log_entry = json.loads(stream.getvalue().strip().splitlines()[-1])

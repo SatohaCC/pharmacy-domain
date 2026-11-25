@@ -9,13 +9,31 @@ from app.domain.foundation.exceptions import (
     ErrorDetails,
     ErrorDetailScalar,
 )
+from app.domain.foundation.identifiers import EntityId
+from app.domain.foundation.primitives import (
+    AwareDatetime,
+    DomainPrimitive,
+    FiniteFloatPrimitive,
+    IntPrimitive,
+    MaskedPiiString,
+    NonEmptyString,
+    StringPrimitive,
+)
 
 __all__ = [
+    "AwareDatetime",
     "DomainAuthorizationError",
     "DomainConflictError",
     "DomainError",
     "DomainNotFoundError",
+    "DomainPrimitive",
     "DomainValidationError",
+    "EntityId",
     "ErrorDetailScalar",
     "ErrorDetails",
+    "FiniteFloatPrimitive",
+    "IntPrimitive",
+    "MaskedPiiString",
+    "NonEmptyString",
+    "StringPrimitive",
 ]
