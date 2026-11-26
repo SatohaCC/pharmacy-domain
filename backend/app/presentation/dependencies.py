@@ -165,19 +165,23 @@ def get_current_auth_principal(
     return verifier.verify_access_token(raw_token)
 
 
-def require_role(
-    required_role: RoleNameLiteral,
-    *,
+def require_any_role(
+    *allowed_roles: RoleNameLiteral,
     scope_type: AffiliationTypeLiteral,
 ) -> Callable[[AuthPrincipal], AuthPrincipal]:
-    """指定スコープと必須ロールを持つ認証主体であることを検証する依存関数を返す。"""
+    """指定スコープかつ許可ロールのいずれかを持つ認証主体であることを検証する依存関数を返す。"""
+    allowed = frozenset(allowed_roles)
 
     def _dependency(
         principal: Annotated[AuthPrincipal, Depends(get_current_auth_principal)],
     ) -> AuthPrincipal:
-        if principal.scope_type != scope_type or required_role not in principal.roles:
+        if principal.scope_type != scope_type or not any(
+            role in allowed for role in principal.roles
+        ):
             error_code = (
-                "VENDOR_ADMIN_REQUIRED" if required_role == "vendor_admin" else "INSUFFICIENT_ROLE"
+                "VENDOR_ADMIN_REQUIRED"
+                if allowed == frozenset({"vendor_admin"})
+                else "INSUFFICIENT_ROLE"
             )
             raise ApplicationAuthorizationError(
                 "この操作を実行する権限がありません。",
@@ -186,3 +190,15 @@ def require_role(
         return principal
 
     return _dependency
+
+
+def require_role(
+    required_role: RoleNameLiteral,
+    *,
+    scope_type: AffiliationTypeLiteral,
+) -> Callable[[AuthPrincipal], AuthPrincipal]:
+    """指定スコープと必須ロールを持つ認証主体であることを検証する依存関数を返す。"""
+    return require_any_role(required_role, scope_type=scope_type)
+
+
+require_vendor_user = require_any_role("vendor_admin", "vendor_member", scope_type="vendor")

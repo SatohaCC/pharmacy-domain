@@ -14,6 +14,8 @@ from app.application.foundation.errors import ApplicationValidationError
 from app.presentation.dependencies import (
     get_corporation_commands,
     get_corporation_queries,
+    require_vendor_user,
+    verify_csrf_origin,
 )
 from app.presentation.dto.corporations import (
     CorporationCreateRequest,
@@ -38,7 +40,15 @@ from app.presentation.mappers.corporations import (
     to_update_corporation_input,
 )
 
-router = APIRouter(prefix="/api/corporations", tags=["corporations"])
+router = APIRouter(
+    prefix="/api/corporations",
+    tags=["corporations"],
+    dependencies=[Depends(require_vendor_user), Depends(verify_csrf_origin)],
+    responses={
+        401: {"model": ErrorResponse},
+        403: {"model": ErrorResponse},
+    },
+)
 
 
 @router.get("", response_model=CorporationListResponse)

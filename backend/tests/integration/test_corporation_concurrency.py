@@ -10,16 +10,34 @@ from fastapi.testclient import TestClient
 from httpx import Response
 from sqlalchemy import Connection, Engine, event, update
 
+from app.application.auth.contracts import AuthPrincipal
 from app.infrastructure.config import Settings
 from app.infrastructure.persistence.database import corporations_table, metadata
 from app.infrastructure.persistence.unit_of_work import SqlAlchemyCorporationUnitOfWork
 from app.main import APP_ENGINE_RESOURCE_NAME, create_app
+from app.presentation.dependencies import get_current_auth_principal
+
+
+def _vendor_principal() -> AuthPrincipal:
+    return AuthPrincipal(
+        user_id="vendor-admin-1",
+        email="admin@vendor.example.com",
+        display_name="システム管理者",
+        scope_type="vendor",
+        tenant_id=None,
+        roles=("vendor_admin",),
+    )
 
 
 @contextmanager
 def _initialized_corporation_api(database_path: str) -> Iterator[tuple[TestClient, Engine]]:
     app = create_app(Settings(database_path=database_path))
-    with TestClient(app, raise_server_exceptions=False) as client:
+    app.dependency_overrides[get_current_auth_principal] = _vendor_principal
+    with TestClient(
+        app,
+        raise_server_exceptions=False,
+        headers={"X-Requested-With": "XMLHttpRequest"},
+    ) as client:
         engine = app.state.resources.require(APP_ENGINE_RESOURCE_NAME, Engine)
         metadata.create_all(engine)
         yield client, engine
