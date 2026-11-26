@@ -252,6 +252,7 @@ async function executeFetch(
     method,
     signal,
     cache,
+    credentials: "same-origin",
     headers: requestHeaders,
     body: body !== undefined ? JSON.stringify(body) : undefined,
   });

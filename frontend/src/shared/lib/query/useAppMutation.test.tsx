@@ -111,4 +111,25 @@ describe("useAppMutation", () => {
       expect(result.current.errorMessage).toBeNull();
     });
   });
+
+  it("removeKeys 指定時は成功時に対象キャッシュを削除する", async () => {
+    activeQueryClient.setQueryData(["vendor-auth", "me"], { id: "user-1" });
+    const removeSpy = vi.spyOn(activeQueryClient, "removeQueries");
+
+    const { result } = renderHook(
+      () =>
+        useAppMutation<void, void>({
+          mutationFn: async () => {},
+          removeKeys: [["vendor-auth"]],
+        }),
+      { wrapper: TestWrapper },
+    );
+
+    await act(async () => {
+      await result.current.mutateAsync();
+    });
+
+    expect(removeSpy).toHaveBeenCalledWith({ queryKey: ["vendor-auth"] });
+    expect(activeQueryClient.getQueryData(["vendor-auth", "me"])).toBeUndefined();
+  });
 });

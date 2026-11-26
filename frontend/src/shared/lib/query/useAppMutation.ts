@@ -5,6 +5,7 @@ import { useMutation, useQueryClient } from "@tanstack/react-query";
 export interface AppMutationOptions<TData, TVariables> {
   mutationFn: (variables: TVariables) => Promise<TData>;
   invalidateKeys?: readonly (readonly unknown[])[];
+  removeKeys?: readonly (readonly unknown[])[];
   onSuccess?: (data: TData, variables: TVariables) => void;
   onError?: (error: Error, variables: TVariables) => void;
 }
@@ -17,6 +18,7 @@ function normalizeMutationError(error: unknown): Error {
 export function useAppMutation<TData, TVariables = void>({
   mutationFn,
   invalidateKeys,
+  removeKeys,
   onSuccess,
   onError,
 }: AppMutationOptions<TData, TVariables>) {
@@ -25,6 +27,11 @@ export function useAppMutation<TData, TVariables = void>({
   const mutation = useMutation({
     mutationFn,
     onSuccess: async (data, variables) => {
+      if (removeKeys?.length) {
+        for (const queryKey of removeKeys) {
+          queryClient.removeQueries({ queryKey });
+        }
+      }
       if (invalidateKeys?.length) {
         await Promise.all(
           invalidateKeys.map((queryKey) => queryClient.invalidateQueries({ queryKey })),

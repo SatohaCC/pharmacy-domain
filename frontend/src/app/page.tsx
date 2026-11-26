@@ -1,4 +1,5 @@
 import * as stylex from "@stylexjs/stylex";
+import Link from "next/link";
 import { HealthStatusContainer } from "@/features/health/HealthStatusContainer";
 import { pageStyles as s } from "./page.styles";
 
@@ -35,6 +36,9 @@ export default function HomePage() {
           <a href="#structure" {...stylex.props(s.link)}>
             構成
           </a>
+          <Link href="/login" {...stylex.props(s.link)}>
+            ベンダーログイン
+          </Link>
         </nav>
       </header>
 
