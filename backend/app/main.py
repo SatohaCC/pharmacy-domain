@@ -69,7 +69,7 @@ def create_app(
             if APP_ENGINE_RESOURCE_NAME not in registry:
                 registry.register(
                     APP_ENGINE_RESOURCE_NAME,
-                    create_app_engine(resolved_settings.database_path),
+                    create_app_engine(resolved_settings.effective_database_target),
                 )
 
             engine = registry.require(APP_ENGINE_RESOURCE_NAME, Engine)

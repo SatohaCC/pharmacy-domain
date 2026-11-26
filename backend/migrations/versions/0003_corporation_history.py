@@ -34,12 +34,18 @@ def upgrade() -> None:
     op.create_index(
         "idx_corporation_history_records", "corporation_history", ["corporation_id", "sequence"]
     )
+    dialect_name = op.get_bind().dialect.name
+    valid_from_expr = (
+        "(CAST(updated_at AS timestamptz) AT TIME ZONE 'Asia/Tokyo')::date"
+        if dialect_name == "postgresql"
+        else "date(updated_at, '+9 hours')"
+    )
     op.execute(
         sa.text(
             "INSERT INTO corporation_history "
             "(corporation_id, valid_from, name, corporate_number, address, status, "
             "recorded_at, kind) "
-            "SELECT id, date(updated_at, '+9 hours'), name, corporate_number, address, status, "
+            f"SELECT id, {valid_from_expr}, name, corporate_number, address, status, "
             "updated_at, 'legacy' FROM corporations"
         )
     )

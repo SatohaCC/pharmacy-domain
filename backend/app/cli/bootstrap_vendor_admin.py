@@ -65,7 +65,7 @@ def main(argv: Sequence[str] | None = None) -> int:
         print(f"エラー: {exc}", file=sys.stderr)
         return 1
 
-    engine = create_app_engine(settings.database_path)
+    engine = create_app_engine(settings.effective_database_target)
     try:
         service = AuthCommandService(
             uow_factory=SqlAlchemyAuthUnitOfWorkFactory(engine),

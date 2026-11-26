@@ -10,24 +10,31 @@ const pythonPath =
     ? path.join(backendDir, ".venv", "Scripts", "python.exe")
     : path.join(backendDir, ".venv", "bin", "python");
 
-const dbPath = resolveDisposableE2eDbPath(repoRoot, process.env);
-mkdirSync(path.dirname(dbPath), { recursive: true });
-
-// 毎回クリーンな DB で E2E テストを開始するため、検証済みの E2E 専用 SQLite ファイルのみ削除する。
-for (const suffix of ["", "-wal", "-shm"]) {
-  const target = `${dbPath}${suffix}`;
-  if (existsSync(target)) {
-    rmSync(target, { force: true });
-  }
-}
-
 const backendPort = process.env.E2E_BACKEND_PORT?.trim() || "18000";
+const e2eDatabaseUrl = process.env.E2E_DATABASE_URL?.trim();
 const env: NodeJS.ProcessEnv = {
   ...process.env,
-  DATABASE_PATH: dbPath,
   CORS_ORIGINS:
     process.env.CORS_ORIGINS?.trim() || "http://localhost:13000,http://127.0.0.1:13000",
 };
+
+if (e2eDatabaseUrl) {
+  env.DATABASE_URL = e2eDatabaseUrl;
+  delete env.DATABASE_PATH;
+} else {
+  const dbPath = resolveDisposableE2eDbPath(repoRoot, process.env);
+  mkdirSync(path.dirname(dbPath), { recursive: true });
+
+  // 毎回クリーンな DB で E2E テストを開始するため、検証済みの E2E 専用 SQLite ファイルのみ削除する。
+  for (const suffix of ["", "-wal", "-shm"]) {
+    const target = `${dbPath}${suffix}`;
+    if (existsSync(target)) {
+      rmSync(target, { force: true });
+    }
+  }
+  env.DATABASE_PATH = dbPath;
+  delete env.DATABASE_URL;
+}
 
 execFileSync(pythonPath, ["-B", "-m", "alembic", "upgrade", "head"], {
   cwd: backendDir,

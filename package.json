@@ -12,7 +12,7 @@
     "hooks:install": "node scripts/install-git-hooks.mts",
     "dev": "concurrently -n frontend,backend -c cyan,magenta \"pnpm dev:frontend\" \"pnpm dev:backend\"",
     "dev:frontend": "pnpm --filter frontend dev",
-    "dev:backend": "pnpm -C backend exec python -B -m uvicorn app.main:app --reload --host 127.0.0.1 --port 8000",
+    "dev:backend": "node scripts/run-dev-backend.mts -m uvicorn app.main:app --reload --host 127.0.0.1 --port 8000",
     "build": "pnpm --filter frontend build",
     "lint": "pnpm lint:frontend && pnpm lint:backend",
     "lint:frontend": "pnpm --filter frontend lint",
@@ -36,7 +36,10 @@
     "test:storybook": "pnpm --filter frontend test:storybook",
     "gen:api-types": "node scripts/generate-api-types.mts",
     "check:api-types": "node scripts/generate-api-types.mts --check",
-    "db:migrate": "pnpm -C backend exec python -B -m alembic upgrade head"
+    "db:up": "docker compose up -d --wait postgres",
+    "db:down": "docker compose down",
+    "db:migrate": "node scripts/run-dev-backend.mts -m alembic upgrade head",
+    "db:bootstrap-admin": "node scripts/run-dev-backend.mts -m app.cli.bootstrap_vendor_admin"
   },
   "devDependencies": {
     "concurrently": "^10.0.7"
