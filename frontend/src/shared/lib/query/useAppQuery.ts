@@ -9,6 +9,7 @@ export interface AppQueryOptions<TData> {
   enabled?: boolean;
   initialData?: TData;
   retainPreviousData?: boolean;
+  retry?: boolean | number;
 }
 
 /** React Query の useQuery をラップし、初回読込・再取得・構造化エラーを提供する。 */
@@ -18,11 +19,13 @@ export function useAppQuery<TData>({
   enabled,
   initialData,
   retainPreviousData,
+  retry,
 }: AppQueryOptions<TData>) {
   const { data, error, isLoading, isFetching, refetch } = useQuery({
     queryKey,
     queryFn: ({ signal }) => queryFn({ signal }),
     enabled,
+    ...(retry !== undefined ? { retry } : {}),
     ...(retainPreviousData ? { placeholderData: keepPreviousData } : {}),
     ...(initialData !== undefined ? { initialData } : {}),
   });
