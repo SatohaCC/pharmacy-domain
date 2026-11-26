@@ -76,3 +76,12 @@ def test_jwt_issue_verify_and_expiration() -> None:
 
     token_hasher = Sha256TokenHasher()
     assert len(token_hasher.hash_token(refresh_token).value) == 64
+
+    # 非 ASCII 文字を含む不正トークンでも UnicodeEncodeError にならず認証エラーを返す。
+    for expected_type, expected_code in (
+        (VendorTokenType.ACCESS, "AUTH_TOKEN_INVALID"),
+        (VendorTokenType.REFRESH, "REFRESH_TOKEN_INVALID"),
+    ):
+        with pytest.raises(ApplicationAuthenticationError) as malformed_exc:
+            issuer.verify_token("é.e.e", expected_type=expected_type, now=now)
+        assert malformed_exc.value.code == expected_code
