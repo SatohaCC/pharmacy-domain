@@ -1,6 +1,7 @@
 """ドメイン例外からアプリケーション層公開例外への変換ヘルパー。"""
 
 from app.application.foundation.errors import (
+    ApplicationAuthenticationError,
     ApplicationAuthorizationError,
     ApplicationConflictError,
     ApplicationError,
@@ -9,6 +10,7 @@ from app.application.foundation.errors import (
     StateImpact,
 )
 from app.domain.foundation.exceptions import (
+    DomainAuthenticationError,
     DomainAuthorizationError,
     DomainConflictError,
     DomainError,
@@ -23,6 +25,13 @@ def from_domain_error(
     state_impact: StateImpact = "unchanged",
 ) -> ApplicationError:
     """ドメイン例外をアプリケーション層の公開例外へ変換する。"""
+    if isinstance(exc, DomainAuthenticationError):
+        return ApplicationAuthenticationError(
+            exc.message,
+            code=exc.code,
+            details=exc.details,
+            state_impact=state_impact,
+        )
     if isinstance(exc, DomainNotFoundError):
         return ApplicationNotFoundError(
             exc.message,

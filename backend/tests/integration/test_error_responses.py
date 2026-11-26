@@ -3,7 +3,10 @@
 from fastapi import HTTPException
 from fastapi.testclient import TestClient
 
-from app.application.foundation.errors import ApplicationNotFoundError
+from app.application.foundation.errors import (
+    ApplicationAuthenticationError,
+    ApplicationNotFoundError,
+)
 from app.infrastructure.config import Settings
 from app.main import create_app
 
@@ -115,3 +118,22 @@ def test_http_exception_without_allowed_body_returns_empty_response() -> None:
 
     assert response.status_code == 304
     assert response.content == b""
+
+
+def test_authentication_error_returns_401_structured_response() -> None:
+    app = create_app(Settings())
+
+    @app.get("/api/test-auth-error")
+    def raise_auth_error() -> None:
+        raise ApplicationAuthenticationError("認証が必要です。", code="UNAUTHORIZED")
+
+    client = TestClient(app)
+
+    response = client.get("/api/test-auth-error")
+
+    assert response.status_code == 401
+    payload = response.json()
+    assert payload["code"] == "UNAUTHORIZED"
+    assert payload["title"] == "認証が必要です"
+    assert payload["reason"] == "認証が必要です。"
+    assert payload["reassurance"] == "既存のデータは変更されていません。"

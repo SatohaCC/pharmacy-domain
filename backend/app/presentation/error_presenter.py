@@ -6,6 +6,7 @@ from collections.abc import Mapping
 from dataclasses import dataclass
 
 from app.application.foundation.errors import (
+    ApplicationAuthenticationError,
     ApplicationAuthorizationError,
     ApplicationBadRequestError,
     ApplicationConflictError,
@@ -148,6 +149,13 @@ def _sanitize_details(
 def _resolve_application_category_defaults(
     exc: ApplicationError,
 ) -> tuple[int, str, str, tuple[ErrorAction, ...]]:
+    if isinstance(exc, ApplicationAuthenticationError):
+        return (
+            401,
+            "認証が必要です",
+            "ログイン状態をご確認のうえ、再度ログインしてください。",
+            _FORBIDDEN_ACTIONS,
+        )
     if isinstance(exc, ApplicationBadRequestError):
         return (
             400,
