@@ -46,6 +46,16 @@ class User:
     updated_at: AwareDatetime
     created_by: UserId | None = None
 
+    def __setattr__(self, name: str, value: object) -> None:
+        if name == "affiliation" and hasattr(self, name):
+            raise AttributeError("ユーザーの所属は作成後に変更できません。")
+        object.__setattr__(self, name, value)
+
+    def __delattr__(self, name: str) -> None:
+        if name == "affiliation":
+            raise AttributeError("ユーザーの所属は削除できません。")
+        object.__delattr__(self, name)
+
     @classmethod
     def create_bootstrap_vendor_admin(
         cls,

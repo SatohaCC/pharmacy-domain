@@ -130,6 +130,27 @@ def test_role_assignment_enforces_scope_and_single_affiliation() -> None:
         )
 
 
+def test_user_affiliation_is_read_only_after_creation() -> None:
+    tenant_id = TenantId("corp-1")
+    user = User.create_tenant_user(
+        actor_id=None,
+        user_id=UserId("user-1"),
+        tenant_id=tenant_id,
+        email=UserEmail.parse("pharmacist@corp1.example.com"),
+        display_name=UserDisplayName.parse("薬剤師"),
+        password_hash=PasswordHash("scrypt$dummy"),
+        now=_now(),
+    )
+
+    with pytest.raises(AttributeError):
+        user.affiliation = AuthScope.tenant(TenantId("corp-2"))
+    assert user.affiliation == AuthScope.tenant(tenant_id)
+
+    with pytest.raises(AttributeError):
+        del user.affiliation
+    assert user.affiliation == AuthScope.tenant(tenant_id)
+
+
 def test_disabled_user_cannot_authenticate() -> None:
     user = User.create_bootstrap_vendor_admin(
         user_id=UserId("user-1"),
@@ -140,6 +161,7 @@ def test_disabled_user_cannot_authenticate() -> None:
     )
     user.disable(_now(5))
     assert user.status == UserStatus.DISABLED
+    assert user.updated_at == _now(5)
     with pytest.raises(InvalidCredentialsError):
         user.ensure_can_authenticate()
 
