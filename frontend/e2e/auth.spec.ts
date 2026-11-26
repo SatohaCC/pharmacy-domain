@@ -1,6 +1,47 @@
 import { execFileSync } from "node:child_process";
 import path from "node:path";
-import { expect, test } from "@playwright/test";
+import { expect, type Locator, type Page, test } from "@playwright/test";
+
+const desktopViewports = [
+  { width: 1920, height: 1080 },
+  { width: 1536, height: 864 },
+] as const;
+
+async function boundsOf(locator: Locator) {
+  await expect(locator).toBeVisible();
+  const bounds = await locator.boundingBox();
+  if (!bounds) throw new Error("表示された要素の位置を取得できませんでした。");
+  return bounds;
+}
+
+async function expectSideBySide(left: Locator, right: Locator) {
+  await expect(left).toBeInViewport({ ratio: 1 });
+  await expect(right).toBeInViewport({ ratio: 1 });
+  const leftBounds = await boundsOf(left);
+  const rightBounds = await boundsOf(right);
+  expect(rightBounds.x).toBeGreaterThanOrEqual(leftBounds.x + leftBounds.width);
+}
+
+async function expectStacked(top: Locator, bottom: Locator) {
+  const topBounds = await boundsOf(top);
+  const bottomBounds = await boundsOf(bottom);
+  expect(bottomBounds.y).toBeGreaterThanOrEqual(topBounds.y + topBounds.height);
+}
+
+function consoleFrames(page: Page, createTitle: RegExp, listTitle: RegExp) {
+  return Promise.all(
+    [
+      page.locator("[data-vendor-console] header"),
+      page.getByRole("region", { name: createTitle }),
+      page.getByRole("region", { name: listTitle }),
+    ].map((frame) =>
+      frame.evaluate((element) => {
+        const { x, y, width } = element.getBoundingClientRect();
+        return { x, top: y + window.scrollY, width };
+      }),
+    ),
+  );
+}
 
 const repoRoot = path.resolve(process.cwd(), "..");
 const backendDir = path.join(repoRoot, "backend");
@@ -109,8 +150,15 @@ test.describe
       ).toThrow();
 
       // 1. Webで初期管理者ログイン → 法人管理画面（/vendor/corporations）へ遷移する。
+      await page.setViewportSize(desktopViewports[0]);
       await page.goto("/login");
-      await expect(page.getByRole("heading", { name: "システムベンダーログイン" })).toBeVisible();
+      for (const viewport of desktopViewports) {
+        await page.setViewportSize(viewport);
+        await expectSideBySide(
+          page.getByRole("heading", { name: "システムベンダーログイン" }),
+          page.getByLabel(/メールアドレス/),
+        );
+      }
 
       await page.getByLabel(/メールアドレス/).fill(adminEmail);
       await page.locator('input[name="password"]').fill(adminPassword);
@@ -121,6 +169,14 @@ test.describe
         page.getByRole("heading", { name: "導入企業（法人・個人開設者）管理" }),
       ).toBeVisible();
       await expect(page.getByText(`初期システム管理者（${adminEmail}）`)).toBeVisible();
+      const corporationFrames = new Map<number, Awaited<ReturnType<typeof consoleFrames>>>();
+      for (const viewport of desktopViewports) {
+        await page.setViewportSize(viewport);
+        corporationFrames.set(
+          viewport.width,
+          await consoleFrames(page, /新規企業/, /登録済み企業一覧/),
+        );
+      }
 
       // リロードしても Cookie 認証状態が維持される。
       await page.reload();
@@ -146,6 +202,17 @@ test.describe
       await page.waitForURL("**/vendor/users");
       await expect(page.getByRole("heading", { name: "ベンダーアカウント管理" })).toBeVisible();
 
+      for (const viewport of desktopViewports) {
+        await page.setViewportSize(viewport);
+        await expectSideBySide(
+          page.getByRole("heading", { name: "ベンダー社員アカウントの発行" }),
+          page.getByRole("heading", { name: "登録済みベンダーアカウント一覧" }),
+        );
+        expect(
+          await consoleFrames(page, /ベンダー社員アカウントの発行/, /登録済みベンダー/),
+        ).toEqual(corporationFrames.get(viewport.width));
+      }
+
       await page.locator('input[name="display_name"]').fill(staffName);
       await page.locator('input[name="email"]').fill(staffEmail);
       await page.getByRole("button", { name: "安全なパスワードを自動生成" }).click();
@@ -155,7 +222,14 @@ test.describe
 
       await page.getByRole("button", { name: "ベンダー社員アカウントを発行" }).click();
       await expect(page.getByText("ベンダー社員アカウントを発行しました")).toBeVisible();
-      await expect(page.getByText(staffEmail).first()).toBeVisible();
+      await expect(
+        page
+          .getByRole("region", { name: "登録済みベンダーアカウント一覧" })
+          .getByText(staffEmail, { exact: true }),
+      ).toBeVisible();
+      await expect(
+        page.getByRole("region", { name: "ベンダー社員アカウントの発行" }).locator("code"),
+      ).toHaveText(generatedPassword);
 
       // 4. ログアウトし、未認証で /vendor/corporations や /vendor/users にアクセスできないことを確認。
       await page.getByRole("button", { name: "ログアウト" }).click();
@@ -187,7 +261,7 @@ test.describe
       ).not.toBeVisible();
     });
 
-    test("ダークテーマ・狭い幅・モーション低減・キーボード操作でも崩れずログインと法人管理画面を表示できる", async ({
+    test("狭い幅とダークテーマでログイン・法人管理・アカウント管理が横にはみ出さない", async ({
       page,
     }) => {
       await page.emulateMedia({ colorScheme: "dark", reducedMotion: "reduce" });
@@ -200,10 +274,13 @@ test.describe
       ).toBe(true);
 
       const emailField = page.getByLabel(/メールアドレス/);
+      const loginHeading = page.getByRole("heading", { name: "システムベンダーログイン" });
+      await expectStacked(loginHeading, emailField);
       await emailField.focus();
       await emailField.fill(adminEmail);
       const passwordField = page.locator('input[name="password"]');
-      await passwordField.focus();
+      await page.keyboard.press("Tab");
+      await expect(passwordField).toBeFocused();
       await passwordField.fill(adminPassword);
       await passwordField.press("Enter");
 
@@ -211,6 +288,14 @@ test.describe
       await expect(
         page.getByRole("heading", { name: "導入企業（法人・個人開設者）管理" }),
       ).toBeVisible();
+      expect(
+        await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth),
+      ).toBe(true);
+
+      await page.getByRole("link", { name: "ベンダー社員管理" }).click();
+      const createHeading = page.getByRole("heading", { name: "ベンダー社員アカウントの発行" });
+      const listHeading = page.getByRole("heading", { name: "登録済みベンダーアカウント一覧" });
+      await expectStacked(createHeading, listHeading);
       expect(
         await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth),
       ).toBe(true);

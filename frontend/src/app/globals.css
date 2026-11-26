@@ -75,6 +75,10 @@ summary,
 html {
   scroll-behavior: smooth;
 }
+
+html:has([data-vendor-console]) {
+  scrollbar-gutter: stable;
+}
 @media (prefers-reduced-motion: reduce) {
   html {
     scroll-behavior: auto;

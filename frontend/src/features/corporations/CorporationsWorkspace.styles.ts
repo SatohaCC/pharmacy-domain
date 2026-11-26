@@ -2,47 +2,14 @@ import * as stylex from "@stylexjs/stylex";
 import { tokens } from "../../shared/styles/tokens.stylex";
 
 export const corporationsWorkspaceStyles = stylex.create({
-  page: {
-    minHeight: "100dvh",
-    backgroundColor: tokens.surface,
-    color: tokens.onSurface,
-    paddingBlock: "28px 48px",
-    paddingInline: "20px",
-  },
-  container: {
-    width: "100%",
-    maxWidth: "960px",
-    marginInline: "auto",
-    display: "grid",
-    gap: "24px",
-  },
   loadingBox: {
     minHeight: "60dvh",
     display: "grid",
     placeItems: "center",
   },
-  card: {
-    display: "grid",
-    gap: "18px",
-    padding: "24px",
-    borderRadius: tokens.cornerLarge,
-    backgroundColor: tokens.surfaceContainerLow,
-    borderWidth: "1px",
-    borderStyle: "solid",
-    borderColor: tokens.outlineVariant,
-    "@media (max-width: 480px)": {
-      padding: "18px",
-    },
-  },
   sectionHeader: {
     display: "grid",
     gap: "6px",
-  },
-  sectionTitle: {
-    margin: 0,
-    fontSize: "1.125rem",
-    fontWeight: 700,
-    color: tokens.onSurface,
   },
   sectionDescription: {
     margin: 0,
@@ -57,12 +24,12 @@ export const corporationsWorkspaceStyles = stylex.create({
   formGrid: {
     display: "grid",
     gap: "16px",
-    gridTemplateColumns: "repeat(auto-fit, minmax(240px, 1fr))",
+    gridTemplateColumns: "repeat(auto-fit, minmax(min(100%, 14rem), 1fr))",
   },
   searchGrid: {
     display: "grid",
     gap: "16px",
-    gridTemplateColumns: "repeat(auto-fit, minmax(220px, 1fr))",
+    gridTemplateColumns: "repeat(auto-fit, minmax(min(100%, 13rem), 1fr))",
   },
   submitRow: {
     display: "flex",
@@ -111,6 +78,7 @@ export const corporationsWorkspaceStyles = stylex.create({
     fontSize: "1rem",
     fontWeight: 700,
     color: tokens.onSurface,
+    overflowWrap: "anywhere",
   },
   metaGrid: {
     margin: 0,

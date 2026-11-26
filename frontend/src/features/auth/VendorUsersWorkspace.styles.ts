@@ -2,20 +2,6 @@ import * as stylex from "@stylexjs/stylex";
 import { tokens } from "../../shared/styles/tokens.stylex";
 
 export const vendorUsersWorkspaceStyles = stylex.create({
-  page: {
-    minHeight: "100dvh",
-    backgroundColor: tokens.surface,
-    color: tokens.onSurface,
-    paddingBlock: "28px 48px",
-    paddingInline: "20px",
-  },
-  container: {
-    width: "100%",
-    maxWidth: "960px",
-    marginInline: "auto",
-    display: "grid",
-    gap: "24px",
-  },
   loadingBox: {
     minHeight: "60dvh",
     display: "grid",
@@ -68,25 +54,6 @@ export const vendorUsersWorkspaceStyles = stylex.create({
     alignItems: "center",
     gap: "10px",
   },
-  card: {
-    display: "grid",
-    gap: "18px",
-    padding: "24px",
-    borderRadius: tokens.cornerLarge,
-    backgroundColor: tokens.surfaceContainerLow,
-    borderWidth: "1px",
-    borderStyle: "solid",
-    borderColor: tokens.outlineVariant,
-    "@media (max-width: 480px)": {
-      padding: "18px",
-    },
-  },
-  sectionTitle: {
-    margin: 0,
-    fontSize: "1.125rem",
-    fontWeight: 700,
-    color: tokens.onSurface,
-  },
   sectionDescription: {
     margin: 0,
     fontSize: "0.875rem",
@@ -96,7 +63,10 @@ export const vendorUsersWorkspaceStyles = stylex.create({
   formGrid: {
     display: "grid",
     gap: "16px",
-    gridTemplateColumns: "repeat(auto-fit, minmax(240px, 1fr))",
+    gridTemplateColumns: "repeat(auto-fit, minmax(min(100%, 14rem), 1fr))",
+  },
+  roleField: {
+    gridColumn: "1 / -1",
   },
   passwordRow: {
     display: "grid",
@@ -154,12 +124,13 @@ export const vendorUsersWorkspaceStyles = stylex.create({
     fontSize: "0.9375rem",
     fontWeight: 600,
     color: tokens.onSurface,
+    overflowWrap: "anywhere",
   },
   userEmail: {
     margin: 0,
     fontSize: "0.875rem",
     color: tokens.onSurfaceVariant,
-    wordBreak: "break-all",
+    overflowWrap: "anywhere",
   },
   userBadges: {
     display: "flex",
