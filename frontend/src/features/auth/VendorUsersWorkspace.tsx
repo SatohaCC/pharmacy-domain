@@ -12,6 +12,7 @@ import { TextField } from "@/shared/ui/text-field/TextField";
 import { evaluatePasswordPolicy, generateSecurePassword } from "./passwordGenerator";
 import type { AuthUser, VendorAssignableRole } from "./schemas";
 import { formatAuthRoleLabel, VendorConsoleHeader } from "./VendorConsoleHeader";
+import { vendorConsoleLayoutStyles as layout } from "./VendorConsoleLayout.styles";
 import { vendorUsersWorkspaceStyles as s } from "./VendorUsersWorkspace.styles";
 
 const ROLE_OPTIONS: readonly SelectOption[] = [
@@ -118,8 +119,8 @@ export function VendorUsersWorkspace({
   }
 
   return (
-    <div {...stylex.props(s.page)}>
-      <div {...stylex.props(s.container)}>
+    <div data-vendor-console="" {...stylex.props(layout.page)}>
+      <div {...stylex.props(layout.container)}>
         <VendorConsoleHeader
           title="ベンダーアカウント管理"
           activeSection="users"
@@ -133,10 +134,10 @@ export function VendorUsersWorkspace({
             ベンダー社員アカウントの発行および全アカウント一覧の閲覧は、システムベンダー管理者（vendor_admin）のみ操作できます。
           </Alert>
         ) : (
-          <>
-            <section aria-labelledby="create-vendor-user-heading" {...stylex.props(s.card)}>
+          <div {...stylex.props(layout.panels)}>
+            <section aria-labelledby="create-vendor-user-heading" {...stylex.props(layout.panel)}>
               <div>
-                <h2 id="create-vendor-user-heading" {...stylex.props(s.sectionTitle)}>
+                <h2 id="create-vendor-user-heading" {...stylex.props(layout.panelHeading)}>
                   ベンダー社員アカウントの発行
                 </h2>
                 <p {...stylex.props(s.sectionDescription)}>
@@ -214,6 +215,7 @@ export function VendorUsersWorkspace({
                   <Select
                     label="ロール"
                     name="role"
+                    style={s.roleField}
                     items={ROLE_OPTIONS}
                     value={role}
                     onValueChange={(value) => {
@@ -289,9 +291,9 @@ export function VendorUsersWorkspace({
               </form>
             </section>
 
-            <section aria-labelledby="vendor-user-list-heading" {...stylex.props(s.card)}>
+            <section aria-labelledby="vendor-user-list-heading" {...stylex.props(layout.panel)}>
               <div>
-                <h2 id="vendor-user-list-heading" {...stylex.props(s.sectionTitle)}>
+                <h2 id="vendor-user-list-heading" {...stylex.props(layout.panelHeading)}>
                   登録済みベンダーアカウント一覧
                 </h2>
               </div>
@@ -325,7 +327,7 @@ export function VendorUsersWorkspace({
                 </ul>
               )}
             </section>
-          </>
+          </div>
         )}
       </div>
     </div>

@@ -49,7 +49,6 @@ export function LoginForm({
     <div {...stylex.props(s.shell)}>
       <section aria-labelledby="vendor-login-heading" {...stylex.props(s.card)}>
         <header {...stylex.props(s.header)}>
-          <p {...stylex.props(s.eyebrow)}>SYSTEM VENDOR CONSOLE</p>
           <h1 id="vendor-login-heading" {...stylex.props(s.title)}>
             システムベンダーログイン
           </h1>
@@ -58,81 +57,83 @@ export function LoginForm({
           </p>
         </header>
 
-        {errorMessage ? (
-          <Alert
-            tone="error"
-            title={userFacingError?.title ?? "ログインできませんでした"}
-            role="alert"
-          >
-            <p {...stylex.props(s.errorDetails)}>{userFacingError?.reason ?? errorMessage}</p>
-            {userFacingError?.how_to_fix ? (
-              <p {...stylex.props(s.errorHint)}>{userFacingError.how_to_fix}</p>
-            ) : null}
-          </Alert>
-        ) : null}
+        <div {...stylex.props(s.content)}>
+          {errorMessage ? (
+            <Alert
+              tone="error"
+              title={userFacingError?.title ?? "ログインできませんでした"}
+              role="alert"
+            >
+              <p {...stylex.props(s.errorDetails)}>{userFacingError?.reason ?? errorMessage}</p>
+              {userFacingError?.how_to_fix ? (
+                <p {...stylex.props(s.errorHint)}>{userFacingError.how_to_fix}</p>
+              ) : null}
+            </Alert>
+          ) : null}
 
-        <form onSubmit={handleSubmit} noValidate {...stylex.props(s.form)}>
-          <TextField
-            label="メールアドレス"
-            name="email"
-            type="email"
-            autoComplete="email"
-            placeholder="admin@vendor.example.com"
-            value={email}
-            onValueChange={(value) => {
-              setEmail(value);
-              if (emailError) setEmailError(undefined);
-            }}
-            errorMessage={emailError}
-            required
-            disabled={isSubmitting}
-          />
+          <form onSubmit={handleSubmit} noValidate {...stylex.props(s.form)}>
+            <TextField
+              label="メールアドレス"
+              name="email"
+              type="email"
+              autoComplete="email"
+              placeholder="admin@vendor.example.com"
+              value={email}
+              onValueChange={(value) => {
+                setEmail(value);
+                if (emailError) setEmailError(undefined);
+              }}
+              errorMessage={emailError}
+              required
+              disabled={isSubmitting}
+            />
 
-          <TextField
-            label="パスワード"
-            name="password"
-            type={showPassword ? "text" : "password"}
-            autoComplete="current-password"
-            value={password}
-            onValueChange={(value) => {
-              setPassword(value);
-              if (passwordError) setPasswordError(undefined);
-            }}
-            errorMessage={passwordError}
-            required
-            disabled={isSubmitting}
-            trailing={
-              <Button
-                variant="text"
-                size="sm"
-                onClick={() => setShowPassword((prev) => !prev)}
-                aria-label={showPassword ? "パスワードを隠す" : "パスワードを表示"}
-                disabled={isSubmitting}
-              >
-                {showPassword ? "隠す" : "表示"}
+            <TextField
+              label="パスワード"
+              name="password"
+              type={showPassword ? "text" : "password"}
+              autoComplete="current-password"
+              value={password}
+              onValueChange={(value) => {
+                setPassword(value);
+                if (passwordError) setPasswordError(undefined);
+              }}
+              errorMessage={passwordError}
+              required
+              disabled={isSubmitting}
+              trailing={
+                <Button
+                  variant="text"
+                  size="sm"
+                  onClick={() => setShowPassword((prev) => !prev)}
+                  aria-label={showPassword ? "パスワードを隠す" : "パスワードを表示"}
+                  disabled={isSubmitting}
+                >
+                  {showPassword ? "隠す" : "表示"}
+                </Button>
+              }
+            />
+
+            <div {...stylex.props(s.actions)}>
+              <Button type="submit" variant="filled" disabled={isSubmitting} style={s.submitButton}>
+                {isSubmitting ? "ログイン中…" : "ログイン"}
               </Button>
-            }
-          />
+            </div>
+          </form>
 
-          <div {...stylex.props(s.actions)}>
-            <Button type="submit" variant="filled" disabled={isSubmitting} style={s.submitButton}>
-              {isSubmitting ? "ログイン中…" : "ログイン"}
-            </Button>
-          </div>
-        </form>
-
-        <p {...stylex.props(s.footerNote)}>
-          最初の管理アカウントはサーバーコンソールから発行してください。{" "}
-          {onNavigateHome ? (
-            <Button variant="text" size="sm" onClick={onNavigateHome}>
-              トップページへ戻る
-            </Button>
-          ) : (
-            <a href="/" {...stylex.props(s.backLink)}>
-              トップページへ戻る
-            </a>
-          )}
-        </p>
+          <p {...stylex.props(s.footerNote)}>
+            最初の管理アカウントはサーバーコンソールから発行してください。{" "}
+            {onNavigateHome ? (
+              <Button variant="text" size="sm" onClick={onNavigateHome}>
+                トップページへ戻る
+              </Button>
+            ) : (
+              <a href="/" {...stylex.props(s.backLink)}>
+                トップページへ戻る
+              </a>
+            )}
+          </p>
+        </div>
       </section>
     </div>
   );

@@ -74,6 +74,7 @@ export function CorporationsContainer() {
       filter={filter}
       onFilterChange={setFilter}
       isLoadingCorporations={corporationsQuery.isLoading}
+      isFetchingCorporations={corporationsQuery.isFetching}
       corporationsErrorMessage={corporationsQuery.errorMessage}
       isCreatingCorporation={createMutation.isPending}
       createErrorMessage={createMutation.errorMessage}

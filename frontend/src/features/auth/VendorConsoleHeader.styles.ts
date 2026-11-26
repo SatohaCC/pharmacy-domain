@@ -93,7 +93,6 @@ export const vendorConsoleHeaderStyles = stylex.create({
     },
   },
   navLinkActive: {
-    fontWeight: 700,
     color: tokens.onSecondaryContainer,
     backgroundColor: tokens.secondaryContainer,
     borderColor: tokens.primary,
