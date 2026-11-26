@@ -5,23 +5,31 @@ import hashlib
 import hmac
 import json
 import re
+from collections.abc import Sequence
 from datetime import UTC, datetime, timedelta
 
+from app.application.auth.ports import VerifiedTokenClaims
 from app.application.foundation.errors import ApplicationAuthenticationError
-from app.application.vendor_auth.ports import VerifiedTokenClaims
-from app.domain.vendor_auth.entities import (
+from app.domain.auth.entities import (
     ACCESS_TOKEN_TTL_MINUTES,
     REFRESH_TOKEN_TTL_MINUTES,
 )
-from app.domain.vendor_auth.identifiers import (
+from app.domain.auth.exceptions import ScopeViolationError
+from app.domain.auth.identifiers import (
     RefreshSessionId,
     RefreshTokenFamilyId,
-    VendorUserId,
+    TenantId,
+    UserId,
 )
-from app.domain.vendor_auth.primitives import TokenHash
-from app.domain.vendor_auth.value_objects import VendorRole, VendorTokenType
+from app.domain.auth.primitives import TokenHash
+from app.domain.auth.value_objects import (
+    AffiliationType,
+    AuthScope,
+    RoleName,
+    TokenType,
+)
+from app.domain.foundation.exceptions import DomainValidationError
 
-_SUBJECT_TYPE_VENDOR = "vendor"
 _B64URL_SEGMENT_PATTERN = re.compile(r"^[A-Za-z0-9_-]+$")
 
 
@@ -46,7 +54,7 @@ class Sha256TokenHasher:
 
 
 class Hs256JwtTokenIssuer:
-    """RFC 7519 HS256 JWT の発行・検証実装。"""
+    """RFC 7519 HS256 JWT の発行・検証実装（スコープ・ロール配列対応）。"""
 
     def __init__(self, *, secret_key: str, issuer: str) -> None:
         if len(secret_key) < 32:
@@ -57,8 +65,9 @@ class Hs256JwtTokenIssuer:
     def issue_access_token(
         self,
         *,
-        user_id: VendorUserId,
-        role: VendorRole,
+        user_id: UserId,
+        scope: AuthScope,
+        roles: Sequence[RoleName],
         token_id: str,
         now: datetime,
     ) -> str:
@@ -70,17 +79,19 @@ class Hs256JwtTokenIssuer:
             "jti": token_id,
             "iat": int(now.timestamp()),
             "exp": int(expires_at.timestamp()),
-            "token_type": VendorTokenType.ACCESS.value,
-            "subject_type": _SUBJECT_TYPE_VENDOR,
-            "role": role.value,
+            "token_type": TokenType.ACCESS.value,
+            "scope_type": scope.scope_type.value,
+            "tenant_id": scope.tenant_id.value if scope.tenant_id else None,
+            "roles": [role.value for role in roles],
         }
         return self._encode(payload)
 
     def issue_refresh_token(
         self,
         *,
-        user_id: VendorUserId,
-        role: VendorRole,
+        user_id: UserId,
+        scope: AuthScope,
+        roles: Sequence[RoleName],
         session_id: RefreshSessionId,
         family_id: RefreshTokenFamilyId,
         now: datetime,
@@ -94,9 +105,10 @@ class Hs256JwtTokenIssuer:
             "family_id": family_id.value,
             "iat": int(now.timestamp()),
             "exp": int(expires_at.timestamp()),
-            "token_type": VendorTokenType.REFRESH.value,
-            "subject_type": _SUBJECT_TYPE_VENDOR,
-            "role": role.value,
+            "token_type": TokenType.REFRESH.value,
+            "scope_type": scope.scope_type.value,
+            "tenant_id": scope.tenant_id.value if scope.tenant_id else None,
+            "roles": [role.value for role in roles],
         }
         return self._encode(payload)
 
@@ -104,14 +116,12 @@ class Hs256JwtTokenIssuer:
         self,
         raw_token: str,
         *,
-        expected_type: VendorTokenType,
+        expected_type: TokenType,
         now: datetime,
     ) -> VerifiedTokenClaims:
-        """JWT のヘッダ・署名・発行者・種別・有効期限を検証する。"""
+        """JWT のヘッダ・署名・発行者・種別・スコープ・有効期限を検証する。"""
         invalid_code = (
-            "REFRESH_TOKEN_INVALID"
-            if expected_type == VendorTokenType.REFRESH
-            else "AUTH_TOKEN_INVALID"
+            "REFRESH_TOKEN_INVALID" if expected_type == TokenType.REFRESH else "AUTH_TOKEN_INVALID"
         )
         parts = raw_token.split(".")
         if len(parts) != 3 or any(not _B64URL_SEGMENT_PATTERN.fullmatch(part) for part in parts):
@@ -150,18 +160,16 @@ class Hs256JwtTokenIssuer:
                 "トークンペイロードが不正です。", code=invalid_code
             )
 
-        if (
-            payload.get("iss") != self._issuer
-            or payload.get("subject_type") != _SUBJECT_TYPE_VENDOR
-            or payload.get("token_type") != expected_type.value
-        ):
+        if payload.get("iss") != self._issuer or payload.get("token_type") != expected_type.value:
             raise ApplicationAuthenticationError(
                 "トークン種別または発行者が不正です。", code=invalid_code
             )
 
         sub = payload.get("sub")
         jti = payload.get("jti")
-        role_raw = payload.get("role")
+        scope_raw = payload.get("scope_type")
+        tenant_raw = payload.get("tenant_id")
+        roles_raw = payload.get("roles")
         iat_raw = payload.get("iat")
         exp_raw = payload.get("exp")
         family_raw = payload.get("family_id")
@@ -171,7 +179,9 @@ class Hs256JwtTokenIssuer:
             or not sub
             or not isinstance(jti, str)
             or not jti
-            or not isinstance(role_raw, str)
+            or not isinstance(scope_raw, str)
+            or (tenant_raw is not None and not isinstance(tenant_raw, str))
+            or not isinstance(roles_raw, list)
             or isinstance(iat_raw, bool)
             or not isinstance(iat_raw, int)
             or isinstance(exp_raw, bool)
@@ -180,13 +190,18 @@ class Hs256JwtTokenIssuer:
             raise ApplicationAuthenticationError("トークンクレームが不正です。", code=invalid_code)
 
         try:
-            role = VendorRole(role_raw)
-        except ValueError as exc:
+            scope_type = AffiliationType(scope_raw)
+            scope = AuthScope(
+                scope_type=scope_type,
+                tenant_id=TenantId.parse(tenant_raw) if tenant_raw is not None else None,
+            )
+            roles = tuple(RoleName(str(item)) for item in roles_raw)
+        except (ValueError, ScopeViolationError, DomainValidationError) as exc:
             raise ApplicationAuthenticationError(
-                "トークンロールが不正です。", code=invalid_code
+                "トークンのスコープまたはロールが不正です。", code=invalid_code
             ) from exc
 
-        if expected_type == VendorTokenType.REFRESH and (
+        if expected_type == TokenType.REFRESH and (
             not isinstance(family_raw, str) or not family_raw
         ):
             raise ApplicationAuthenticationError(
@@ -203,7 +218,8 @@ class Hs256JwtTokenIssuer:
             subject=sub,
             token_id=jti,
             token_type=expected_type,
-            role=role,
+            scope=scope,
+            roles=roles,
             family_id=family_raw if isinstance(family_raw, str) else None,
             issued_at=datetime.fromtimestamp(iat_raw, tz=UTC),
             expires_at=datetime.fromtimestamp(exp_raw, tz=UTC),

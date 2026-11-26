@@ -1,6 +1,6 @@
 """ScryptPasswordHasher の単体テスト。"""
 
-from app.domain.vendor_auth.primitives import PlainPassword
+from app.domain.auth.primitives import PlainPassword
 from app.infrastructure.security.password_hasher import ScryptPasswordHasher
 
 

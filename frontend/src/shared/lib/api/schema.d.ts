@@ -3,6 +3,83 @@
  */
 
 export interface paths {
+  "/api/auth/login": {
+    post: {
+      requestBody: {
+        content: {
+          "application/json": components["schemas"]["AuthLoginRequest"];
+        };
+      };
+      responses: {
+        200: {
+          content: {
+            "application/json": components["schemas"]["AuthSessionResponse"];
+          };
+        };
+        401: {
+          content: {
+            "application/json": components["schemas"]["ErrorResponse"];
+          };
+        };
+        422: {
+          content: {
+            "application/json": components["schemas"]["ErrorResponse"];
+          };
+        };
+      };
+    };
+  };
+  "/api/auth/logout": {
+    post: {
+      responses: {
+        204: {
+          content?: never;
+        };
+        403: {
+          content: {
+            "application/json": components["schemas"]["ErrorResponse"];
+          };
+        };
+      };
+    };
+  };
+  "/api/auth/me": {
+    get: {
+      responses: {
+        200: {
+          content: {
+            "application/json": components["schemas"]["AuthUserResponse"];
+          };
+        };
+        401: {
+          content: {
+            "application/json": components["schemas"]["ErrorResponse"];
+          };
+        };
+      };
+    };
+  };
+  "/api/auth/refresh": {
+    post: {
+      responses: {
+        200: {
+          content: {
+            "application/json": components["schemas"]["AuthSessionResponse"];
+          };
+        };
+        401: {
+          content: {
+            "application/json": components["schemas"]["ErrorResponse"];
+          };
+        };
+        403: {
+          content: {
+            "application/json": components["schemas"]["ErrorResponse"];
+          };
+        };
+      };
+    };
+  };
   "/api/corporate-relations": {
     get: {
       parameters: {
@@ -590,6 +667,28 @@ export interface paths {
 
 export interface components {
   schemas: {
+    AuthLoginRequest: {
+      email: string;
+      password: string;
+      scope_type?: "vendor" | "tenant";
+      tenant_id?: string | null;
+    };
+    AuthSessionResponse: {
+      access_token_expires_in_seconds: number;
+      refresh_token_expires_in_seconds: number;
+      user: components["schemas"]["AuthUserResponse"];
+    };
+    AuthUserResponse: {
+      affiliation_type: "vendor" | "tenant";
+      created_at: string;
+      display_name: string;
+      email: string;
+      id: string;
+      roles: Array<"vendor_admin" | "vendor_member" | "tenant_admin" | "pharmacist" | "clerk">;
+      status: "active" | "disabled";
+      tenant_id: string | null;
+      updated_at: string;
+    };
     CorporateRelationCorrectionRequest: {
       confirmation_status?: "unverified" | "verified";
       evidence?: string;

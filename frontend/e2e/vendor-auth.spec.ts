@@ -27,8 +27,9 @@ function resetVendorAuthTables(): void {
       [
         "import os, sqlite3",
         "conn = sqlite3.connect(os.environ['DATABASE_PATH'])",
-        "conn.execute('DELETE FROM vendor_refresh_sessions')",
-        "conn.execute('DELETE FROM vendor_users')",
+        "conn.execute('DELETE FROM auth_refresh_sessions')",
+        "conn.execute('DELETE FROM auth_role_assignments')",
+        "conn.execute('DELETE FROM auth_users')",
         "conn.commit()",
         "conn.close()",
       ].join("; "),

@@ -5,7 +5,7 @@ import hashlib
 import hmac
 import secrets
 
-from app.domain.vendor_auth.primitives import PasswordHash, PlainPassword
+from app.domain.auth.primitives import PasswordHash, PlainPassword
 
 _SCRYPT_N = 16384
 _SCRYPT_R = 8

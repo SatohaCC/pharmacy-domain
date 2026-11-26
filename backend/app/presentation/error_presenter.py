@@ -125,10 +125,25 @@ _ERROR_SPECS: dict[str, ErrorPresentationSpec] = {
         how_to_fix="入力したメールアドレスは既に登録されています。別のメールアドレスを指定してください。",
         actions=_INPUT_ACTIONS,
     ),
+    "DUPLICATE_USER_EMAIL": ErrorPresentationSpec(
+        title="アカウントを発行できませんでした",
+        how_to_fix="入力したメールアドレスは既に登録されています。別のメールアドレスを指定してください。",
+        actions=_INPUT_ACTIONS,
+    ),
     "VENDOR_ADMIN_REQUIRED": ErrorPresentationSpec(
         title="管理者権限が必要です",
         how_to_fix="システムベンダー管理者アカウントでログインしているかご確認ください。",
         actions=_FORBIDDEN_ACTIONS,
+    ),
+    "INSUFFICIENT_ROLE": ErrorPresentationSpec(
+        title="操作を実行する権限がありません",
+        how_to_fix="必要なロールを持つアカウントでログインしているかご確認ください。",
+        actions=_FORBIDDEN_ACTIONS,
+    ),
+    "INVALID_ROLE_SCOPE": ErrorPresentationSpec(
+        title="スコープまたはロールの指定が不正です",
+        how_to_fix="所属スコープと一致するロールを指定して再度お試しください。",
+        actions=_INPUT_ACTIONS,
     ),
     "BOOTSTRAP_ADMIN_ALREADY_EXISTS": ErrorPresentationSpec(
         title="初期管理者は既に登録されています",
