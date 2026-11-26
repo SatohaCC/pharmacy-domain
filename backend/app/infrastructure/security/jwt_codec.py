@@ -4,6 +4,7 @@ import base64
 import hashlib
 import hmac
 import json
+import re
 from datetime import UTC, datetime, timedelta
 
 from app.application.foundation.errors import ApplicationAuthenticationError
@@ -21,6 +22,7 @@ from app.domain.vendor_auth.primitives import TokenHash
 from app.domain.vendor_auth.value_objects import VendorRole, VendorTokenType
 
 _SUBJECT_TYPE_VENDOR = "vendor"
+_B64URL_SEGMENT_PATTERN = re.compile(r"^[A-Za-z0-9_-]+$")
 
 
 def _b64url_encode(data: bytes) -> str:
@@ -28,10 +30,7 @@ def _b64url_encode(data: bytes) -> str:
 
 
 def _b64url_decode(segment: str) -> bytes:
-    if not segment or any(
-        ch not in "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789-_"
-        for ch in segment
-    ):
+    if not _B64URL_SEGMENT_PATTERN.fullmatch(segment):
         raise ValueError("不正な Base64URL セグメントです。")
     padding = "=" * (-len(segment) % 4)
     return base64.urlsafe_b64decode((segment + padding).encode("ascii"))
@@ -115,7 +114,7 @@ class Hs256JwtTokenIssuer:
             else "AUTH_TOKEN_INVALID"
         )
         parts = raw_token.split(".")
-        if len(parts) != 3:
+        if len(parts) != 3 or any(not _B64URL_SEGMENT_PATTERN.fullmatch(part) for part in parts):
             raise ApplicationAuthenticationError("トークン形式が不正です。", code=invalid_code)
 
         header_seg, payload_seg, sig_seg = parts

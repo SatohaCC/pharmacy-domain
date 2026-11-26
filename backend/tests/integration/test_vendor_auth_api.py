@@ -183,3 +183,83 @@ def test_vendor_auth_end_to_end_api_flow(
             ).status_code
             == 403
         )
+
+        # 非 ASCII を含む不正な Cookie が送られても 500 にならず 401/204(Cookie削除) で処理される。
+        # httpx はリクエストヘッダの非 ASCII を送信前に拒否するため、
+        # ASGI スコープへ生バイト列を直接渡して検証する。
+        from collections.abc import MutableMapping
+        from typing import Any, cast
+
+        import anyio
+
+        async def _call_asgi(
+            method: str,
+            path: str,
+            *,
+            cookie_bytes: bytes,
+            extra_headers: list[tuple[bytes, bytes]] | None = None,
+        ) -> tuple[int, list[tuple[bytes, bytes]], bytes]:
+            status_code = 0
+            resp_headers: list[tuple[bytes, bytes]] = []
+            chunks: list[bytes] = []
+            headers = [(b"host", b"testserver"), (b"cookie", cookie_bytes), *(extra_headers or [])]
+            scope: dict[str, Any] = {
+                "type": "http",
+                "asgi": {"version": "3.0"},
+                "http_version": "1.1",
+                "method": method,
+                "scheme": "http",
+                "path": path,
+                "raw_path": path.encode("ascii"),
+                "query_string": b"",
+                "headers": headers,
+                "client": ("127.0.0.1", 12345),
+                "server": ("testserver", 80),
+            }
+
+            async def receive() -> MutableMapping[str, Any]:
+                return {"type": "http.request", "body": b"", "more_body": False}
+
+            async def send(message: MutableMapping[str, Any]) -> None:
+                nonlocal status_code, resp_headers
+                if message["type"] == "http.response.start":
+                    status_code = cast(int, message["status"])
+                    resp_headers = list(cast(list[tuple[bytes, bytes]], message["headers"]))
+                elif message["type"] == "http.response.body":
+                    chunks.append(cast(bytes, message.get("body", b"")))
+
+            await app(scope, receive, send)
+            return status_code, resp_headers, b"".join(chunks)
+
+        me_status, _, me_body = anyio.run(
+            lambda: _call_asgi(
+                "GET",
+                "/api/vendor/auth/me",
+                cookie_bytes="vendor_access_token=é.e.e".encode(),
+            )
+        )
+        assert me_status == 401
+        assert b"AUTH_TOKEN_INVALID" in me_body
+
+        refresh_status, _, refresh_body = anyio.run(
+            lambda: _call_asgi(
+                "POST",
+                "/api/vendor/auth/refresh",
+                cookie_bytes="vendor_refresh_token=é.e.e".encode(),
+                extra_headers=[(b"x-requested-with", b"XMLHttpRequest")],
+            )
+        )
+        assert refresh_status == 401
+        assert b"REFRESH_TOKEN_INVALID" in refresh_body
+
+        logout_status, logout_headers, _ = anyio.run(
+            lambda: _call_asgi(
+                "POST",
+                "/api/vendor/auth/logout",
+                cookie_bytes="vendor_refresh_token=é.e.e".encode(),
+                extra_headers=[(b"x-requested-with", b"XMLHttpRequest")],
+            )
+        )
+        assert logout_status == 204
+        set_cookies = b" ".join(v for k, v in logout_headers if k.lower() == b"set-cookie")
+        assert b"Max-Age=0" in set_cookies
