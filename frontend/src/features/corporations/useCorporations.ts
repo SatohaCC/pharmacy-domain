@@ -23,6 +23,7 @@ export function useCorporations(filter: CorporationListFilter, enabled: boolean)
     queryKey: corporationKeys.list(filter),
     queryFn: ({ signal }) => fetchCorporations(filter, signal),
     enabled,
+    retainPreviousData: true,
     retry: false,
   });
 }
