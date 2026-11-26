@@ -12,6 +12,12 @@ from app.application.corporate.commands import CorporationCommandService
 from app.application.corporate.queries import CorporationQueryService
 from app.application.corporate.relation_commands import CorporateRelationCommandService
 from app.application.corporate.relation_queries import CorporateRelationQueryService
+from app.application.vendor_auth.commands import (
+    VendorAuthCommandService,
+    VendorTokenVerifierService,
+    VendorUserCommandService,
+)
+from app.application.vendor_auth.queries import VendorUserQueryService
 from app.infrastructure.clock import SystemClock, Uuid4Generator
 from app.infrastructure.config import Settings, load_settings
 from app.infrastructure.logging import configure_logging, request_id_context
@@ -21,11 +27,18 @@ from app.infrastructure.persistence.corporate_relation_query import (
 from app.infrastructure.persistence.corporation_query import SqlAlchemyCorporationQueryPort
 from app.infrastructure.persistence.database import create_app_engine
 from app.infrastructure.persistence.unit_of_work import SqlAlchemyCorporationUnitOfWorkFactory
+from app.infrastructure.persistence.vendor_auth_unit_of_work import (
+    SqlAlchemyVendorAuthUnitOfWorkFactory,
+)
+from app.infrastructure.persistence.vendor_user_query import SqlAlchemyVendorUserReadGateway
 from app.infrastructure.resources import ResourceRegistry
+from app.infrastructure.security.jwt_codec import Hs256JwtTokenIssuer, Sha256TokenHasher
+from app.infrastructure.security.password_hasher import ScryptPasswordHasher
 from app.presentation.error_handlers import REQUEST_ID_HEADER, register_exception_handlers
 from app.presentation.middleware import AccessLogMiddleware, RequestIdMiddleware
 from app.presentation.routes import corporations_router, health_router
 from app.presentation.routes.corporate_relations import router as corporate_relations_router
+from app.presentation.routes.vendor_auth import router as vendor_auth_router
 
 APP_ENGINE_RESOURCE_NAME = "app_engine"
 
@@ -80,6 +93,36 @@ def create_app(
             application.state.corporate_relation_queries = CorporateRelationQueryService(
                 SqlAlchemyCorporateRelationQueryPort(engine),
             )
+            vendor_auth_uow_factory = SqlAlchemyVendorAuthUnitOfWorkFactory(engine)
+            vendor_user_read_gateway = SqlAlchemyVendorUserReadGateway(engine)
+            password_hasher = ScryptPasswordHasher()
+            token_hasher = Sha256TokenHasher()
+            jwt_issuer = Hs256JwtTokenIssuer(
+                secret_key=resolved_settings.jwt_secret_key,
+                issuer=resolved_settings.jwt_issuer,
+            )
+            application.state.vendor_auth_commands = VendorAuthCommandService(
+                uow_factory=vendor_auth_uow_factory,
+                clock=clock,
+                id_generator=id_generator,
+                password_hasher=password_hasher,
+                token_hasher=token_hasher,
+                jwt_issuer=jwt_issuer,
+            )
+            application.state.vendor_user_commands = VendorUserCommandService(
+                uow_factory=vendor_auth_uow_factory,
+                clock=clock,
+                id_generator=id_generator,
+                password_hasher=password_hasher,
+            )
+            application.state.vendor_user_queries = VendorUserQueryService(
+                read_gateway=vendor_user_read_gateway,
+            )
+            application.state.vendor_token_verifier = VendorTokenVerifierService(
+                jwt_issuer=jwt_issuer,
+                read_gateway=vendor_user_read_gateway,
+                clock=clock,
+            )
             yield
         finally:
             await registry.aclose_all()
@@ -116,6 +159,7 @@ def create_app(
     application.include_router(health_router)
     application.include_router(corporations_router)
     application.include_router(corporate_relations_router)
+    application.include_router(vendor_auth_router)
     return application
 
 

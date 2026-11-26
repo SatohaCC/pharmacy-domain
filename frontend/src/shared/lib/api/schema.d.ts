@@ -454,6 +454,138 @@ export interface paths {
       };
     };
   };
+  "/api/vendor/auth/login": {
+    post: {
+      requestBody: {
+        content: {
+          "application/json": components["schemas"]["VendorLoginRequest"];
+        };
+      };
+      responses: {
+        200: {
+          content: {
+            "application/json": components["schemas"]["VendorAuthSessionResponse"];
+          };
+        };
+        401: {
+          content: {
+            "application/json": components["schemas"]["ErrorResponse"];
+          };
+        };
+        422: {
+          content: {
+            "application/json": components["schemas"]["ErrorResponse"];
+          };
+        };
+      };
+    };
+  };
+  "/api/vendor/auth/logout": {
+    post: {
+      responses: {
+        204: {
+          content?: never;
+        };
+        403: {
+          content: {
+            "application/json": components["schemas"]["ErrorResponse"];
+          };
+        };
+      };
+    };
+  };
+  "/api/vendor/auth/me": {
+    get: {
+      responses: {
+        200: {
+          content: {
+            "application/json": components["schemas"]["VendorUserResponse"];
+          };
+        };
+        401: {
+          content: {
+            "application/json": components["schemas"]["ErrorResponse"];
+          };
+        };
+      };
+    };
+  };
+  "/api/vendor/auth/refresh": {
+    post: {
+      responses: {
+        200: {
+          content: {
+            "application/json": components["schemas"]["VendorAuthSessionResponse"];
+          };
+        };
+        401: {
+          content: {
+            "application/json": components["schemas"]["ErrorResponse"];
+          };
+        };
+        403: {
+          content: {
+            "application/json": components["schemas"]["ErrorResponse"];
+          };
+        };
+      };
+    };
+  };
+  "/api/vendor/users": {
+    get: {
+      responses: {
+        200: {
+          content: {
+            "application/json": components["schemas"]["VendorUserListResponse"];
+          };
+        };
+        401: {
+          content: {
+            "application/json": components["schemas"]["ErrorResponse"];
+          };
+        };
+        403: {
+          content: {
+            "application/json": components["schemas"]["ErrorResponse"];
+          };
+        };
+      };
+    };
+    post: {
+      requestBody: {
+        content: {
+          "application/json": components["schemas"]["CreateVendorUserRequest"];
+        };
+      };
+      responses: {
+        201: {
+          content: {
+            "application/json": components["schemas"]["VendorUserResponse"];
+          };
+        };
+        401: {
+          content: {
+            "application/json": components["schemas"]["ErrorResponse"];
+          };
+        };
+        403: {
+          content: {
+            "application/json": components["schemas"]["ErrorResponse"];
+          };
+        };
+        409: {
+          content: {
+            "application/json": components["schemas"]["ErrorResponse"];
+          };
+        };
+        422: {
+          content: {
+            "application/json": components["schemas"]["ErrorResponse"];
+          };
+        };
+      };
+    };
+  };
 }
 
 export interface components {
@@ -553,6 +685,12 @@ export interface components {
       name?: string | null;
       valid_from?: string | null;
     };
+    CreateVendorUserRequest: {
+      display_name: string;
+      email: string;
+      password: string;
+      role?: "admin" | "member";
+    };
     ErrorAction: {
       action_type: components["schemas"]["ErrorActionType"];
       label: string;
@@ -591,6 +729,28 @@ export interface components {
       loc: Array<string | number>;
       msg: string;
       type: string;
+    };
+    VendorAuthSessionResponse: {
+      access_token_expires_in_seconds: number;
+      refresh_token_expires_in_seconds: number;
+      user: components["schemas"]["VendorUserResponse"];
+    };
+    VendorLoginRequest: {
+      email: string;
+      password: string;
+    };
+    VendorUserListResponse: {
+      items: Array<components["schemas"]["VendorUserResponse"]>;
+      total: number;
+    };
+    VendorUserResponse: {
+      created_at: string;
+      display_name: string;
+      email: string;
+      id: string;
+      role: "admin" | "member";
+      status: "active" | "disabled";
+      updated_at: string;
     };
   };
 }

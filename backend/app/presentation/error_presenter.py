@@ -100,6 +100,49 @@ _ERROR_SPECS: dict[str, ErrorPresentationSpec] = {
         how_to_fix="他の操作と同時に更新された可能性があります。最新の状態を再読み込みしてから再度お試しください。",
         actions=_CONFLICT_ACTIONS,
     ),
+    "INVALID_CREDENTIALS": ErrorPresentationSpec(
+        title="ログインできませんでした",
+        how_to_fix="メールアドレスとパスワードをご確認のうえ、もう一度お試しください。",
+        actions=_INPUT_ACTIONS,
+    ),
+    "AUTH_TOKEN_EXPIRED": ErrorPresentationSpec(
+        title="ログインの有効期限が切れました",
+        how_to_fix="再度ログイン画面からログインしてください。",
+        actions=_FORBIDDEN_ACTIONS,
+    ),
+    "AUTH_TOKEN_INVALID": ErrorPresentationSpec(
+        title="認証情報を確認できませんでした",
+        how_to_fix="再度ログイン画面からログインしてください。",
+        actions=_FORBIDDEN_ACTIONS,
+    ),
+    "REFRESH_TOKEN_REVOKED": ErrorPresentationSpec(
+        title="セッションが無効化されました",
+        how_to_fix="セキュリティ保護のためセッションを終了しました。再度ログインしてください。",
+        actions=_FORBIDDEN_ACTIONS,
+    ),
+    "DUPLICATE_VENDOR_EMAIL": ErrorPresentationSpec(
+        title="ベンダーアカウントを発行できませんでした",
+        how_to_fix="入力したメールアドレスは既に登録されています。別のメールアドレスを指定してください。",
+        actions=_INPUT_ACTIONS,
+    ),
+    "VENDOR_ADMIN_REQUIRED": ErrorPresentationSpec(
+        title="管理者権限が必要です",
+        how_to_fix="システムベンダー管理者アカウントでログインしているかご確認ください。",
+        actions=_FORBIDDEN_ACTIONS,
+    ),
+    "BOOTSTRAP_ADMIN_ALREADY_EXISTS": ErrorPresentationSpec(
+        title="初期管理者は既に登録されています",
+        how_to_fix=(
+            "コンソールからの初期管理者発行は初回のみ実行できます。"
+            "既存の管理者アカウントで Web からログインしてください。"
+        ),
+        actions=_FORBIDDEN_ACTIONS,
+    ),
+    "CSRF_VALIDATION_FAILED": ErrorPresentationSpec(
+        title="リクエストの送信元を確認できませんでした",
+        how_to_fix="ページを再読み込みしてから、もう一度操作をお試しください。",
+        actions=_CONFLICT_ACTIONS,
+    ),
 }
 
 _HTTP_STATUS_TITLES: dict[int, str] = {
