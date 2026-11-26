@@ -8,7 +8,7 @@ export default defineConfig({
   retries: process.env.CI ? 1 : 0,
   reporter: [["list"], ["html", { outputFolder: "../.cache/playwright-report", open: "never" }]],
   use: {
-    baseURL: "http://localhost:3000",
+    baseURL: "http://localhost:13000",
     trace: "on-first-retry",
   },
   projects: [
@@ -17,19 +17,26 @@ export default defineConfig({
       use: { ...devices["Desktop Chrome"] },
     },
   ],
-  // フロントエンドとバックエンドを両方起動して E2E を検証する
+  // 開発サーバーと DB・ポートが衝突しないよう E2E 専用ポートで起動する
   webServer: [
     {
       command: "node ../scripts/start-e2e-backend.mts",
-      url: "http://127.0.0.1:8000/api/health",
-      reuseExistingServer: !process.env.CI,
+      url: "http://127.0.0.1:18000/api/health",
+      reuseExistingServer: false,
       timeout: 30_000,
+      env: {
+        E2E_BACKEND_PORT: "18000",
+        CORS_ORIGINS: "http://localhost:13000,http://127.0.0.1:13000",
+      },
     },
     {
-      command: "pnpm dev",
-      url: "http://localhost:3000",
-      reuseExistingServer: !process.env.CI,
+      command: "pnpm exec next dev --turbopack --port 13000",
+      url: "http://localhost:13000",
+      reuseExistingServer: false,
       timeout: 60_000,
+      env: {
+        BACKEND_URL: "http://127.0.0.1:18000",
+      },
     },
   ],
 });

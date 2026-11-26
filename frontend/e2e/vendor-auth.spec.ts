@@ -8,8 +8,38 @@ const pythonPath =
   process.platform === "win32"
     ? path.join(backendDir, ".venv", "Scripts", "python.exe")
     : path.join(backendDir, ".venv", "bin", "python");
-const e2eDbPath =
-  process.env.DATABASE_PATH?.trim() || path.join(repoRoot, ".cache", "playwright-e2e.db");
+const e2eDbPath = (() => {
+  const configured = process.env.E2E_DATABASE_PATH?.trim();
+  if (!configured) {
+    return path.join(repoRoot, ".cache", "playwright-e2e.db");
+  }
+  return path.isAbsolute(configured)
+    ? path.resolve(configured)
+    : path.resolve(backendDir, configured);
+})();
+
+function resetVendorAuthTables(): void {
+  execFileSync(
+    pythonPath,
+    [
+      "-B",
+      "-c",
+      [
+        "import os, sqlite3",
+        "conn = sqlite3.connect(os.environ['DATABASE_PATH'])",
+        "conn.execute('DELETE FROM vendor_refresh_sessions')",
+        "conn.execute('DELETE FROM vendor_users')",
+        "conn.commit()",
+        "conn.close()",
+      ].join("; "),
+    ],
+    {
+      cwd: backendDir,
+      env: { ...process.env, DATABASE_PATH: e2eDbPath },
+      encoding: "utf8",
+    },
+  );
+}
 
 function runBootstrapCli(args: { email: string; name: string; password: string }): string {
   return execFileSync(
@@ -39,6 +69,10 @@ test.describe
     const adminPassword = "InitialVendorAdmin123!";
     const staffEmail = "vendor-staff@vendor.example.com";
     const staffName = "ベンダー 運用社員";
+
+    test.beforeAll(() => {
+      resetVendorAuthTables();
+    });
 
     test("コンソールから初期管理者を発行し、Webでログイン・社員発行・再ログインできる", async ({
       page,
