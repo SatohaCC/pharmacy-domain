@@ -1,5 +1,5 @@
 import type { Metadata } from "next";
-import { VendorUsersContainer } from "@/features/vendor-auth/VendorUsersContainer";
+import { VendorUsersContainer } from "@/features/auth/VendorUsersContainer";
 
 export const metadata: Metadata = {
   title: "ベンダーアカウント管理",

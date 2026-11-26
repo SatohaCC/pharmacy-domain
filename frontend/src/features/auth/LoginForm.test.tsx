@@ -1,15 +1,15 @@
 import { render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { describe, expect, it, vi } from "vitest";
-import { VendorLoginForm } from "./VendorLoginForm";
+import { LoginForm } from "./LoginForm";
 
-describe("VendorLoginForm", () => {
+describe("LoginForm", () => {
   it("空欄送信時は必須エラーを表示し onSubmit を呼ばない", async () => {
     const user = userEvent.setup();
     const onSubmit = vi.fn();
 
     render(
-      <VendorLoginForm
+      <LoginForm
         isSubmitting={false}
         errorMessage={null}
         userFacingError={null}
@@ -29,7 +29,7 @@ describe("VendorLoginForm", () => {
     const onSubmit = vi.fn();
 
     const { rerender } = render(
-      <VendorLoginForm
+      <LoginForm
         isSubmitting={false}
         errorMessage={null}
         userFacingError={null}
@@ -47,7 +47,7 @@ describe("VendorLoginForm", () => {
     });
 
     rerender(
-      <VendorLoginForm
+      <LoginForm
         isSubmitting={false}
         errorMessage="メールアドレスまたはパスワードが正しくありません。"
         userFacingError={{

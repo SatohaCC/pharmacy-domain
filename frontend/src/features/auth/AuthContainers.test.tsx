@@ -1,7 +1,7 @@
 import { cleanup, render, screen, waitFor } from "@testing-library/react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { QueryProvider } from "@/shared/lib/query/QueryProvider";
-import { VendorLoginContainer } from "./VendorLoginContainer";
+import { LoginContainer } from "./LoginContainer";
 import { VendorUsersContainer } from "./VendorUsersContainer";
 
 const replaceMock = vi.fn();
@@ -18,13 +18,15 @@ const sampleAdmin = {
   id: "admin-1",
   email: "admin@vendor.example.com",
   display_name: "初期管理者",
-  role: "admin" as const,
+  affiliation_type: "vendor" as const,
+  tenant_id: null,
+  roles: ["vendor_admin" as const],
   status: "active" as const,
   created_at: "2026-11-26T00:00:00Z",
   updated_at: "2026-11-26T00:00:00Z",
 };
 
-describe("VendorUsersContainer / VendorLoginContainer 認証キャッシュ制御", () => {
+describe("VendorUsersContainer / LoginContainer 認証キャッシュ制御", () => {
   afterEach(() => {
     cleanup();
     vi.restoreAllMocks();
@@ -32,11 +34,11 @@ describe("VendorUsersContainer / VendorLoginContainer 認証キャッシュ制�
     pushMock.mockReset();
   });
 
-  it("キャッシュ済みユーザーがあっても /auth/me 再取得が401なら /login へ遷移し戻らない", async () => {
+  it("キャッシュ済みユーザーがあっても /api/auth/me 再取得が401なら /login へ遷移し戻らない", async () => {
     let meCalls = 0;
     vi.spyOn(globalThis, "fetch").mockImplementation(async (input) => {
       const url = String(input);
-      if (url === "/api/vendor/auth/me") {
+      if (url === "/api/auth/me") {
         meCalls += 1;
         if (meCalls === 1) {
           return new Response(JSON.stringify(sampleAdmin), { status: 200 });
@@ -45,7 +47,7 @@ describe("VendorUsersContainer / VendorLoginContainer 認証キャッシュ制�
           status: 401,
         });
       }
-      if (url === "/api/vendor/auth/refresh") {
+      if (url === "/api/auth/refresh") {
         return new Response(JSON.stringify({ code: "REFRESH_TOKEN_REVOKED", detail: "revoked" }), {
           status: 401,
         });
@@ -64,14 +66,12 @@ describe("VendorUsersContainer / VendorLoginContainer 認証キャッシュ制�
     });
     firstRender.unmount();
 
-    // 同じ QueryProvider（相当の別マウントでは別 QueryClient になるため、再レンダリングで再取得を発生させる）
     const sharedTree = render(
       <QueryProvider>
         <VendorUsersContainer />
       </QueryProvider>,
     );
 
-    // 2回目は初回マウントで 401 になり /login へ遷移する。
     await waitFor(() => {
       expect(replaceMock).toHaveBeenCalledWith("/login");
     });
@@ -80,7 +80,7 @@ describe("VendorUsersContainer / VendorLoginContainer 認証キャッシュ制�
     replaceMock.mockReset();
     render(
       <QueryProvider>
-        <VendorLoginContainer />
+        <LoginContainer />
       </QueryProvider>,
     );
     await waitFor(() => {
@@ -93,7 +93,7 @@ describe("VendorUsersContainer / VendorLoginContainer 認証キャッシュ制�
     let meCalls = 0;
     vi.spyOn(globalThis, "fetch").mockImplementation(async (input) => {
       const url = String(input);
-      if (url === "/api/vendor/auth/me") {
+      if (url === "/api/auth/me") {
         meCalls += 1;
         if (meCalls === 1) {
           return new Response(JSON.stringify(sampleAdmin), { status: 200 });
@@ -113,7 +113,6 @@ describe("VendorUsersContainer / VendorLoginContainer 認証キャッシュ制�
       expect(screen.getByRole("heading", { name: "ベンダーアカウント管理" })).toBeVisible();
     });
 
-    // key を変えずに同じ QueryProvider 内で再マウントし、キャッシュを保持したままバックグラウンド再取得（503）を起こす。
     view.rerender(
       <QueryProvider>
         <VendorUsersContainer key="remounted" />

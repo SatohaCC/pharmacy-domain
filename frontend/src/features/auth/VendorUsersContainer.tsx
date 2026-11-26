@@ -6,31 +6,31 @@ import { useEffect, useState } from "react";
 import { ApiError } from "@/shared/lib/api/apiClient";
 import { Spinner } from "@/shared/ui/spinner/Spinner";
 import { isAuthenticationError } from "./api";
-import type { VendorUser } from "./schemas";
+import type { AuthUser } from "./schemas";
 import {
-  useClearVendorAuthCache,
+  useAuthLogout,
+  useClearAuthCache,
   useCreateVendorUser,
-  useCurrentVendorUser,
-  useVendorLogout,
+  useCurrentAuthUser,
   useVendorUsers,
-} from "./useVendorAuth";
+} from "./useAuth";
 import { VendorUsersWorkspace } from "./VendorUsersWorkspace";
 import { vendorUsersWorkspaceStyles as s } from "./VendorUsersWorkspace.styles";
 
 /** ベンダーアカウント管理画面のコンテナ。未認証・認証失効時はキャッシュを削除して /login へ遷移する。 */
 export function VendorUsersContainer() {
   const router = useRouter();
-  const clearVendorAuthCache = useClearVendorAuthCache();
-  const currentUserQuery = useCurrentVendorUser();
-  const isAdmin = currentUserQuery.data?.role === "admin";
+  const clearAuthCache = useClearAuthCache();
+  const currentUserQuery = useCurrentAuthUser();
+  const isAdmin = Boolean(currentUserQuery.data?.roles.includes("vendor_admin"));
   const usersQuery = useVendorUsers(isAdmin);
   const createUserMutation = useCreateVendorUser();
-  const logoutMutation = useVendorLogout(() => {
+  const logoutMutation = useAuthLogout(() => {
     router.replace("/login");
   });
 
   const [lastIssuedUser, setLastIssuedUser] = useState<{
-    user: VendorUser;
+    user: AuthUser;
     initialPassword: string;
   } | null>(null);
 
@@ -41,7 +41,7 @@ export function VendorUsersContainer() {
 
   useEffect(() => {
     if (hasSessionAuthError) {
-      clearVendorAuthCache();
+      clearAuthCache();
       router.replace("/login");
       return;
     }
@@ -49,7 +49,7 @@ export function VendorUsersContainer() {
       router.replace("/login");
     }
   }, [
-    clearVendorAuthCache,
+    clearAuthCache,
     currentUserQuery.data,
     currentUserQuery.isLoading,
     hasSessionAuthError,

@@ -15,8 +15,6 @@ from app.application.auth.contracts import (
 from app.presentation.dependencies import (
     AUTH_ACCESS_COOKIE_NAME,
     AUTH_REFRESH_COOKIE_NAME,
-    VENDOR_ACCESS_COOKIE_NAME,
-    VENDOR_REFRESH_COOKIE_NAME,
     get_auth_commands,
     get_auth_user_queries,
     get_current_auth_principal,
@@ -86,20 +84,6 @@ def _clear_auth_cookies(response: Response, *, secure: bool) -> None:
         samesite="lax",
         secure=secure,
     )
-    response.delete_cookie(
-        key=VENDOR_ACCESS_COOKIE_NAME,
-        path=_ACCESS_COOKIE_PATH,
-        httponly=True,
-        samesite="lax",
-        secure=secure,
-    )
-    response.delete_cookie(
-        key=VENDOR_REFRESH_COOKIE_NAME,
-        path="/api/vendor/auth",
-        httponly=True,
-        samesite="lax",
-        secure=secure,
-    )
 
 
 @router.post(
@@ -151,9 +135,7 @@ def logout_auth(
     commands: Annotated[AuthCommandPort, Depends(get_auth_commands)],
 ) -> Response:
     """リフレッシュセッションファミリーを即時失効させ、認証 Cookie を削除する。"""
-    raw_refresh = request.cookies.get(AUTH_REFRESH_COOKIE_NAME) or request.cookies.get(
-        VENDOR_REFRESH_COOKIE_NAME
-    )
+    raw_refresh = request.cookies.get(AUTH_REFRESH_COOKIE_NAME)
     commands.logout(LogoutAuthSessionInput(refresh_token=raw_refresh))
     response = Response(status_code=status.HTTP_204_NO_CONTENT)
     _clear_auth_cookies(response, secure=_is_cookie_secure(request))

@@ -37,7 +37,7 @@ from app.presentation.middleware import AccessLogMiddleware, RequestIdMiddleware
 from app.presentation.routes import corporations_router, health_router
 from app.presentation.routes.auth import router as auth_router
 from app.presentation.routes.corporate_relations import router as corporate_relations_router
-from app.presentation.routes.vendor_auth import router as vendor_auth_router
+from app.presentation.routes.vendor_users import router as vendor_users_router
 
 APP_ENGINE_RESOURCE_NAME = "app_engine"
 
@@ -161,7 +161,7 @@ def create_app(
     application.include_router(corporations_router)
     application.include_router(corporate_relations_router)
     application.include_router(auth_router)
-    application.include_router(vendor_auth_router)
+    application.include_router(vendor_users_router)
     return application
 
 

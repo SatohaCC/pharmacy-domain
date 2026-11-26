@@ -6,9 +6,9 @@ import type { ApiUserFacingError } from "@/shared/lib/api/apiClient";
 import { Alert } from "@/shared/ui/alert/Alert";
 import { Button } from "@/shared/ui/button/Button";
 import { TextField } from "@/shared/ui/text-field/TextField";
-import { vendorLoginFormStyles as s } from "./VendorLoginForm.styles";
+import { loginFormStyles as s } from "./LoginForm.styles";
 
-export interface VendorLoginFormProps {
+export interface LoginFormProps {
   isSubmitting: boolean;
   errorMessage: string | null;
   userFacingError: ApiUserFacingError | null;
@@ -17,13 +17,13 @@ export interface VendorLoginFormProps {
 }
 
 /** Material Design 3 準拠のシステムベンダーログインフォーム。 */
-export function VendorLoginForm({
+export function LoginForm({
   isSubmitting,
   errorMessage,
   userFacingError,
   onSubmit,
   onNavigateHome,
-}: VendorLoginFormProps) {
+}: LoginFormProps) {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);

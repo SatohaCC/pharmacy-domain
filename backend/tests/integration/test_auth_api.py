@@ -186,3 +186,117 @@ def test_unified_auth_api_end_to_end_flow(
         assert logout_status == 204
         set_cookies = b" ".join(v for k, v in logout_headers if k.lower() == b"set-cookie")
         assert b"Max-Age=0" in set_cookies
+
+
+def test_vendor_users_api_roles_rbac_and_csrf(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    db_path = tmp_path / "vendor_users_v2.db"
+    monkeypatch.setenv("DATABASE_PATH", str(db_path))
+    command.upgrade(Config(str(_ALEMBIC_INI)), "head")
+
+    monkeypatch.setattr("sys.stdin", io.StringIO("VendorAdmin123!\n"))
+    assert (
+        cli_main(
+            [
+                "--email",
+                "admin@vendor.example.com",
+                "--name",
+                "システム管理者",
+                "--password-stdin",
+            ]
+        )
+        == 0
+    )
+
+    app = create_app(Settings(database_path=str(db_path)))
+
+    with TestClient(app) as client:
+        # 未認証は 401
+        assert client.get("/api/vendor/users").status_code == 401
+
+        login_res = client.post(
+            "/api/auth/login",
+            json={"email": "admin@vendor.example.com", "password": "VendorAdmin123!"},
+        )
+        assert login_res.status_code == 200
+
+        # CSRF ヘッダーなしは 403
+        no_csrf = client.post(
+            "/api/vendor/users",
+            json={
+                "email": "staff@vendor.example.com",
+                "display_name": "運用 太郎",
+                "roles": ["vendor_member"],
+                "password": "StaffUser1234!",
+            },
+        )
+        assert no_csrf.status_code == 403
+
+        # vendor_admin による vendor_member 発行 (201)
+        created = client.post(
+            "/api/vendor/users",
+            headers={"X-Requested-With": "XMLHttpRequest"},
+            json={
+                "email": "staff@vendor.example.com",
+                "display_name": "運用 太郎",
+                "roles": ["vendor_member"],
+                "password": "StaffUser1234!",
+            },
+        )
+        assert created.status_code == 201
+        created_data = created.json()
+        assert created_data["roles"] == ["vendor_member"]
+        assert created_data["affiliation_type"] == "vendor"
+
+        # メール重複は 409 (DUPLICATE_VENDOR_EMAIL)
+        duplicate = client.post(
+            "/api/vendor/users",
+            headers={"X-Requested-With": "XMLHttpRequest"},
+            json={
+                "email": "staff@vendor.example.com",
+                "display_name": "重複 太郎",
+                "roles": ["vendor_member"],
+                "password": "StaffUser1234!",
+            },
+        )
+        assert duplicate.status_code == 409
+        assert duplicate.json()["code"] == "DUPLICATE_VENDOR_EMAIL"
+
+        # 一覧取得は 200 (2件)
+        listed = client.get("/api/vendor/users")
+        assert listed.status_code == 200
+        assert listed.json()["total"] == 2
+
+        # vendor_member で再ログインすると /api/vendor/users の GET/POST は 403
+        assert (
+            client.post(
+                "/api/auth/logout",
+                headers={"X-Requested-With": "XMLHttpRequest"},
+            ).status_code
+            == 204
+        )
+        staff_login = client.post(
+            "/api/auth/login",
+            json={"email": "staff@vendor.example.com", "password": "StaffUser1234!"},
+        )
+        assert staff_login.status_code == 200
+        assert staff_login.json()["user"]["roles"] == ["vendor_member"]
+
+        forbidden_list = client.get("/api/vendor/users")
+        assert forbidden_list.status_code == 403
+        assert forbidden_list.json()["code"] == "VENDOR_ADMIN_REQUIRED"
+
+        forbidden_create = client.post(
+            "/api/vendor/users",
+            headers={"X-Requested-With": "XMLHttpRequest"},
+            json={
+                "email": "another@vendor.example.com",
+                "display_name": "別の社員",
+                "roles": ["vendor_member"],
+                "password": "StaffUser1234!",
+            },
+        )
+        assert forbidden_create.status_code == 403
+        assert forbidden_create.json()["code"] == "VENDOR_ADMIN_REQUIRED"

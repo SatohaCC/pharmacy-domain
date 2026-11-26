@@ -3,14 +3,14 @@
 import { useRouter } from "next/navigation";
 import { useEffect } from "react";
 import { ApiError } from "@/shared/lib/api/apiClient";
-import { useCurrentVendorUser, useVendorLogin } from "./useVendorAuth";
-import { VendorLoginForm } from "./VendorLoginForm";
+import { LoginForm } from "./LoginForm";
+import { useAuthLogin, useCurrentAuthUser } from "./useAuth";
 
-/** ベンダーログイン画面のコンテナ。認証済みなら管理画面へ遷移する。 */
-export function VendorLoginContainer() {
+/** ログイン画面のコンテナ。認証済みならベンダー管理画面へ遷移する。 */
+export function LoginContainer() {
   const router = useRouter();
-  const currentUserQuery = useCurrentVendorUser();
-  const loginMutation = useVendorLogin(() => {
+  const currentUserQuery = useCurrentAuthUser();
+  const loginMutation = useAuthLogin(() => {
     router.replace("/vendor/users");
   });
 
@@ -37,12 +37,12 @@ export function VendorLoginContainer() {
     loginMutation.error instanceof ApiError ? loginMutation.error.userFacing : null;
 
   return (
-    <VendorLoginForm
+    <LoginForm
       isSubmitting={loginMutation.isPending}
       errorMessage={loginMutation.errorMessage}
       userFacingError={userFacingError}
       onSubmit={(values) => {
-        loginMutation.mutate(values);
+        loginMutation.mutate({ ...values, scope_type: "vendor" });
       }}
       onNavigateHome={() => router.push("/")}
     />

@@ -28,8 +28,6 @@ from app.application.foundation.errors import (
 
 AUTH_ACCESS_COOKIE_NAME = "auth_access_token"
 AUTH_REFRESH_COOKIE_NAME = "auth_refresh_token"
-VENDOR_ACCESS_COOKIE_NAME = "vendor_access_token"
-VENDOR_REFRESH_COOKIE_NAME = "vendor_refresh_token"
 _SAFE_METHODS = frozenset({"GET", "HEAD", "OPTIONS"})
 
 
@@ -157,10 +155,8 @@ def get_current_auth_principal(
     request: Request,
     verifier: Annotated[AuthTokenVerifierPort, Depends(get_auth_token_verifier)],
 ) -> AuthPrincipal:
-    """HttpOnly Cookie のアクセストークンを検証して認証主体を返す（移行期は旧 Cookie も参照）。"""
-    raw_token = request.cookies.get(AUTH_ACCESS_COOKIE_NAME) or request.cookies.get(
-        VENDOR_ACCESS_COOKIE_NAME
-    )
+    """HttpOnly Cookie のアクセストークンを検証して認証主体を返す。"""
+    raw_token = request.cookies.get(AUTH_ACCESS_COOKIE_NAME)
     if not raw_token:
         raise ApplicationAuthenticationError(
             "認証が必要です。ログインしてください。",
