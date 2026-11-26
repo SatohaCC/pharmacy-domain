@@ -66,6 +66,8 @@ jobs:
 
   build:
     name: Next.js Build
+    # デプロイ開始まで Next.js 本番ビルド CI は一時無効化（再開時は if: false を削除）
+    if: false
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v7
