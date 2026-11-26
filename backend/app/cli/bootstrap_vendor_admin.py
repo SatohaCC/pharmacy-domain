@@ -7,15 +7,13 @@ from collections.abc import Sequence
 
 from sqlalchemy.exc import OperationalError
 
+from app.application.auth.commands import AuthCommandService
+from app.application.auth.contracts import BootstrapVendorAdminInput
 from app.application.foundation.errors import ApplicationError
-from app.application.vendor_auth.commands import VendorAuthCommandService
-from app.application.vendor_auth.contracts import BootstrapVendorAdminInput
 from app.infrastructure.clock import SystemClock, Uuid4Generator
 from app.infrastructure.config import load_settings
+from app.infrastructure.persistence.auth_unit_of_work import SqlAlchemyAuthUnitOfWorkFactory
 from app.infrastructure.persistence.database import create_app_engine
-from app.infrastructure.persistence.vendor_auth_unit_of_work import (
-    SqlAlchemyVendorAuthUnitOfWorkFactory,
-)
 from app.infrastructure.security.jwt_codec import Hs256JwtTokenIssuer, Sha256TokenHasher
 from app.infrastructure.security.password_hasher import ScryptPasswordHasher
 
@@ -23,7 +21,7 @@ from app.infrastructure.security.password_hasher import ScryptPasswordHasher
 def _build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(
         prog="python -B -m app.cli.bootstrap_vendor_admin",
-        description="最初のシステムベンダー管理アカウント（admin）をコンソールから発行します。",
+        description="最初のシステムベンダー管理アカウント（vendor_admin）をコンソールから発行します。",
     )
     parser.add_argument(
         "--email",
@@ -69,8 +67,8 @@ def main(argv: Sequence[str] | None = None) -> int:
 
     engine = create_app_engine(settings.database_path)
     try:
-        service = VendorAuthCommandService(
-            uow_factory=SqlAlchemyVendorAuthUnitOfWorkFactory(engine),
+        service = AuthCommandService(
+            uow_factory=SqlAlchemyAuthUnitOfWorkFactory(engine),
             clock=SystemClock(),
             id_generator=Uuid4Generator(),
             password_hasher=ScryptPasswordHasher(),
@@ -80,7 +78,7 @@ def main(argv: Sequence[str] | None = None) -> int:
                 issuer=settings.jwt_issuer,
             ),
         )
-        created = service.bootstrap_initial_admin(
+        created = service.bootstrap_initial_vendor_admin(
             BootstrapVendorAdminInput(
                 email=args.email,
                 display_name=args.name,
@@ -102,7 +100,8 @@ def main(argv: Sequence[str] | None = None) -> int:
 
     print(
         f"初期ベンダー管理アカウントを発行しました: id={created.id}, "
-        f"email={created.email}, display_name={created.display_name}, role={created.role}"
+        f"email={created.email}, display_name={created.display_name}, "
+        f"roles={','.join(created.roles)}"
     )
     return 0
 

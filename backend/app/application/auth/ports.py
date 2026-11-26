@@ -1,4 +1,4 @@
-"""システムベンダー認証コンテキストの Outbound Port 定義。"""
+"""共通認証コンテキストの Outbound Port 定義。"""
 
 from collections.abc import Sequence
 from dataclasses import dataclass
@@ -6,22 +6,32 @@ from datetime import datetime
 from types import TracebackType
 from typing import Protocol
 
-from app.domain.vendor_auth.entities import VendorUser
-from app.domain.vendor_auth.identifiers import RefreshSessionId, RefreshTokenFamilyId, VendorUserId
-from app.domain.vendor_auth.primitives import PasswordHash, PlainPassword, TokenHash
-from app.domain.vendor_auth.repositories import (
-    RefreshSessionRepository,
-    VendorUserRepository,
+from app.domain.auth.entities import RoleAssignment, User
+from app.domain.auth.identifiers import (
+    RefreshSessionId,
+    RefreshTokenFamilyId,
+    UserId,
 )
-from app.domain.vendor_auth.value_objects import VendorRole, VendorTokenType
+from app.domain.auth.primitives import PasswordHash, PlainPassword, TokenHash
+from app.domain.auth.repositories import (
+    AuthUserRepository,
+    RefreshSessionRepository,
+    RoleAssignmentRepository,
+)
+from app.domain.auth.value_objects import AffiliationType, AuthScope, RoleName, TokenType
 
 
-class VendorAuthUnitOfWork(Protocol):
-    """ベンダー認証コンテキストのトランザクション境界。"""
+class AuthUnitOfWork(Protocol):
+    """共通認証コンテキストのトランザクション境界。"""
 
     @property
-    def users(self) -> VendorUserRepository:
-        """同一トランザクション内のベンダーユーザーリポジトリ。"""
+    def users(self) -> AuthUserRepository:
+        """同一トランザクション内のユーザーリポジトリ。"""
+        ...
+
+    @property
+    def role_assignments(self) -> RoleAssignmentRepository:
+        """同一トランザクション内のロール付与リポジトリ。"""
         ...
 
     @property
@@ -29,7 +39,7 @@ class VendorAuthUnitOfWork(Protocol):
         """同一トランザクション内のリフレッシュセッションリポジトリ。"""
         ...
 
-    def __enter__(self) -> VendorAuthUnitOfWork: ...
+    def __enter__(self) -> AuthUnitOfWork: ...
 
     def __exit__(
         self,
@@ -47,21 +57,36 @@ class VendorAuthUnitOfWork(Protocol):
         ...
 
 
-class VendorAuthUnitOfWorkFactory(Protocol):
-    """操作ごとの VendorAuthUnitOfWork を生成するファクトリ。"""
+class AuthUnitOfWorkFactory(Protocol):
+    """操作ごとの AuthUnitOfWork を生成するファクトリ。"""
 
-    def __call__(self) -> VendorAuthUnitOfWork: ...
+    def __call__(self) -> AuthUnitOfWork: ...
 
 
-class VendorUserReadGateway(Protocol):
+class AuthUserReadGateway(Protocol):
     """参照系クエリ用ゲートウェイ。"""
 
-    def get_by_id(self, user_id: str) -> VendorUser | None:
-        """ID でベンダーユーザーを取得する。"""
+    def get_by_id(self, user_id: str) -> User | None:
+        """ID でユーザーを取得する。"""
         ...
 
-    def list_all(self) -> Sequence[VendorUser]:
-        """登録済みベンダーユーザー一覧を作成日時降順で取得する。"""
+    def list_active_roles_for_user(self, user_id: str, now: datetime) -> Sequence[RoleAssignment]:
+        """指定時点で有効なロール付与一覧を取得する。"""
+        ...
+
+    def list_by_affiliation(
+        self,
+        affiliation_type: AffiliationType,
+        *,
+        tenant_id: str | None = None,
+    ) -> Sequence[User]:
+        """指定所属のユーザー一覧を作成日時降順で取得する。"""
+        ...
+
+    def list_active_roles_for_users(
+        self, user_ids: Sequence[str], now: datetime
+    ) -> Sequence[RoleAssignment]:
+        """複数ユーザーの指定時点で有効なロール付与一覧を取得する。"""
         ...
 
 
@@ -95,8 +120,9 @@ class VerifiedTokenClaims:
 
     subject: str
     token_id: str
-    token_type: VendorTokenType
-    role: VendorRole
+    token_type: TokenType
+    scope: AuthScope
+    roles: tuple[RoleName, ...]
     family_id: str | None
     issued_at: datetime
     expires_at: datetime
@@ -108,8 +134,9 @@ class JwtTokenIssuer(Protocol):
     def issue_access_token(
         self,
         *,
-        user_id: VendorUserId,
-        role: VendorRole,
+        user_id: UserId,
+        scope: AuthScope,
+        roles: Sequence[RoleName],
         token_id: str,
         now: datetime,
     ) -> str:
@@ -119,8 +146,9 @@ class JwtTokenIssuer(Protocol):
     def issue_refresh_token(
         self,
         *,
-        user_id: VendorUserId,
-        role: VendorRole,
+        user_id: UserId,
+        scope: AuthScope,
+        roles: Sequence[RoleName],
         session_id: RefreshSessionId,
         family_id: RefreshTokenFamilyId,
         now: datetime,
@@ -132,7 +160,7 @@ class JwtTokenIssuer(Protocol):
         self,
         raw_token: str,
         *,
-        expected_type: VendorTokenType,
+        expected_type: TokenType,
         now: datetime,
     ) -> VerifiedTokenClaims:
         """JWT の署名・発行者・種別・有効期限を検証してクレームを返す。"""

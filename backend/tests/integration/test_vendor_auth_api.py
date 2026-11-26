@@ -9,6 +9,7 @@ from alembic.config import Config
 from fastapi.testclient import TestClient
 
 from app.cli.bootstrap_vendor_admin import main as cli_main
+from app.domain.auth.value_objects import TokenType
 from app.infrastructure.config import Settings
 from app.infrastructure.security.jwt_codec import Hs256JwtTokenIssuer
 from app.main import create_app
@@ -78,17 +79,16 @@ def test_vendor_auth_end_to_end_api_flow(
             secret_key=settings.jwt_secret_key,
             issuer=settings.jwt_issuer,
         )
-        from app.domain.vendor_auth.value_objects import VendorTokenType
 
         now = datetime.now(UTC) - timedelta(minutes=1)
         access_claims = jwt_issuer.verify_token(
             access_cookie,
-            expected_type=VendorTokenType.ACCESS,
+            expected_type=TokenType.ACCESS,
             now=now,
         )
         refresh_claims = jwt_issuer.verify_token(
             refresh_cookie,
-            expected_type=VendorTokenType.REFRESH,
+            expected_type=TokenType.REFRESH,
             now=now,
         )
         assert int((access_claims.expires_at - access_claims.issued_at).total_seconds()) == 1800

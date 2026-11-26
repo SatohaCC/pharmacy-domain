@@ -101,38 +101,87 @@ corporation_history_table = Table(
     Index("idx_corporation_history_records", "corporation_id", "sequence"),
 )
 
-vendor_users_table = Table(
-    "vendor_users",
+auth_users_table = Table(
+    "auth_users",
     metadata,
     Column("id", Text, primary_key=True, nullable=False),
-    Column("email", Text, nullable=False, unique=True),
+    Column("email", Text, nullable=False),
     Column("display_name", Text, nullable=False),
-    Column("role", Text, nullable=False),
+    Column("affiliation_type", Text, nullable=False),
+    Column("tenant_id", Text, ForeignKey("corporations.id"), nullable=True),
     Column("status", Text, nullable=False),
     Column("password_hash", Text, nullable=False),
-    Column("created_by", Text, ForeignKey("vendor_users.id"), nullable=True),
+    Column("created_by", Text, ForeignKey("auth_users.id"), nullable=True),
     Column("created_at", Text, nullable=False),
     Column("updated_at", Text, nullable=False),
-    CheckConstraint("role IN ('admin', 'member')"),
+    CheckConstraint("affiliation_type IN ('vendor', 'tenant')"),
+    CheckConstraint(
+        "(affiliation_type = 'vendor' AND tenant_id IS NULL) OR "
+        "(affiliation_type = 'tenant' AND tenant_id IS NOT NULL)"
+    ),
     CheckConstraint("status IN ('active', 'disabled')"),
 )
 
-Index("idx_vendor_users_created_at", sa.text("created_at DESC"), _table=vendor_users_table)  # type: ignore[arg-type]
+Index("idx_auth_users_created_at", sa.text("created_at DESC"), _table=auth_users_table)  # type: ignore[arg-type]
+Index(
+    "uq_auth_users_vendor_email",
+    auth_users_table.c.email,
+    unique=True,
+    sqlite_where=sa.text("affiliation_type = 'vendor'"),
+)
+Index(
+    "uq_auth_users_tenant_email",
+    auth_users_table.c.tenant_id,
+    auth_users_table.c.email,
+    unique=True,
+    sqlite_where=sa.text("affiliation_type = 'tenant'"),
+)
 
-vendor_refresh_sessions_table = Table(
-    "vendor_refresh_sessions",
+auth_role_assignments_table = Table(
+    "auth_role_assignments",
+    metadata,
+    Column("id", Text, primary_key=True, nullable=False),
+    Column("user_id", Text, ForeignKey("auth_users.id"), nullable=False),
+    Column("role", Text, nullable=False),
+    Column("scope_type", Text, nullable=False),
+    Column("tenant_id", Text, ForeignKey("corporations.id"), nullable=True),
+    Column("valid_from", Text, nullable=False),
+    Column("valid_to", Text, nullable=True),
+    Column("revoked_at", Text, nullable=True),
+    Column("granted_by", Text, ForeignKey("auth_users.id"), nullable=True),
+    Column("granted_at", Text, nullable=False),
+    CheckConstraint("scope_type IN ('vendor', 'tenant')"),
+    CheckConstraint(
+        "(scope_type = 'vendor' AND tenant_id IS NULL AND "
+        "role IN ('vendor_admin', 'vendor_member')) "
+        "OR (scope_type = 'tenant' AND tenant_id IS NOT NULL AND "
+        "role IN ('tenant_admin', 'pharmacist', 'clerk'))"
+    ),
+    CheckConstraint("valid_to IS NULL OR valid_from < valid_to"),
+    Index("idx_auth_role_assignments_user_id", "user_id"),
+)
+
+auth_refresh_sessions_table = Table(
+    "auth_refresh_sessions",
     metadata,
     Column("id", Text, primary_key=True, nullable=False),
     Column("family_id", Text, nullable=False),
-    Column("vendor_user_id", Text, ForeignKey("vendor_users.id"), nullable=False),
+    Column("user_id", Text, ForeignKey("auth_users.id"), nullable=False),
+    Column("scope_type", Text, nullable=False),
+    Column("tenant_id", Text, ForeignKey("corporations.id"), nullable=True),
     Column("token_hash", Text, nullable=False),
     Column("issued_at", Text, nullable=False),
     Column("expires_at", Text, nullable=False),
     Column("rotated_at", Text, nullable=True),
     Column("revoked_at", Text, nullable=True),
     Column("replaced_by_session_id", Text, nullable=True),
-    Index("idx_vendor_refresh_sessions_family_id", "family_id"),
-    Index("idx_vendor_refresh_sessions_user_id", "vendor_user_id"),
+    CheckConstraint("scope_type IN ('vendor', 'tenant')"),
+    CheckConstraint(
+        "(scope_type = 'vendor' AND tenant_id IS NULL) OR "
+        "(scope_type = 'tenant' AND tenant_id IS NOT NULL)"
+    ),
+    Index("idx_auth_refresh_sessions_family_id", "family_id"),
+    Index("idx_auth_refresh_sessions_user_id", "user_id"),
 )
 
 

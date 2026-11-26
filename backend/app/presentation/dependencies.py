@@ -1,10 +1,20 @@
 """FastAPI のリクエスト単位 DI プロバイダー。"""
 
+from collections.abc import Callable
 from typing import Annotated, cast
 from urllib.parse import urlsplit
 
 from fastapi import Depends, Request
 
+from app.application.auth.contracts import (
+    AffiliationTypeLiteral,
+    AuthCommandPort,
+    AuthPrincipal,
+    AuthTokenVerifierPort,
+    AuthUserQueryPort,
+    RoleNameLiteral,
+    VendorUserCommandPort,
+)
 from app.application.corporate.contracts import (
     CorporateRelationCommandPort,
     CorporateRelationQueryPort,
@@ -15,14 +25,9 @@ from app.application.foundation.errors import (
     ApplicationAuthenticationError,
     ApplicationAuthorizationError,
 )
-from app.application.vendor_auth.contracts import (
-    VendorAuthCommandPort,
-    VendorAuthPrincipal,
-    VendorTokenVerifierPort,
-    VendorUserCommandPort,
-    VendorUserQueryPort,
-)
 
+AUTH_ACCESS_COOKIE_NAME = "auth_access_token"
+AUTH_REFRESH_COOKIE_NAME = "auth_refresh_token"
 VENDOR_ACCESS_COOKIE_NAME = "vendor_access_token"
 VENDOR_REFRESH_COOKIE_NAME = "vendor_refresh_token"
 _SAFE_METHODS = frozenset({"GET", "HEAD", "OPTIONS"})
@@ -65,12 +70,12 @@ def get_corporate_relation_queries(request: Request) -> CorporateRelationQueryPo
     return cast(CorporateRelationQueryPort, queries)
 
 
-def get_vendor_auth_commands(request: Request) -> VendorAuthCommandPort:
-    """配線済みのベンダー認証更新ポートを取得する。"""
-    commands = getattr(request.app.state, "vendor_auth_commands", None)
+def get_auth_commands(request: Request) -> AuthCommandPort:
+    """配線済みの共通認証更新ポートを取得する。"""
+    commands = getattr(request.app.state, "auth_commands", None)
     if commands is None:
-        raise RuntimeError("VendorAuthCommandService が初期化されていません。")
-    return cast(VendorAuthCommandPort, commands)
+        raise RuntimeError("AuthCommandService が初期化されていません。")
+    return cast(AuthCommandPort, commands)
 
 
 def get_vendor_user_commands(request: Request) -> VendorUserCommandPort:
@@ -81,20 +86,20 @@ def get_vendor_user_commands(request: Request) -> VendorUserCommandPort:
     return cast(VendorUserCommandPort, commands)
 
 
-def get_vendor_user_queries(request: Request) -> VendorUserQueryPort:
-    """配線済みのベンダーユーザー参照ポートを取得する。"""
-    queries = getattr(request.app.state, "vendor_user_queries", None)
+def get_auth_user_queries(request: Request) -> AuthUserQueryPort:
+    """配線済みの共通認証ユーザー参照ポートを取得する。"""
+    queries = getattr(request.app.state, "auth_user_queries", None)
     if queries is None:
-        raise RuntimeError("VendorUserQueryService が初期化されていません。")
-    return cast(VendorUserQueryPort, queries)
+        raise RuntimeError("AuthUserQueryService が初期化されていません。")
+    return cast(AuthUserQueryPort, queries)
 
 
-def get_vendor_token_verifier(request: Request) -> VendorTokenVerifierPort:
-    """配線済みのベンダーアクセストークン検証ポートを取得する。"""
-    verifier = getattr(request.app.state, "vendor_token_verifier", None)
+def get_auth_token_verifier(request: Request) -> AuthTokenVerifierPort:
+    """配線済みのアクセストークン検証ポートを取得する。"""
+    verifier = getattr(request.app.state, "auth_token_verifier", None)
     if verifier is None:
-        raise RuntimeError("VendorTokenVerifierService が初期化されていません。")
-    return cast(VendorTokenVerifierPort, verifier)
+        raise RuntimeError("AuthTokenVerifierService が初期化されていません。")
+    return cast(AuthTokenVerifierPort, verifier)
 
 
 def _extract_origin(raw_url: str) -> str:
@@ -148,12 +153,14 @@ def verify_csrf_origin(request: Request) -> None:
     )
 
 
-def get_current_vendor_principal(
+def get_current_auth_principal(
     request: Request,
-    verifier: Annotated[VendorTokenVerifierPort, Depends(get_vendor_token_verifier)],
-) -> VendorAuthPrincipal:
-    """HttpOnly Cookie のアクセストークンを検証して認証主体を返す。"""
-    raw_token = request.cookies.get(VENDOR_ACCESS_COOKIE_NAME)
+    verifier: Annotated[AuthTokenVerifierPort, Depends(get_auth_token_verifier)],
+) -> AuthPrincipal:
+    """HttpOnly Cookie のアクセストークンを検証して認証主体を返す（移行期は旧 Cookie も参照）。"""
+    raw_token = request.cookies.get(AUTH_ACCESS_COOKIE_NAME) or request.cookies.get(
+        VENDOR_ACCESS_COOKIE_NAME
+    )
     if not raw_token:
         raise ApplicationAuthenticationError(
             "認証が必要です。ログインしてください。",
@@ -162,13 +169,24 @@ def get_current_vendor_principal(
     return verifier.verify_access_token(raw_token)
 
 
-def require_vendor_admin(
-    principal: Annotated[VendorAuthPrincipal, Depends(get_current_vendor_principal)],
-) -> VendorAuthPrincipal:
-    """ログイン中のユーザーがシステムベンダー管理者であることを検証する。"""
-    if principal.role != "admin":
-        raise ApplicationAuthorizationError(
-            "この操作にはシステムベンダー管理者権限が必要です。",
-            code="VENDOR_ADMIN_REQUIRED",
-        )
-    return principal
+def require_role(
+    required_role: RoleNameLiteral,
+    *,
+    scope_type: AffiliationTypeLiteral,
+) -> Callable[[AuthPrincipal], AuthPrincipal]:
+    """指定スコープと必須ロールを持つ認証主体であることを検証する依存関数を返す。"""
+
+    def _dependency(
+        principal: Annotated[AuthPrincipal, Depends(get_current_auth_principal)],
+    ) -> AuthPrincipal:
+        if principal.scope_type != scope_type or required_role not in principal.roles:
+            error_code = (
+                "VENDOR_ADMIN_REQUIRED" if required_role == "vendor_admin" else "INSUFFICIENT_ROLE"
+            )
+            raise ApplicationAuthorizationError(
+                "この操作を実行する権限がありません。",
+                code=error_code,
+            )
+        return principal
+
+    return _dependency
