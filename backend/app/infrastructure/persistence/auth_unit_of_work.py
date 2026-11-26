@@ -1,10 +1,8 @@
 """SQLAlchemy を用いた AuthUnitOfWork 実装。"""
 
-import sqlite3
 from types import TracebackType
 
 from sqlalchemy import Connection, Engine, RootTransaction
-from sqlalchemy.exc import OperationalError
 
 from app.application.foundation.errors import ApplicationConflictError
 from app.infrastructure.persistence.auth_refresh_session_repository import (
@@ -14,7 +12,11 @@ from app.infrastructure.persistence.auth_role_assignment_repository import (
     SqlAlchemyRoleAssignmentRepository,
 )
 from app.infrastructure.persistence.auth_user_repository import SqlAlchemyAuthUserRepository
-from app.infrastructure.persistence.database import begin_write_transaction
+from app.infrastructure.persistence.database import (
+    AUTH_WRITE_LOCK_KEY,
+    begin_write_transaction,
+    is_write_lock_conflict,
+)
 
 
 class SqlAlchemyAuthUnitOfWork:
@@ -47,14 +49,10 @@ class SqlAlchemyAuthUnitOfWork:
     def __enter__(self) -> SqlAlchemyAuthUnitOfWork:
         connection = self._engine.connect()
         try:
-            transaction = begin_write_transaction(connection)
+            transaction = begin_write_transaction(connection, lock_key=AUTH_WRITE_LOCK_KEY)
         except BaseException as exc:
             connection.close()
-            if (
-                isinstance(exc, OperationalError)
-                and isinstance(exc.orig, sqlite3.OperationalError)
-                and (exc.orig.sqlite_errorcode & 0xFF) == sqlite3.SQLITE_BUSY
-            ):
+            if is_write_lock_conflict(exc):
                 raise ApplicationConflictError(
                     "認証データの書き込みが競合しました。再試行してください。",
                     code="AUTH_CONFLICT",

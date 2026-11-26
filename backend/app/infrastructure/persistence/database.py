@@ -21,10 +21,15 @@ from sqlalchemy import (
     event,
 )
 from sqlalchemy.engine import Connection, Engine, RootTransaction
+from sqlalchemy.exc import DBAPIError, OperationalError
 from sqlalchemy.pool import QueuePool
 
 _WAL_RETRY_COUNT = 20
 _WAL_RETRY_INTERVAL_SECONDS = 0.05
+CORPORATION_WRITE_LOCK_KEY = 1001
+AUTH_WRITE_LOCK_KEY = 1002
+_POSTGRES_WRITE_LOCK_TIMEOUT_MS = 5000
+_POSTGRES_LOCK_CONFLICT_SQLSTATES = frozenset({"55P03", "40P01", "40001"})
 
 metadata = MetaData()
 
@@ -258,11 +263,42 @@ def create_app_engine(database_target: str) -> Engine:
     return engine
 
 
-def begin_write_transaction(connection: Connection) -> RootTransaction:
-    """業務状態を読み取る前に書き込みトランザクションを開始する。"""
+def begin_write_transaction(
+    connection: Connection,
+    *,
+    lock_key: int = CORPORATION_WRITE_LOCK_KEY,
+) -> RootTransaction:
+    """業務状態を読み取る前に書き込みトランザクションを開始し、直列化ロックを取得する。"""
     if connection.dialect.name == "sqlite":
         return connection.execution_options(sqlite_write_transaction=True).begin()
-    return connection.begin()
+    transaction = connection.begin()
+    try:
+        connection.execute(
+            sa.text("SELECT set_config('lock_timeout', :timeout, true)"),
+            {"timeout": f"{_POSTGRES_WRITE_LOCK_TIMEOUT_MS}ms"},
+        )
+        connection.execute(
+            sa.text("SELECT pg_advisory_xact_lock(:lock_key)"),
+            {"lock_key": lock_key},
+        )
+    except BaseException:
+        if transaction.is_active:
+            transaction.rollback()
+        raise
+    return transaction
+
+
+def is_write_lock_conflict(exc: BaseException) -> bool:
+    """書き込みロック待機タイムアウト・デッドロック・直列化競合かどうかを判定する。"""
+    if (
+        isinstance(exc, OperationalError)
+        and isinstance(exc.orig, sqlite3.OperationalError)
+        and (exc.orig.sqlite_errorcode & 0xFF) == sqlite3.SQLITE_BUSY
+    ):
+        return True
+    if isinstance(exc, DBAPIError):
+        return getattr(exc.orig, "sqlstate", None) in _POSTGRES_LOCK_CONFLICT_SQLSTATES
+    return False
 
 
 @contextmanager
