@@ -20,7 +20,7 @@ export default defineConfig({
   // フロントエンドとバックエンドを両方起動して E2E を検証する
   webServer: [
     {
-      command: "pnpm -C .. dev:backend",
+      command: "node ../scripts/start-e2e-backend.mts",
       url: "http://127.0.0.1:8000/api/health",
       reuseExistingServer: !process.env.CI,
       timeout: 30_000,
