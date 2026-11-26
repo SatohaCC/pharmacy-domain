@@ -89,6 +89,7 @@ export interface CorporationsWorkspaceProps {
   filter: CorporationListFilter;
   onFilterChange: (next: CorporationListFilter) => void;
   isLoadingCorporations: boolean;
+  isFetchingCorporations: boolean;
   corporationsErrorMessage: string | null;
   isCreatingCorporation: boolean;
   createErrorMessage: string | null;
@@ -130,6 +131,7 @@ export function CorporationsWorkspace({
   filter,
   onFilterChange,
   isLoadingCorporations,
+  isFetchingCorporations,
   corporationsErrorMessage,
   isCreatingCorporation,
   createErrorMessage,
@@ -219,6 +221,7 @@ export function CorporationsWorkspace({
 
   async function handleEditSubmit(event: React.FormEvent<HTMLFormElement>, item: Corporation) {
     event.preventDefault();
+    if (isFetchingCorporations || isUpdatingCorporation) return;
     const trimmedName = editName.trim();
     const trimmedNumber = editCorporateNumber.trim();
     const trimmedAddress = editAddress.trim();
@@ -435,6 +438,9 @@ export function CorporationsWorkspace({
               <p {...stylex.props(s.sectionDescription)}>
                 キーワード、開設主体区分、存続状態で絞り込み、各企業の基本情報を確認・更新できます。
               </p>
+              <p role="status" {...stylex.props(s.sectionDescription, s.refreshStatus)}>
+                {isFetchingCorporations && !isLoadingCorporations ? "企業一覧を更新中…" : null}
+              </p>
             </div>
 
             {lastUpdatedCorporation ? (
@@ -545,6 +551,7 @@ export function CorporationsWorkspace({
                           <Button
                             variant={isEditing ? "tonal" : "outlined"}
                             size="sm"
+                            disabled={!isEditing && isFetchingCorporations}
                             onClick={() => {
                               if (isEditing) {
                                 setEditingCorpId(null);
@@ -649,7 +656,11 @@ export function CorporationsWorkspace({
                             >
                               キャンセル
                             </Button>
-                            <Button type="submit" variant="filled" disabled={isUpdatingCorporation}>
+                            <Button
+                              type="submit"
+                              variant="filled"
+                              disabled={isUpdatingCorporation || isFetchingCorporations}
+                            >
                               {isUpdatingCorporation ? "保存中…" : "基本情報を保存"}
                             </Button>
                           </div>

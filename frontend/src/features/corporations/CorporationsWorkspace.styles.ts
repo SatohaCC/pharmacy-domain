@@ -17,6 +17,9 @@ export const corporationsWorkspaceStyles = stylex.create({
     lineHeight: 1.5,
     color: tokens.onSurfaceVariant,
   },
+  refreshStatus: {
+    minBlockSize: "1.5em",
+  },
   formStack: {
     display: "grid",
     gap: "16px",
