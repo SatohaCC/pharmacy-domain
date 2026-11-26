@@ -6,12 +6,12 @@ import { ApiError } from "@/shared/lib/api/apiClient";
 import { LoginForm } from "./LoginForm";
 import { useAuthLogin, useCurrentAuthUser } from "./useAuth";
 
-/** ログイン画面のコンテナ。認証済みならベンダー管理画面へ遷移する。 */
+/** ログイン画面のコンテナ。認証済みなら法人管理画面へ遷移する。 */
 export function LoginContainer() {
   const router = useRouter();
   const currentUserQuery = useCurrentAuthUser();
   const loginMutation = useAuthLogin(() => {
-    router.replace("/vendor/users");
+    router.replace("/vendor/corporations");
   });
 
   useEffect(() => {
@@ -22,7 +22,7 @@ export function LoginContainer() {
       !currentUserQuery.error &&
       currentUserQuery.data
     ) {
-      router.replace("/vendor/users");
+      router.replace("/vendor/corporations");
     }
   }, [
     currentUserQuery.data,

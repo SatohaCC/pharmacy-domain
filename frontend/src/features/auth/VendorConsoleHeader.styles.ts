@@ -1,0 +1,103 @@
+import * as stylex from "@stylexjs/stylex";
+import { tokens } from "../../shared/styles/tokens.stylex";
+
+export const vendorConsoleHeaderStyles = stylex.create({
+  topBar: {
+    display: "grid",
+    gap: "16px",
+    padding: "20px 24px",
+    borderRadius: tokens.cornerLarge,
+    backgroundColor: tokens.surfaceContainerLow,
+    borderWidth: "1px",
+    borderStyle: "solid",
+    borderColor: tokens.outlineVariant,
+    "@media (max-width: 480px)": {
+      padding: "16px",
+    },
+  },
+  topRow: {
+    display: "flex",
+    flexWrap: "wrap",
+    alignItems: "center",
+    justifyContent: "space-between",
+    gap: "16px",
+  },
+  identity: {
+    display: "grid",
+    gap: "6px",
+    minWidth: 0,
+  },
+  eyebrow: {
+    margin: 0,
+    fontSize: "0.75rem",
+    fontWeight: 700,
+    letterSpacing: "0.08em",
+    color: tokens.primary,
+  },
+  titleRow: {
+    display: "flex",
+    flexWrap: "wrap",
+    alignItems: "center",
+    gap: "10px",
+  },
+  heading: {
+    margin: 0,
+    fontSize: "1.375rem",
+    fontWeight: 700,
+    color: tokens.onSurface,
+  },
+  subText: {
+    margin: 0,
+    fontSize: "0.875rem",
+    color: tokens.onSurfaceVariant,
+    wordBreak: "break-all",
+  },
+  topActions: {
+    display: "flex",
+    flexWrap: "wrap",
+    alignItems: "center",
+    gap: "10px",
+  },
+  navBar: {
+    display: "flex",
+    flexWrap: "wrap",
+    alignItems: "center",
+    gap: "8px",
+    paddingTop: "12px",
+    borderTopWidth: "1px",
+    borderTopStyle: "solid",
+    borderTopColor: tokens.outlineVariant,
+  },
+  navLink: {
+    display: "inline-flex",
+    alignItems: "center",
+    minHeight: "40px",
+    paddingInline: "16px",
+    paddingBlock: "8px",
+    borderRadius: tokens.cornerFull,
+    fontSize: "0.875rem",
+    fontWeight: 500,
+    textDecoration: "none",
+    color: tokens.onSurfaceVariant,
+    backgroundColor: "transparent",
+    borderWidth: "2px",
+    borderStyle: "solid",
+    borderColor: "transparent",
+    ":hover": {
+      backgroundColor: tokens.surfaceContainerHigh,
+      color: tokens.onSurface,
+    },
+    ":focus-visible": {
+      outline: `3px solid ${tokens.primary}`,
+      outlineOffset: "2px",
+    },
+  },
+  navLinkActive: {
+    fontWeight: 700,
+    color: tokens.onSecondaryContainer,
+    backgroundColor: tokens.secondaryContainer,
+    borderColor: tokens.primary,
+    textDecoration: "underline",
+    textUnderlineOffset: "4px",
+  },
+});

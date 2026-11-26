@@ -10,28 +10,14 @@ import { Select, type SelectOption } from "@/shared/ui/select/Select";
 import { Spinner } from "@/shared/ui/spinner/Spinner";
 import { TextField } from "@/shared/ui/text-field/TextField";
 import { evaluatePasswordPolicy, generateSecurePassword } from "./passwordGenerator";
-import type { AuthRole, AuthUser, VendorAssignableRole } from "./schemas";
+import type { AuthUser, VendorAssignableRole } from "./schemas";
+import { formatAuthRoleLabel, VendorConsoleHeader } from "./VendorConsoleHeader";
 import { vendorUsersWorkspaceStyles as s } from "./VendorUsersWorkspace.styles";
 
 const ROLE_OPTIONS: readonly SelectOption[] = [
   { value: "vendor_member", label: "一般社員（vendor_member）" },
   { value: "vendor_admin", label: "ベンダー管理者（vendor_admin）" },
 ];
-
-function roleLabel(role: AuthRole): string {
-  switch (role) {
-    case "vendor_admin":
-      return "管理者";
-    case "vendor_member":
-      return "一般社員";
-    case "tenant_admin":
-      return "薬局管理者";
-    case "pharmacist":
-      return "薬剤師";
-    case "clerk":
-      return "事務";
-  }
-}
 
 export interface VendorUsersWorkspaceProps {
   currentUser: AuthUser;
@@ -134,27 +120,13 @@ export function VendorUsersWorkspace({
   return (
     <div {...stylex.props(s.page)}>
       <div {...stylex.props(s.container)}>
-        <header {...stylex.props(s.topBar)}>
-          <div {...stylex.props(s.identity)}>
-            <p {...stylex.props(s.eyebrow)}>SYSTEM VENDOR CONSOLE</p>
-            <div {...stylex.props(s.titleRow)}>
-              <h1 {...stylex.props(s.heading)}>ベンダーアカウント管理</h1>
-              {currentUser.roles.map((r) => (
-                <Badge key={r} tone={r === "vendor_admin" ? "success" : "neutral"}>
-                  {roleLabel(r)}
-                </Badge>
-              ))}
-            </div>
-            <p {...stylex.props(s.subText)}>
-              ログイン中: {currentUser.display_name}（{currentUser.email}）
-            </p>
-          </div>
-          <div {...stylex.props(s.topActions)}>
-            <Button variant="outlined" onClick={onLogout} disabled={isLoggingOut}>
-              {isLoggingOut ? "ログアウト中…" : "ログアウト"}
-            </Button>
-          </div>
-        </header>
+        <VendorConsoleHeader
+          title="ベンダーアカウント管理"
+          activeSection="users"
+          currentUser={currentUser}
+          isLoggingOut={isLoggingOut}
+          onLogout={onLogout}
+        />
 
         {!isAdmin ? (
           <Alert tone="info" title="一般社員アカウントでログインしています">
@@ -181,7 +153,8 @@ export function VendorUsersWorkspace({
                 >
                   <p>
                     {lastIssuedUser.user.display_name}（{lastIssuedUser.user.email} /{" "}
-                    {lastIssuedUser.user.roles.map(roleLabel).join("・")}）を登録しました。
+                    {lastIssuedUser.user.roles.map(formatAuthRoleLabel).join("・")}
+                    ）を登録しました。
                   </p>
                   <div {...stylex.props(s.issuedSecretBox)}>
                     <code {...stylex.props(s.issuedCode)}>{lastIssuedUser.initialPassword}</code>
@@ -340,7 +313,7 @@ export function VendorUsersWorkspace({
                       <div {...stylex.props(s.userBadges)}>
                         {item.roles.map((r) => (
                           <Badge key={r} tone={r === "vendor_admin" ? "success" : "neutral"}>
-                            {roleLabel(r)}
+                            {formatAuthRoleLabel(r)}
                           </Badge>
                         ))}
                         <Badge tone={item.status === "active" ? "success" : "danger"}>
