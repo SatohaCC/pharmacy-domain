@@ -92,7 +92,7 @@ describe("CorporationsWorkspace", () => {
     expect(addressInput).toHaveValue("");
   });
 
-  it("登録済み企業の基本情報を編集して保存できる", async () => {
+  it("基本情報の編集では変更された項目のみを送信し、過去効力日指定時に未変更項目を上書きしない", async () => {
     const user = userEvent.setup();
     const onUpdateCorporation = vi.fn().mockResolvedValue(true);
 
@@ -124,17 +124,27 @@ describe("CorporationsWorkspace", () => {
 
     await user.click(screen.getByRole("button", { name: "基本情報を編集" }));
 
+    // 未変更のまま保存しようとするとエラーを表示し送信しない
+    await user.click(screen.getByRole("button", { name: "基本情報を保存" }));
+    expect(
+      screen.getByText(
+        "変更された項目がありません。名称・法人番号・所在地のいずれかを変更してください。",
+      ),
+    ).toBeInTheDocument();
+    expect(onUpdateCorporation).not.toHaveBeenCalled();
+
     const editAddressInput = screen.getByLabelText(/変更後の所在地/, { selector: "input" });
+    const editValidFromInput = screen.getByLabelText(/変更の有効開始日（任意）/, {
+      selector: "input",
+    });
     await user.clear(editAddressInput);
     await user.type(editAddressInput, "東京都渋谷区9-9-9");
+    await user.type(editValidFromInput, "2026-09-01");
     await user.click(screen.getByRole("button", { name: "基本情報を保存" }));
 
     expect(onUpdateCorporation).toHaveBeenCalledWith("corp-1", {
-      name: "株式会社さくら薬局",
-      corporate_number: "1234567890123",
       address: "東京都渋谷区9-9-9",
-      valid_from: null,
-      evidence: null,
+      valid_from: "2026-09-01",
     });
   });
 });

@@ -165,6 +165,7 @@ export function CorporationsWorkspace({
   const [editCorporateNumberError, setEditCorporateNumberError] = useState<string | undefined>(
     undefined,
   );
+  const [editFormError, setEditFormError] = useState<string | undefined>(undefined);
 
   async function handleCreateSubmit(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -212,6 +213,7 @@ export function CorporationsWorkspace({
     setEditEvidence("");
     setEditNameError(undefined);
     setEditCorporateNumberError(undefined);
+    setEditFormError(undefined);
   }
 
   async function handleEditSubmit(event: React.FormEvent<HTMLFormElement>, item: Corporation) {
@@ -232,13 +234,40 @@ export function CorporationsWorkspace({
       return;
     }
 
-    const updated = await onUpdateCorporation(item.id, {
-      name: trimmedName,
-      corporate_number: item.category === "corporation" ? trimmedNumber || null : undefined,
-      address: trimmedAddress,
-      valid_from: trimmedValidFrom || null,
-      evidence: trimmedEvidence || null,
-    });
+    const payload: {
+      name?: string | null;
+      corporate_number?: string | null;
+      address?: string | null;
+      valid_from?: string | null;
+      evidence?: string | null;
+    } = {};
+
+    if (trimmedName !== item.name) {
+      payload.name = trimmedName;
+    }
+    if (item.category === "corporation" && trimmedNumber !== (item.corporate_number ?? "")) {
+      payload.corporate_number = trimmedNumber || null;
+    }
+    if (trimmedAddress !== item.address) {
+      payload.address = trimmedAddress;
+    }
+
+    if (Object.keys(payload).length === 0) {
+      setEditFormError(
+        "変更された項目がありません。名称・法人番号・所在地のいずれかを変更してください。",
+      );
+      return;
+    }
+
+    if (trimmedValidFrom) {
+      payload.valid_from = trimmedValidFrom;
+    }
+    if (trimmedEvidence) {
+      payload.evidence = trimmedEvidence;
+    }
+
+    setEditFormError(undefined);
+    const updated = await onUpdateCorporation(item.id, payload);
     if (updated) {
       setEditingCorpId(null);
     }
@@ -534,6 +563,12 @@ export function CorporationsWorkspace({
                           基本情報の編集: {item.name}
                         </h3>
 
+                        {editFormError ? (
+                          <Alert tone="error" title="変更内容を確認してください" role="alert">
+                            <p>{editFormError}</p>
+                          </Alert>
+                        ) : null}
+
                         <div {...stylex.props(s.formGrid)}>
                           <TextField
                             label="変更後の名称"
@@ -542,6 +577,7 @@ export function CorporationsWorkspace({
                             onValueChange={(value) => {
                               setEditName(value);
                               if (editNameError) setEditNameError(undefined);
+                              if (editFormError) setEditFormError(undefined);
                             }}
                             errorMessage={editNameError}
                             required
@@ -560,6 +596,7 @@ export function CorporationsWorkspace({
                             onValueChange={(value) => {
                               setEditCorporateNumber(value);
                               if (editCorporateNumberError) setEditCorporateNumberError(undefined);
+                              if (editFormError) setEditFormError(undefined);
                             }}
                             errorMessage={editCorporateNumberError}
                             disabled={item.category === "individual" || isUpdatingCorporation}
@@ -571,7 +608,10 @@ export function CorporationsWorkspace({
                             label="変更後の所在地"
                             name="edit_address"
                             value={editAddress}
-                            onValueChange={setEditAddress}
+                            onValueChange={(value) => {
+                              setEditAddress(value);
+                              if (editFormError) setEditFormError(undefined);
+                            }}
                             disabled={isUpdatingCorporation}
                           />
 
