@@ -71,3 +71,9 @@ class ApplicationConflictError(ApplicationError):
     """競合や一意性制約違反を表す例外。"""
 
     default_code: ClassVar[str] = "CONFLICT"
+
+
+class ApplicationAuthenticationError(ApplicationError):
+    """認証失敗やトークン無効・期限切れを表す例外。"""
+
+    default_code: ClassVar[str] = "UNAUTHORIZED"

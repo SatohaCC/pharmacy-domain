@@ -61,3 +61,9 @@ class DomainAuthorizationError(DomainError):
     ) -> None:
         super().__init__(message, code=code, details=details)
         self.conceal_as_not_found = conceal_as_not_found
+
+
+class DomainAuthenticationError(DomainError):
+    """資格情報の不一致やトークン失効など認証失敗を表すドメイン例外。"""
+
+    default_code: ClassVar[str] = "UNAUTHORIZED"
