@@ -15,10 +15,23 @@ export function VendorLoginContainer() {
   });
 
   useEffect(() => {
-    if (currentUserQuery.data) {
+    if (
+      !currentUserQuery.isLoading &&
+      !currentUserQuery.isFetching &&
+      !currentUserQuery.isAuthError &&
+      !currentUserQuery.error &&
+      currentUserQuery.data
+    ) {
       router.replace("/vendor/users");
     }
-  }, [currentUserQuery.data, router]);
+  }, [
+    currentUserQuery.data,
+    currentUserQuery.error,
+    currentUserQuery.isAuthError,
+    currentUserQuery.isFetching,
+    currentUserQuery.isLoading,
+    router,
+  ]);
 
   const userFacingError =
     loginMutation.error instanceof ApiError ? loginMutation.error.userFacing : null;

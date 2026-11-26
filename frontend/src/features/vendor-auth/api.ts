@@ -21,16 +21,63 @@ const CSRF_HEADERS: HeadersInit = {
   "X-Requested-With": "XMLHttpRequest",
 };
 
-let refreshInFlight: Promise<VendorAuthSession> | null = null;
+export const VENDOR_AUTH_LAST_REFRESH_KEY = "vendor_auth_last_refresh_at";
+export const VENDOR_AUTH_REFRESH_LOCK_NAME = "vendor-auth-refresh-lock";
 
-/** 並列 401 応答時にリフレッシュ API を単一フライトへ集約して実行する。 */
-export function refreshVendorSessionSingleFlight(): Promise<VendorAuthSession> {
-  if (!refreshInFlight) {
-    refreshInFlight = apiRequest("/api/vendor/auth/refresh", {
+let refreshInFlight: Promise<VendorAuthSession | null> | null = null;
+
+/** 401 認証エラーかどうかを判定する（5xx やネットワーク障害とは区別する）。 */
+export function isAuthenticationError(error: unknown): boolean {
+  return error instanceof ApiError && error.status === 401;
+}
+
+function readLastRefreshTimestamp(): number {
+  try {
+    const raw = globalThis.localStorage?.getItem(VENDOR_AUTH_LAST_REFRESH_KEY);
+    if (!raw) return 0;
+    const parsed = Number(raw);
+    return Number.isFinite(parsed) ? parsed : 0;
+  } catch {
+    return 0;
+  }
+}
+
+function writeLastRefreshTimestamp(timestampMs: number): void {
+  try {
+    globalThis.localStorage?.setItem(VENDOR_AUTH_LAST_REFRESH_KEY, String(timestampMs));
+  } catch {
+    // プライベートブラウズ等で localStorage が利用不可の場合は無視する。
+  }
+}
+
+async function runCrossTabRefresh(requestStartedAt: number): Promise<VendorAuthSession | null> {
+  const execute = async (): Promise<VendorAuthSession | null> => {
+    if (readLastRefreshTimestamp() >= requestStartedAt) {
+      // ロック待機中に別タブがすでに新しいトークンへ更新済みの場合は重複送信しない。
+      return null;
+    }
+    const session = await apiRequest("/api/vendor/auth/refresh", {
       method: "post",
       headers: CSRF_HEADERS,
       parse: (data) => parseZodResponse(vendorAuthSessionSchema, data),
-    }).finally(() => {
+    });
+    writeLastRefreshTimestamp(Date.now());
+    return session;
+  };
+
+  const lockManager = typeof navigator !== "undefined" ? navigator.locks : undefined;
+  if (lockManager && typeof lockManager.request === "function") {
+    return lockManager.request(VENDOR_AUTH_REFRESH_LOCK_NAME, execute);
+  }
+  return execute();
+}
+
+/** 並列 401 応答およびマルチタブ間でリフレッシュ API を協調実行する。 */
+export function refreshVendorSessionSingleFlight(
+  requestStartedAt = Date.now(),
+): Promise<VendorAuthSession | null> {
+  if (!refreshInFlight) {
+    refreshInFlight = runCrossTabRefresh(requestStartedAt).finally(() => {
       refreshInFlight = null;
     });
   }
@@ -49,14 +96,15 @@ export async function vendorAuthApiRequest<P extends ApiPath, M extends ApiMetho
     mergedHeaders.set("X-Requested-With", "XMLHttpRequest");
   }
 
+  const requestStartedAt = Date.now();
   try {
     return await apiRequest(path, {
       ...options,
       headers: mergedHeaders,
     } as ApiRequestOptions<P, M>);
   } catch (error) {
-    if (error instanceof ApiError && error.status === 401) {
-      await refreshVendorSessionSingleFlight();
+    if (isAuthenticationError(error)) {
+      await refreshVendorSessionSingleFlight(requestStartedAt);
       return apiRequest(path, {
         ...options,
         headers: mergedHeaders,
