@@ -17,10 +17,9 @@ from app.application.auth.contracts import (
     RefreshAuthSessionInput,
     VendorUserCommandPort,
 )
+from app.presentation.auth_cookies import clear_auth_cookies, set_auth_cookies
 from app.presentation.dependencies import (
-    AUTH_ACCESS_COOKIE_NAME,
     AUTH_REFRESH_COOKIE_NAME,
-    VENDOR_ACCESS_COOKIE_NAME,
     VENDOR_REFRESH_COOKIE_NAME,
     get_auth_commands,
     get_auth_user_queries,
@@ -39,15 +38,6 @@ from app.presentation.dto.vendor_auth import (
 )
 
 router = APIRouter(prefix="/api/vendor", tags=["vendor-auth-legacy"])
-
-_ACCESS_COOKIE_PATH = "/api"
-_VENDOR_REFRESH_COOKIE_PATH = "/api/vendor/auth"
-_AUTH_REFRESH_COOKIE_PATH = "/api/auth"
-
-
-def _is_cookie_secure(request: Request) -> bool:
-    settings = getattr(request.app.state, "settings", None)
-    return bool(getattr(settings, "auth_cookie_secure", False))
 
 
 def _to_legacy_role(view: AuthUserView) -> str:
@@ -81,66 +71,6 @@ def _to_legacy_list_response(result: AuthUserListResult) -> VendorUserListRespon
     )
 
 
-def _set_legacy_and_auth_cookies(
-    response: Response,
-    *,
-    session: AuthSessionView,
-    secure: bool,
-) -> None:
-    response.set_cookie(
-        key=VENDOR_ACCESS_COOKIE_NAME,
-        value=session.access_token,
-        max_age=session.access_token_expires_in_seconds,
-        path=_ACCESS_COOKIE_PATH,
-        httponly=True,
-        samesite="lax",
-        secure=secure,
-    )
-    response.set_cookie(
-        key=VENDOR_REFRESH_COOKIE_NAME,
-        value=session.refresh_token,
-        max_age=session.refresh_token_expires_in_seconds,
-        path=_VENDOR_REFRESH_COOKIE_PATH,
-        httponly=True,
-        samesite="lax",
-        secure=secure,
-    )
-    response.set_cookie(
-        key=AUTH_ACCESS_COOKIE_NAME,
-        value=session.access_token,
-        max_age=session.access_token_expires_in_seconds,
-        path=_ACCESS_COOKIE_PATH,
-        httponly=True,
-        samesite="lax",
-        secure=secure,
-    )
-    response.set_cookie(
-        key=AUTH_REFRESH_COOKIE_NAME,
-        value=session.refresh_token,
-        max_age=session.refresh_token_expires_in_seconds,
-        path=_AUTH_REFRESH_COOKIE_PATH,
-        httponly=True,
-        samesite="lax",
-        secure=secure,
-    )
-
-
-def _clear_all_cookies(response: Response, *, secure: bool) -> None:
-    for key, path in (
-        (VENDOR_ACCESS_COOKIE_NAME, _ACCESS_COOKIE_PATH),
-        (VENDOR_REFRESH_COOKIE_NAME, _VENDOR_REFRESH_COOKIE_PATH),
-        (AUTH_ACCESS_COOKIE_NAME, _ACCESS_COOKIE_PATH),
-        (AUTH_REFRESH_COOKIE_NAME, _AUTH_REFRESH_COOKIE_PATH),
-    ):
-        response.delete_cookie(
-            key=key,
-            path=path,
-            httponly=True,
-            samesite="lax",
-            secure=secure,
-        )
-
-
 @router.post(
     "/auth/login",
     response_model=VendorAuthSessionResponse,
@@ -156,7 +86,7 @@ def login_vendor_user(
     session = commands.login(
         AuthLoginInput(email=payload.email, password=payload.password, scope_type="vendor")
     )
-    _set_legacy_and_auth_cookies(response, session=session, secure=_is_cookie_secure(request))
+    set_auth_cookies(request, response, session)
     return _to_legacy_session_response(session)
 
 
@@ -176,7 +106,7 @@ def refresh_vendor_session(
         AUTH_REFRESH_COOKIE_NAME, ""
     )
     session = commands.refresh(RefreshAuthSessionInput(refresh_token=raw_refresh))
-    _set_legacy_and_auth_cookies(response, session=session, secure=_is_cookie_secure(request))
+    set_auth_cookies(request, response, session)
     return _to_legacy_session_response(session)
 
 
@@ -196,7 +126,7 @@ def logout_vendor_user(
     )
     commands.logout(LogoutAuthSessionInput(refresh_token=raw_refresh))
     response = Response(status_code=status.HTTP_204_NO_CONTENT)
-    _clear_all_cookies(response, secure=_is_cookie_secure(request))
+    clear_auth_cookies(request, response)
     return response
 
 

@@ -1,8 +1,11 @@
 """共通認証・ロール API（/api/auth/*）の統合テスト。"""
 
 import io
+import sqlite3
 from collections.abc import MutableMapping
+from contextlib import closing
 from datetime import UTC, datetime, timedelta
+from http.cookies import SimpleCookie
 from pathlib import Path
 from typing import Any, cast
 
@@ -11,6 +14,7 @@ import pytest
 from alembic import command
 from alembic.config import Config
 from fastapi.testclient import TestClient
+from httpx import Response
 
 from app.cli.bootstrap_vendor_admin import main as cli_main
 from app.domain.auth.value_objects import TokenType
@@ -19,22 +23,25 @@ from app.infrastructure.security.jwt_codec import Hs256JwtTokenIssuer
 from app.main import create_app
 
 _ALEMBIC_INI = Path(__file__).resolve().parents[2] / "alembic.ini"
+_CSRF_HEADERS = {"X-Requested-With": "XMLHttpRequest"}
+_VENDOR_CREDENTIALS = {"email": "admin@vendor.example.com", "password": "VendorAdmin123!"}
 
 
-def test_unified_auth_api_end_to_end_flow(
+@pytest.fixture
+def vendor_auth_db(
     tmp_path: Path,
     monkeypatch: pytest.MonkeyPatch,
-) -> None:
+) -> Path:
     db_path = tmp_path / "unified_auth.db"
     monkeypatch.setenv("DATABASE_PATH", str(db_path))
     command.upgrade(Config(str(_ALEMBIC_INI)), "head")
 
-    monkeypatch.setattr("sys.stdin", io.StringIO("VendorAdmin123!\n"))
+    monkeypatch.setattr("sys.stdin", io.StringIO(_VENDOR_CREDENTIALS["password"] + "\n"))
     assert (
         cli_main(
             [
                 "--email",
-                "admin@vendor.example.com",
+                _VENDOR_CREDENTIALS["email"],
                 "--name",
                 "システム管理者",
                 "--password-stdin",
@@ -42,8 +49,11 @@ def test_unified_auth_api_end_to_end_flow(
         )
         == 0
     )
+    return db_path
 
-    settings = Settings(database_path=str(db_path))
+
+def test_unified_auth_api_end_to_end_flow(vendor_auth_db: Path) -> None:
+    settings = Settings(database_path=str(vendor_auth_db))
     app = create_app(settings)
 
     with TestClient(app) as client:
@@ -58,7 +68,7 @@ def test_unified_auth_api_end_to_end_flow(
 
         login_res = client.post(
             "/api/auth/login",
-            json={"email": "admin@vendor.example.com", "password": "VendorAdmin123!"},
+            json=_VENDOR_CREDENTIALS,
         )
         assert login_res.status_code == 200
         login_data = login_res.json()
@@ -186,3 +196,110 @@ def test_unified_auth_api_end_to_end_flow(
         assert logout_status == 204
         set_cookies = b" ".join(v for k, v in logout_headers if k.lower() == b"set-cookie")
         assert b"Max-Age=0" in set_cookies
+
+
+def _assert_vendor_session_cookie_headers(response: Response, *, cleared: bool = False) -> None:
+    cookies = SimpleCookie()
+    for header in response.headers.get_list("set-cookie"):
+        cookies.load(header)
+
+    expected = {
+        "auth_access_token": ("/api", "1800"),
+        "auth_refresh_token": ("/api/auth", "28800"),
+        "vendor_access_token": ("/api", "1800"),
+        "vendor_refresh_token": ("/api/vendor/auth", "28800"),
+    }
+    assert set(cookies) == set(expected)
+    for name, (path, max_age) in expected.items():
+        cookie = cookies[name]
+        assert cookie["path"] == path
+        assert cookie["max-age"] == ("0" if cleared else max_age)
+        assert cookie["httponly"] and cookie["secure"]
+        assert cookie["samesite"] == "lax"
+
+
+@pytest.mark.parametrize(
+    ("login_prefix", "refresh_prefixes", "logout_prefix"),
+    [
+        ("/api/auth", (), "/api/vendor/auth"),
+        ("/api/auth", ("/api/vendor/auth", "/api/auth"), "/api/vendor/auth"),
+        ("/api/vendor/auth", ("/api/auth", "/api/vendor/auth"), "/api/auth"),
+    ],
+    ids=["cross-route-logout", "unified-login", "legacy-login"],
+)
+def test_vendor_session_can_switch_auth_routes(
+    vendor_auth_db: Path,
+    login_prefix: str,
+    refresh_prefixes: tuple[str, ...],
+    logout_prefix: str,
+) -> None:
+    settings = Settings(database_path=str(vendor_auth_db), auth_cookie_secure=True)
+    app = create_app(settings)
+
+    with TestClient(app, base_url="https://testserver") as client:
+        login = client.post(f"{login_prefix}/login", json=_VENDOR_CREDENTIALS)
+        assert login.status_code == 200
+        refresh_token = client.cookies.get("auth_refresh_token", path="/api/auth")
+        assert refresh_token
+
+        for prefix in refresh_prefixes:
+            refresh = client.post(f"{prefix}/refresh", headers=_CSRF_HEADERS)
+            assert refresh.status_code == 200
+            new_token = client.cookies.get("auth_refresh_token", path="/api/auth")
+            assert new_token and new_token != refresh_token
+            assert client.cookies.get("vendor_refresh_token", path="/api/vendor/auth") == new_token
+            _assert_vendor_session_cookie_headers(refresh)
+            refresh_token = new_token
+
+        logout = client.post(f"{logout_prefix}/logout", headers=_CSRF_HEADERS)
+        assert logout.status_code == 204
+        assert not client.cookies
+        _assert_vendor_session_cookie_headers(login)
+        _assert_vendor_session_cookie_headers(logout, cleared=True)
+
+    with closing(sqlite3.connect(vendor_auth_db)) as connection:
+        sessions = connection.execute(
+            "SELECT family_id, revoked_at FROM auth_refresh_sessions"
+        ).fetchall()
+    assert len(sessions) == 1 + len(refresh_prefixes)
+    assert len({family_id for family_id, _ in sessions}) == 1
+    assert all(revoked_at is not None for _, revoked_at in sessions)
+
+
+def test_tenant_login_clears_legacy_vendor_cookies(vendor_auth_db: Path) -> None:
+    app = create_app(Settings(database_path=str(vendor_auth_db)))
+    tenant_email = "staff@pharmacy.example.com"
+
+    with TestClient(app) as client:
+        corporation = client.post(
+            "/api/corporations",
+            json={"category": "corporation", "name": "さくら薬局", "address": "東京都新宿区"},
+        )
+        assert corporation.status_code == 201
+        tenant_id = corporation.json()["id"]
+        with closing(sqlite3.connect(vendor_auth_db)) as connection, connection:
+            connection.execute(
+                """
+                INSERT INTO auth_users (id, email, display_name, affiliation_type, tenant_id,
+                                        status, password_hash, created_at, updated_at)
+                SELECT 'tenant-user', ?, '薬局スタッフ', 'tenant', ?,
+                       status, password_hash, created_at, updated_at
+                FROM auth_users WHERE email = ? AND affiliation_type = 'vendor'
+                """,
+                (tenant_email, tenant_id, _VENDOR_CREDENTIALS["email"]),
+            )
+        assert client.post("/api/vendor/auth/login", json=_VENDOR_CREDENTIALS).status_code == 200
+        assert client.cookies.get("vendor_refresh_token")
+
+        tenant_login = client.post(
+            "/api/auth/login",
+            json={
+                "email": tenant_email,
+                "password": _VENDOR_CREDENTIALS["password"],
+                "scope_type": "tenant",
+                "tenant_id": tenant_id,
+            },
+        )
+        assert tenant_login.status_code == 200
+        assert tenant_login.json()["user"]["affiliation_type"] == "tenant"
+        assert set(client.cookies) == {"auth_access_token", "auth_refresh_token"}
