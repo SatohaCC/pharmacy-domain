@@ -35,7 +35,8 @@
     "build-storybook": "pnpm --filter frontend build-storybook",
     "test:storybook": "pnpm --filter frontend test:storybook",
     "gen:api-types": "node scripts/generate-api-types.mts",
-    "check:api-types": "node scripts/generate-api-types.mts --check"
+    "check:api-types": "node scripts/generate-api-types.mts --check",
+    "db:migrate": "pnpm -C backend exec python -B -m alembic upgrade head"
   },
   "devDependencies": {
     "concurrently": "^10.0.7"

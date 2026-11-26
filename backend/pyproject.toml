@@ -33,6 +33,7 @@ select = ["E", "F", "I", "UP", "B", "SIM", "DTZ", "TID251"]
 # 外層のインフラ・プレゼンテーション・起動点・マイグレーション・テストでは現在時刻や ID 生成、環境変数参照を許可する。
 "app/infrastructure/**" = ["TID251"]
 "app/presentation/**" = ["TID251"]
+"app/cli/**" = ["TID251"]
 "app/main.py" = ["TID251"]
 "migrations/**" = ["TID251"]
 "tests/**" = ["TID251"]

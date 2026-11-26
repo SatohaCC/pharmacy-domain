@@ -1,8 +1,9 @@
 """FastAPI のリクエスト単位 DI プロバイダー。"""
 
-from typing import cast
+from typing import Annotated, cast
+from urllib.parse import urlsplit
 
-from fastapi import Request
+from fastapi import Depends, Request
 
 from app.application.corporate.contracts import (
     CorporateRelationCommandPort,
@@ -10,6 +11,21 @@ from app.application.corporate.contracts import (
     CorporationCommandPort,
     CorporationQueryPort,
 )
+from app.application.foundation.errors import (
+    ApplicationAuthenticationError,
+    ApplicationAuthorizationError,
+)
+from app.application.vendor_auth.contracts import (
+    VendorAuthCommandPort,
+    VendorAuthPrincipal,
+    VendorTokenVerifierPort,
+    VendorUserCommandPort,
+    VendorUserQueryPort,
+)
+
+VENDOR_ACCESS_COOKIE_NAME = "vendor_access_token"
+VENDOR_REFRESH_COOKIE_NAME = "vendor_refresh_token"
+_SAFE_METHODS = frozenset({"GET", "HEAD", "OPTIONS"})
 
 
 def get_service_name(request: Request) -> str:
@@ -47,3 +63,112 @@ def get_corporate_relation_queries(request: Request) -> CorporateRelationQueryPo
     if queries is None:
         raise RuntimeError("CorporateRelationQueryService が初期化されていません。")
     return cast(CorporateRelationQueryPort, queries)
+
+
+def get_vendor_auth_commands(request: Request) -> VendorAuthCommandPort:
+    """配線済みのベンダー認証更新ポートを取得する。"""
+    commands = getattr(request.app.state, "vendor_auth_commands", None)
+    if commands is None:
+        raise RuntimeError("VendorAuthCommandService が初期化されていません。")
+    return cast(VendorAuthCommandPort, commands)
+
+
+def get_vendor_user_commands(request: Request) -> VendorUserCommandPort:
+    """配線済みのベンダーユーザー更新ポートを取得する。"""
+    commands = getattr(request.app.state, "vendor_user_commands", None)
+    if commands is None:
+        raise RuntimeError("VendorUserCommandService が初期化されていません。")
+    return cast(VendorUserCommandPort, commands)
+
+
+def get_vendor_user_queries(request: Request) -> VendorUserQueryPort:
+    """配線済みのベンダーユーザー参照ポートを取得する。"""
+    queries = getattr(request.app.state, "vendor_user_queries", None)
+    if queries is None:
+        raise RuntimeError("VendorUserQueryService が初期化されていません。")
+    return cast(VendorUserQueryPort, queries)
+
+
+def get_vendor_token_verifier(request: Request) -> VendorTokenVerifierPort:
+    """配線済みのベンダーアクセストークン検証ポートを取得する。"""
+    verifier = getattr(request.app.state, "vendor_token_verifier", None)
+    if verifier is None:
+        raise RuntimeError("VendorTokenVerifierService が初期化されていません。")
+    return cast(VendorTokenVerifierPort, verifier)
+
+
+def _extract_origin(raw_url: str) -> str:
+    parsed = urlsplit(raw_url.strip())
+    if not parsed.scheme or not parsed.netloc:
+        return ""
+    return f"{parsed.scheme.lower()}://{parsed.netloc.lower()}"
+
+
+def verify_csrf_origin(request: Request) -> None:
+    """Cookie 認証を伴う状態変更 API に対して Origin/Referer およびカスタムヘッダを検証する。"""
+    if request.method.upper() in _SAFE_METHODS:
+        return
+
+    settings = getattr(request.app.state, "settings", None)
+    allowed_origins = {
+        origin.rstrip("/").lower()
+        for origin in getattr(settings, "cors_origins", [])
+        if isinstance(origin, str) and origin.strip()
+    }
+    request_origin = f"{request.url.scheme.lower()}://{request.url.netloc.lower()}"
+    if request.url.netloc:
+        allowed_origins.add(request_origin)
+
+    origin = request.headers.get("origin")
+    referer = request.headers.get("referer")
+    requested_with = request.headers.get("x-requested-with", "").strip()
+
+    if origin:
+        if origin.rstrip("/").lower() not in allowed_origins:
+            raise ApplicationAuthorizationError(
+                "許可されていない送信元からのリクエストです。",
+                code="CSRF_VALIDATION_FAILED",
+            )
+        return
+
+    if referer:
+        if _extract_origin(referer) not in allowed_origins:
+            raise ApplicationAuthorizationError(
+                "許可されていない送信元からのリクエストです。",
+                code="CSRF_VALIDATION_FAILED",
+            )
+        return
+
+    if requested_with == "XMLHttpRequest":
+        return
+
+    raise ApplicationAuthorizationError(
+        "同一オリジン検証ヘッダが不足しています。",
+        code="CSRF_VALIDATION_FAILED",
+    )
+
+
+def get_current_vendor_principal(
+    request: Request,
+    verifier: Annotated[VendorTokenVerifierPort, Depends(get_vendor_token_verifier)],
+) -> VendorAuthPrincipal:
+    """HttpOnly Cookie のアクセストークンを検証して認証主体を返す。"""
+    raw_token = request.cookies.get(VENDOR_ACCESS_COOKIE_NAME)
+    if not raw_token:
+        raise ApplicationAuthenticationError(
+            "認証が必要です。ログインしてください。",
+            code="UNAUTHORIZED",
+        )
+    return verifier.verify_access_token(raw_token)
+
+
+def require_vendor_admin(
+    principal: Annotated[VendorAuthPrincipal, Depends(get_current_vendor_principal)],
+) -> VendorAuthPrincipal:
+    """ログイン中のユーザーがシステムベンダー管理者であることを検証する。"""
+    if principal.role != "admin":
+        raise ApplicationAuthorizationError(
+            "この操作にはシステムベンダー管理者権限が必要です。",
+            code="VENDOR_ADMIN_REQUIRED",
+        )
+    return principal

@@ -101,6 +101,40 @@ corporation_history_table = Table(
     Index("idx_corporation_history_records", "corporation_id", "sequence"),
 )
 
+vendor_users_table = Table(
+    "vendor_users",
+    metadata,
+    Column("id", Text, primary_key=True, nullable=False),
+    Column("email", Text, nullable=False, unique=True),
+    Column("display_name", Text, nullable=False),
+    Column("role", Text, nullable=False),
+    Column("status", Text, nullable=False),
+    Column("password_hash", Text, nullable=False),
+    Column("created_by", Text, ForeignKey("vendor_users.id"), nullable=True),
+    Column("created_at", Text, nullable=False),
+    Column("updated_at", Text, nullable=False),
+    CheckConstraint("role IN ('admin', 'member')"),
+    CheckConstraint("status IN ('active', 'disabled')"),
+)
+
+Index("idx_vendor_users_created_at", sa.text("created_at DESC"), _table=vendor_users_table)  # type: ignore[arg-type]
+
+vendor_refresh_sessions_table = Table(
+    "vendor_refresh_sessions",
+    metadata,
+    Column("id", Text, primary_key=True, nullable=False),
+    Column("family_id", Text, nullable=False),
+    Column("vendor_user_id", Text, ForeignKey("vendor_users.id"), nullable=False),
+    Column("token_hash", Text, nullable=False),
+    Column("issued_at", Text, nullable=False),
+    Column("expires_at", Text, nullable=False),
+    Column("rotated_at", Text, nullable=True),
+    Column("revoked_at", Text, nullable=True),
+    Column("replaced_by_session_id", Text, nullable=True),
+    Index("idx_vendor_refresh_sessions_family_id", "family_id"),
+    Index("idx_vendor_refresh_sessions_user_id", "vendor_user_id"),
+)
+
 
 def database_url(database_path: str) -> str:
     """データベースパスから SQLAlchemy 接続 URL を組み立てる。"""
