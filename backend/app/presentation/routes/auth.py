@@ -7,14 +7,14 @@ from fastapi import APIRouter, Depends, Request, Response, status
 from app.application.auth.contracts import (
     AuthCommandPort,
     AuthPrincipal,
+    AuthSessionView,
     AuthUserQueryPort,
     LogoutAuthSessionInput,
     RefreshAuthSessionInput,
 )
-from app.presentation.auth_cookies import clear_auth_cookies, set_auth_cookies
 from app.presentation.dependencies import (
+    AUTH_ACCESS_COOKIE_NAME,
     AUTH_REFRESH_COOKIE_NAME,
-    VENDOR_REFRESH_COOKIE_NAME,
     get_auth_commands,
     get_auth_user_queries,
     get_current_auth_principal,
@@ -34,6 +34,57 @@ from app.presentation.mappers.auth import (
 
 router = APIRouter(prefix="/api/auth", tags=["auth"])
 
+_ACCESS_COOKIE_PATH = "/api"
+_REFRESH_COOKIE_PATH = "/api/auth"
+
+
+def _is_cookie_secure(request: Request) -> bool:
+    settings = getattr(request.app.state, "settings", None)
+    return bool(getattr(settings, "auth_cookie_secure", False))
+
+
+def _set_auth_cookies(
+    response: Response,
+    *,
+    session: AuthSessionView,
+    secure: bool,
+) -> None:
+    response.set_cookie(
+        key=AUTH_ACCESS_COOKIE_NAME,
+        value=session.access_token,
+        max_age=session.access_token_expires_in_seconds,
+        path=_ACCESS_COOKIE_PATH,
+        httponly=True,
+        samesite="lax",
+        secure=secure,
+    )
+    response.set_cookie(
+        key=AUTH_REFRESH_COOKIE_NAME,
+        value=session.refresh_token,
+        max_age=session.refresh_token_expires_in_seconds,
+        path=_REFRESH_COOKIE_PATH,
+        httponly=True,
+        samesite="lax",
+        secure=secure,
+    )
+
+
+def _clear_auth_cookies(response: Response, *, secure: bool) -> None:
+    response.delete_cookie(
+        key=AUTH_ACCESS_COOKIE_NAME,
+        path=_ACCESS_COOKIE_PATH,
+        httponly=True,
+        samesite="lax",
+        secure=secure,
+    )
+    response.delete_cookie(
+        key=AUTH_REFRESH_COOKIE_NAME,
+        path=_REFRESH_COOKIE_PATH,
+        httponly=True,
+        samesite="lax",
+        secure=secure,
+    )
+
 
 @router.post(
     "/login",
@@ -48,7 +99,7 @@ def login_auth(
 ) -> AuthSessionResponse:
     """メールアドレスとパスワードで認証し JWT Cookie を発行する。"""
     session = commands.login(to_auth_login_input(payload))
-    set_auth_cookies(request, response, session)
+    _set_auth_cookies(response, session=session, secure=_is_cookie_secure(request))
     return to_auth_session_response(session)
 
 
@@ -69,7 +120,7 @@ def refresh_auth_session(
     """リフレッシュトークンをローテーションし新しい JWT Cookie を発行する。"""
     raw_refresh = request.cookies.get(AUTH_REFRESH_COOKIE_NAME, "")
     session = commands.refresh(RefreshAuthSessionInput(refresh_token=raw_refresh))
-    set_auth_cookies(request, response, session)
+    _set_auth_cookies(response, session=session, secure=_is_cookie_secure(request))
     return to_auth_session_response(session)
 
 
@@ -84,12 +135,10 @@ def logout_auth(
     commands: Annotated[AuthCommandPort, Depends(get_auth_commands)],
 ) -> Response:
     """リフレッシュセッションファミリーを即時失効させ、認証 Cookie を削除する。"""
-    raw_refresh = request.cookies.get(AUTH_REFRESH_COOKIE_NAME) or request.cookies.get(
-        VENDOR_REFRESH_COOKIE_NAME
-    )
+    raw_refresh = request.cookies.get(AUTH_REFRESH_COOKIE_NAME)
     commands.logout(LogoutAuthSessionInput(refresh_token=raw_refresh))
     response = Response(status_code=status.HTTP_204_NO_CONTENT)
-    clear_auth_cookies(request, response)
+    _clear_auth_cookies(response, secure=_is_cookie_secure(request))
     return response
 
 

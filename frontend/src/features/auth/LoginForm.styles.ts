@@ -1,7 +1,7 @@
 import * as stylex from "@stylexjs/stylex";
 import { tokens } from "../../shared/styles/tokens.stylex";
 
-export const vendorLoginFormStyles = stylex.create({
+export const loginFormStyles = stylex.create({
   shell: {
     minHeight: "100dvh",
     display: "grid",

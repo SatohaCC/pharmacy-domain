@@ -23,8 +23,24 @@ from app.infrastructure.security.jwt_codec import Hs256JwtTokenIssuer
 from app.main import create_app
 
 _ALEMBIC_INI = Path(__file__).resolve().parents[2] / "alembic.ini"
-_CSRF_HEADERS = {"X-Requested-With": "XMLHttpRequest"}
-_VENDOR_CREDENTIALS = {"email": "admin@vendor.example.com", "password": "VendorAdmin123!"}
+
+
+def _assert_auth_cookie_headers(response: Response, *, cleared: bool = False) -> None:
+    cookies = SimpleCookie()
+    for header in response.headers.get_list("set-cookie"):
+        cookies.load(header)
+
+    expected = {
+        "auth_access_token": ("/api", "1800"),
+        "auth_refresh_token": ("/api/auth", "28800"),
+    }
+    assert set(cookies) == set(expected)
+    for name, (path, max_age) in expected.items():
+        cookie = cookies[name]
+        assert cookie["path"] == path
+        assert cookie["max-age"] == ("0" if cleared else max_age)
+        assert cookie["httponly"] and cookie["secure"]
+        assert cookie["samesite"] == "lax"
 
 
 @pytest.fixture
@@ -36,12 +52,12 @@ def vendor_auth_db(
     monkeypatch.setenv("DATABASE_PATH", str(db_path))
     command.upgrade(Config(str(_ALEMBIC_INI)), "head")
 
-    monkeypatch.setattr("sys.stdin", io.StringIO(_VENDOR_CREDENTIALS["password"] + "\n"))
+    monkeypatch.setattr("sys.stdin", io.StringIO("VendorAdmin123!\n"))
     assert (
         cli_main(
             [
                 "--email",
-                _VENDOR_CREDENTIALS["email"],
+                "admin@vendor.example.com",
                 "--name",
                 "システム管理者",
                 "--password-stdin",
@@ -53,11 +69,12 @@ def vendor_auth_db(
 
 
 def test_unified_auth_api_end_to_end_flow(vendor_auth_db: Path) -> None:
-    settings = Settings(database_path=str(vendor_auth_db))
+    settings = Settings(database_path=str(vendor_auth_db), auth_cookie_secure=True)
     app = create_app(settings)
 
-    with TestClient(app) as client:
+    with TestClient(app, base_url="https://testserver") as client:
         assert client.get("/api/auth/me").status_code == 401
+        assert client.get("/api/vendor/auth/me").status_code == 404
 
         bad_login = client.post(
             "/api/auth/login",
@@ -68,9 +85,10 @@ def test_unified_auth_api_end_to_end_flow(vendor_auth_db: Path) -> None:
 
         login_res = client.post(
             "/api/auth/login",
-            json=_VENDOR_CREDENTIALS,
+            json={"email": "admin@vendor.example.com", "password": "VendorAdmin123!"},
         )
         assert login_res.status_code == 200
+        _assert_auth_cookie_headers(login_res)
         login_data = login_res.json()
         assert login_data["user"]["email"] == "admin@vendor.example.com"
         assert login_data["user"]["affiliation_type"] == "vendor"
@@ -107,6 +125,7 @@ def test_unified_auth_api_end_to_end_flow(vendor_auth_db: Path) -> None:
             headers={"X-Requested-With": "XMLHttpRequest"},
         )
         assert refresh_res.status_code == 200
+        _assert_auth_cookie_headers(refresh_res)
         new_refresh_cookie = client.cookies.get("auth_refresh_token")
         assert new_refresh_cookie
         assert new_refresh_cookie != refresh_cookie
@@ -117,14 +136,27 @@ def test_unified_auth_api_end_to_end_flow(vendor_auth_db: Path) -> None:
             headers={"X-Requested-With": "XMLHttpRequest"},
         )
         assert logout_res.status_code == 204
-        assert (
-            client.post(
-                "/api/auth/refresh",
-                headers={"X-Requested-With": "XMLHttpRequest"},
-                cookies={"auth_refresh_token": new_refresh_cookie},
-            ).status_code
-            == 401
+        _assert_auth_cookie_headers(logout_res, cleared=True)
+        assert not client.cookies
+        assert client.get("/api/auth/me").status_code == 401
+
+        with closing(sqlite3.connect(vendor_auth_db)) as connection:
+            sessions = connection.execute(
+                "SELECT family_id, revoked_at FROM auth_refresh_sessions"
+            ).fetchall()
+        assert len(sessions) == 2
+        assert len({family_id for family_id, _ in sessions}) == 1
+        assert all(revoked_at is not None for _, revoked_at in sessions)
+
+        after_logout_refresh = client.post(
+            "/api/auth/refresh",
+            headers={
+                "X-Requested-With": "XMLHttpRequest",
+                "Cookie": f"auth_refresh_token={new_refresh_cookie}",
+            },
         )
+        assert after_logout_refresh.status_code == 401
+        assert after_logout_refresh.json()["code"] == "REFRESH_TOKEN_REVOKED"
 
         # 非 ASCII 不正 Cookie でも 500 にならず 401/204 で拒否・削除される。
         async def _call_asgi(
@@ -198,79 +230,12 @@ def test_unified_auth_api_end_to_end_flow(vendor_auth_db: Path) -> None:
         assert b"Max-Age=0" in set_cookies
 
 
-def _assert_vendor_session_cookie_headers(response: Response, *, cleared: bool = False) -> None:
-    cookies = SimpleCookie()
-    for header in response.headers.get_list("set-cookie"):
-        cookies.load(header)
-
-    expected = {
-        "auth_access_token": ("/api", "1800"),
-        "auth_refresh_token": ("/api/auth", "28800"),
-        "vendor_access_token": ("/api", "1800"),
-        "vendor_refresh_token": ("/api/vendor/auth", "28800"),
-    }
-    assert set(cookies) == set(expected)
-    for name, (path, max_age) in expected.items():
-        cookie = cookies[name]
-        assert cookie["path"] == path
-        assert cookie["max-age"] == ("0" if cleared else max_age)
-        assert cookie["httponly"] and cookie["secure"]
-        assert cookie["samesite"] == "lax"
-
-
-@pytest.mark.parametrize(
-    ("login_prefix", "refresh_prefixes", "logout_prefix"),
-    [
-        ("/api/auth", (), "/api/vendor/auth"),
-        ("/api/auth", ("/api/vendor/auth", "/api/auth"), "/api/vendor/auth"),
-        ("/api/vendor/auth", ("/api/auth", "/api/vendor/auth"), "/api/auth"),
-    ],
-    ids=["cross-route-logout", "unified-login", "legacy-login"],
-)
-def test_vendor_session_can_switch_auth_routes(
-    vendor_auth_db: Path,
-    login_prefix: str,
-    refresh_prefixes: tuple[str, ...],
-    logout_prefix: str,
-) -> None:
+def test_tenant_login_issues_unified_auth_cookies(vendor_auth_db: Path) -> None:
     settings = Settings(database_path=str(vendor_auth_db), auth_cookie_secure=True)
     app = create_app(settings)
-
-    with TestClient(app, base_url="https://testserver") as client:
-        login = client.post(f"{login_prefix}/login", json=_VENDOR_CREDENTIALS)
-        assert login.status_code == 200
-        refresh_token = client.cookies.get("auth_refresh_token", path="/api/auth")
-        assert refresh_token
-
-        for prefix in refresh_prefixes:
-            refresh = client.post(f"{prefix}/refresh", headers=_CSRF_HEADERS)
-            assert refresh.status_code == 200
-            new_token = client.cookies.get("auth_refresh_token", path="/api/auth")
-            assert new_token and new_token != refresh_token
-            assert client.cookies.get("vendor_refresh_token", path="/api/vendor/auth") == new_token
-            _assert_vendor_session_cookie_headers(refresh)
-            refresh_token = new_token
-
-        logout = client.post(f"{logout_prefix}/logout", headers=_CSRF_HEADERS)
-        assert logout.status_code == 204
-        assert not client.cookies
-        _assert_vendor_session_cookie_headers(login)
-        _assert_vendor_session_cookie_headers(logout, cleared=True)
-
-    with closing(sqlite3.connect(vendor_auth_db)) as connection:
-        sessions = connection.execute(
-            "SELECT family_id, revoked_at FROM auth_refresh_sessions"
-        ).fetchall()
-    assert len(sessions) == 1 + len(refresh_prefixes)
-    assert len({family_id for family_id, _ in sessions}) == 1
-    assert all(revoked_at is not None for _, revoked_at in sessions)
-
-
-def test_tenant_login_clears_legacy_vendor_cookies(vendor_auth_db: Path) -> None:
-    app = create_app(Settings(database_path=str(vendor_auth_db)))
     tenant_email = "staff@pharmacy.example.com"
 
-    with TestClient(app) as client:
+    with TestClient(app, base_url="https://testserver") as client:
         corporation = client.post(
             "/api/corporations",
             json={"category": "corporation", "name": "さくら薬局", "address": "東京都新宿区"},
@@ -286,20 +251,112 @@ def test_tenant_login_clears_legacy_vendor_cookies(vendor_auth_db: Path) -> None
                        status, password_hash, created_at, updated_at
                 FROM auth_users WHERE email = ? AND affiliation_type = 'vendor'
                 """,
-                (tenant_email, tenant_id, _VENDOR_CREDENTIALS["email"]),
+                (tenant_email, tenant_id, "admin@vendor.example.com"),
             )
-        assert client.post("/api/vendor/auth/login", json=_VENDOR_CREDENTIALS).status_code == 200
-        assert client.cookies.get("vendor_refresh_token")
 
         tenant_login = client.post(
             "/api/auth/login",
             json={
                 "email": tenant_email,
-                "password": _VENDOR_CREDENTIALS["password"],
+                "password": "VendorAdmin123!",
                 "scope_type": "tenant",
                 "tenant_id": tenant_id,
             },
         )
         assert tenant_login.status_code == 200
         assert tenant_login.json()["user"]["affiliation_type"] == "tenant"
-        assert set(client.cookies) == {"auth_access_token", "auth_refresh_token"}
+        assert tenant_login.json()["user"]["tenant_id"] == tenant_id
+        _assert_auth_cookie_headers(tenant_login)
+
+
+def test_vendor_users_api_roles_rbac_and_csrf(vendor_auth_db: Path) -> None:
+    app = create_app(Settings(database_path=str(vendor_auth_db)))
+
+    with TestClient(app) as client:
+        # 未認証は 401
+        assert client.get("/api/vendor/users").status_code == 401
+
+        login_res = client.post(
+            "/api/auth/login",
+            json={"email": "admin@vendor.example.com", "password": "VendorAdmin123!"},
+        )
+        assert login_res.status_code == 200
+
+        # CSRF ヘッダーなしは 403
+        no_csrf = client.post(
+            "/api/vendor/users",
+            json={
+                "email": "staff@vendor.example.com",
+                "display_name": "運用 太郎",
+                "roles": ["vendor_member"],
+                "password": "StaffUser1234!",
+            },
+        )
+        assert no_csrf.status_code == 403
+
+        # vendor_admin による vendor_member 発行 (201)
+        created = client.post(
+            "/api/vendor/users",
+            headers={"X-Requested-With": "XMLHttpRequest"},
+            json={
+                "email": "staff@vendor.example.com",
+                "display_name": "運用 太郎",
+                "roles": ["vendor_member"],
+                "password": "StaffUser1234!",
+            },
+        )
+        assert created.status_code == 201
+        created_data = created.json()
+        assert created_data["roles"] == ["vendor_member"]
+        assert created_data["affiliation_type"] == "vendor"
+
+        # メール重複は 409 (DUPLICATE_VENDOR_EMAIL)
+        duplicate = client.post(
+            "/api/vendor/users",
+            headers={"X-Requested-With": "XMLHttpRequest"},
+            json={
+                "email": "staff@vendor.example.com",
+                "display_name": "重複 太郎",
+                "roles": ["vendor_member"],
+                "password": "StaffUser1234!",
+            },
+        )
+        assert duplicate.status_code == 409
+        assert duplicate.json()["code"] == "DUPLICATE_VENDOR_EMAIL"
+
+        # 一覧取得は 200 (2件)
+        listed = client.get("/api/vendor/users")
+        assert listed.status_code == 200
+        assert listed.json()["total"] == 2
+
+        # vendor_member で再ログインすると /api/vendor/users の GET/POST は 403
+        assert (
+            client.post(
+                "/api/auth/logout",
+                headers={"X-Requested-With": "XMLHttpRequest"},
+            ).status_code
+            == 204
+        )
+        staff_login = client.post(
+            "/api/auth/login",
+            json={"email": "staff@vendor.example.com", "password": "StaffUser1234!"},
+        )
+        assert staff_login.status_code == 200
+        assert staff_login.json()["user"]["roles"] == ["vendor_member"]
+
+        forbidden_list = client.get("/api/vendor/users")
+        assert forbidden_list.status_code == 403
+        assert forbidden_list.json()["code"] == "VENDOR_ADMIN_REQUIRED"
+
+        forbidden_create = client.post(
+            "/api/vendor/users",
+            headers={"X-Requested-With": "XMLHttpRequest"},
+            json={
+                "email": "another@vendor.example.com",
+                "display_name": "別の社員",
+                "roles": ["vendor_member"],
+                "password": "StaffUser1234!",
+            },
+        )
+        assert forbidden_create.status_code == 403
+        assert forbidden_create.json()["code"] == "VENDOR_ADMIN_REQUIRED"

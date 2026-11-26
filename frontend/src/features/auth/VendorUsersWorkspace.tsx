@@ -10,32 +10,43 @@ import { Select, type SelectOption } from "@/shared/ui/select/Select";
 import { Spinner } from "@/shared/ui/spinner/Spinner";
 import { TextField } from "@/shared/ui/text-field/TextField";
 import { evaluatePasswordPolicy, generateSecurePassword } from "./passwordGenerator";
-import type { VendorRole, VendorUser } from "./schemas";
+import type { AuthRole, AuthUser, VendorAssignableRole } from "./schemas";
 import { vendorUsersWorkspaceStyles as s } from "./VendorUsersWorkspace.styles";
 
 const ROLE_OPTIONS: readonly SelectOption[] = [
-  { value: "member", label: "一般社員（member）" },
-  { value: "admin", label: "ベンダー管理者（admin）" },
+  { value: "vendor_member", label: "一般社員（vendor_member）" },
+  { value: "vendor_admin", label: "ベンダー管理者（vendor_admin）" },
 ];
 
-function roleLabel(role: VendorRole): string {
-  return role === "admin" ? "管理者" : "一般社員";
+function roleLabel(role: AuthRole): string {
+  switch (role) {
+    case "vendor_admin":
+      return "管理者";
+    case "vendor_member":
+      return "一般社員";
+    case "tenant_admin":
+      return "薬局管理者";
+    case "pharmacist":
+      return "薬剤師";
+    case "clerk":
+      return "事務";
+  }
 }
 
 export interface VendorUsersWorkspaceProps {
-  currentUser: VendorUser;
-  users: readonly VendorUser[];
+  currentUser: AuthUser;
+  users: readonly AuthUser[];
   isLoadingUsers: boolean;
   usersErrorMessage: string | null;
   isCreatingUser: boolean;
   createErrorMessage: string | null;
   createUserFacingError: ApiUserFacingError | null;
-  lastIssuedUser: { user: VendorUser; initialPassword: string } | null;
+  lastIssuedUser: { user: AuthUser; initialPassword: string } | null;
   isLoggingOut: boolean;
   onCreateUser: (input: {
     email: string;
     display_name: string;
-    role: VendorRole;
+    roles: VendorAssignableRole[];
     password: string;
   }) => Promise<boolean>;
   onDismissIssuedBanner: () => void;
@@ -59,7 +70,7 @@ export function VendorUsersWorkspace({
 }: VendorUsersWorkspaceProps) {
   const [displayName, setDisplayName] = useState("");
   const [email, setEmail] = useState("");
-  const [role, setRole] = useState<VendorRole>("member");
+  const [role, setRole] = useState<VendorAssignableRole>("vendor_member");
   const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
   const [copiedPassword, setCopiedPassword] = useState(false);
@@ -69,7 +80,7 @@ export function VendorUsersWorkspace({
   const [passwordError, setPasswordError] = useState<string | undefined>(undefined);
 
   const policy = evaluatePasswordPolicy(password);
-  const isAdmin = currentUser.role === "admin";
+  const isAdmin = currentUser.roles.includes("vendor_admin");
 
   function handleGeneratePassword() {
     const generated = generateSecurePassword(16);
@@ -101,13 +112,13 @@ export function VendorUsersWorkspace({
     const created = await onCreateUser({
       display_name: trimmedName,
       email: trimmedEmail,
-      role,
+      roles: [role],
       password,
     });
     if (created) {
       setDisplayName("");
       setEmail("");
-      setRole("member");
+      setRole("vendor_member");
       setPassword("");
       setShowPassword(false);
     }
@@ -128,7 +139,11 @@ export function VendorUsersWorkspace({
             <p {...stylex.props(s.eyebrow)}>SYSTEM VENDOR CONSOLE</p>
             <div {...stylex.props(s.titleRow)}>
               <h1 {...stylex.props(s.heading)}>ベンダーアカウント管理</h1>
-              <Badge tone={isAdmin ? "success" : "neutral"}>{roleLabel(currentUser.role)}</Badge>
+              {currentUser.roles.map((r) => (
+                <Badge key={r} tone={r === "vendor_admin" ? "success" : "neutral"}>
+                  {roleLabel(r)}
+                </Badge>
+              ))}
             </div>
             <p {...stylex.props(s.subText)}>
               ログイン中: {currentUser.display_name}（{currentUser.email}）
@@ -143,7 +158,7 @@ export function VendorUsersWorkspace({
 
         {!isAdmin ? (
           <Alert tone="info" title="一般社員アカウントでログインしています">
-            ベンダー社員アカウントの発行および全アカウント一覧の閲覧は、システムベンダー管理者（admin）のみ操作できます。
+            ベンダー社員アカウントの発行および全アカウント一覧の閲覧は、システムベンダー管理者（vendor_admin）のみ操作できます。
           </Alert>
         ) : (
           <>
@@ -166,7 +181,7 @@ export function VendorUsersWorkspace({
                 >
                   <p>
                     {lastIssuedUser.user.display_name}（{lastIssuedUser.user.email} /{" "}
-                    {roleLabel(lastIssuedUser.user.role)}）を登録しました。
+                    {lastIssuedUser.user.roles.map(roleLabel).join("・")}）を登録しました。
                   </p>
                   <div {...stylex.props(s.issuedSecretBox)}>
                     <code {...stylex.props(s.issuedCode)}>{lastIssuedUser.initialPassword}</code>
@@ -229,7 +244,7 @@ export function VendorUsersWorkspace({
                     items={ROLE_OPTIONS}
                     value={role}
                     onValueChange={(value) => {
-                      if (value === "admin" || value === "member") {
+                      if (value === "vendor_admin" || value === "vendor_member") {
                         setRole(value);
                       }
                     }}
@@ -323,9 +338,11 @@ export function VendorUsersWorkspace({
                         <p {...stylex.props(s.userEmail)}>{item.email}</p>
                       </div>
                       <div {...stylex.props(s.userBadges)}>
-                        <Badge tone={item.role === "admin" ? "success" : "neutral"}>
-                          {roleLabel(item.role)}
-                        </Badge>
+                        {item.roles.map((r) => (
+                          <Badge key={r} tone={r === "vendor_admin" ? "success" : "neutral"}>
+                            {roleLabel(r)}
+                          </Badge>
+                        ))}
                         <Badge tone={item.status === "active" ? "success" : "danger"}>
                           {item.status === "active" ? "有効" : "無効"}
                         </Badge>

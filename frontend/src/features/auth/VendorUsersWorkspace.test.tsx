@@ -1,31 +1,35 @@
 import { render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { describe, expect, it, vi } from "vitest";
-import type { VendorUser } from "./schemas";
+import type { AuthUser } from "./schemas";
 import { VendorUsersWorkspace } from "./VendorUsersWorkspace";
 
-const adminUser: VendorUser = {
+const adminUser: AuthUser = {
   id: "admin-1",
   email: "admin@vendor.example.com",
   display_name: "初期管理者",
-  role: "admin",
+  affiliation_type: "vendor",
+  tenant_id: null,
+  roles: ["vendor_admin"],
   status: "active",
   created_at: "2026-11-26T00:00:00Z",
   updated_at: "2026-11-26T00:00:00Z",
 };
 
-const memberUser: VendorUser = {
+const memberUser: AuthUser = {
   id: "member-1",
   email: "member@vendor.example.com",
   display_name: "運用社員",
-  role: "member",
+  affiliation_type: "vendor",
+  tenant_id: null,
+  roles: ["vendor_member"],
   status: "active",
   created_at: "2026-11-26T01:00:00Z",
   updated_at: "2026-11-26T01:00:00Z",
 };
 
 describe("VendorUsersWorkspace", () => {
-  it("admin ロールでは安全なパスワード自動生成を使って新規ベンダー社員を発行し、成功後にフォームを初期化する", async () => {
+  it("vendor_admin ロールでは安全なパスワード自動生成を使って新規ベンダー社員を発行し、成功後にフォームを初期化する", async () => {
     const user = userEvent.setup();
     const onCreateUser = vi.fn().mockResolvedValue(true);
     const onLogout = vi.fn();
@@ -60,7 +64,7 @@ describe("VendorUsersWorkspace", () => {
     const payload = onCreateUser.mock.calls[0]?.[0];
     expect(payload.email).toBe("taro@vendor.example.com");
     expect(payload.display_name).toBe("運用 太郎");
-    expect(payload.role).toBe("member");
+    expect(payload.roles).toEqual(["vendor_member"]);
     expect(payload.password.length).toBeGreaterThanOrEqual(13);
 
     expect(nameInput).toHaveValue("");
@@ -71,7 +75,7 @@ describe("VendorUsersWorkspace", () => {
     expect(onLogout).toHaveBeenCalledTimes(1);
   });
 
-  it("member ロールでは発行フォームや一覧を表示せず権限案内を表示する", () => {
+  it("vendor_member ロールでは発行フォームや一覧を表示せず権限案内を表示する", () => {
     render(
       <VendorUsersWorkspace
         currentUser={memberUser}

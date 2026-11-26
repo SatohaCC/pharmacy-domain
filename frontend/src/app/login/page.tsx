@@ -1,5 +1,5 @@
 import type { Metadata } from "next";
-import { VendorLoginContainer } from "@/features/vendor-auth/VendorLoginContainer";
+import { LoginContainer } from "@/features/auth/LoginContainer";
 
 export const metadata: Metadata = {
   title: "システムベンダーログイン",
@@ -9,7 +9,7 @@ export const metadata: Metadata = {
 export default function VendorLoginPage() {
   return (
     <main id="main-content" tabIndex={-1}>
-      <VendorLoginContainer />
+      <LoginContainer />
     </main>
   );
 }

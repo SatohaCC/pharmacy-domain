@@ -18,7 +18,7 @@ const e2eDbPath = (() => {
     : path.resolve(backendDir, configured);
 })();
 
-function resetVendorAuthTables(): void {
+function resetAuthTables(): void {
   execFileSync(
     pythonPath,
     [
@@ -65,14 +65,14 @@ function runBootstrapCli(args: { email: string; name: string; password: string }
 }
 
 test.describe
-  .serial("システムベンダー認証とアカウント発行フロー", () => {
+  .serial("共通認証・ロールモデルとベンダーアカウント発行フロー", () => {
     const adminEmail = "initial-admin@vendor.example.com";
     const adminPassword = "InitialVendorAdmin123!";
     const staffEmail = "vendor-staff@vendor.example.com";
     const staffName = "ベンダー 運用社員";
 
     test.beforeAll(() => {
-      resetVendorAuthTables();
+      resetAuthTables();
     });
 
     test("コンソールから初期管理者を発行し、Webでログイン・社員発行・再ログインできる", async ({

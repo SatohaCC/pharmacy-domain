@@ -1,15 +1,15 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { ApiError } from "@/shared/lib/api/apiClient";
 import {
-  fetchCurrentVendorUser,
+  AUTH_LAST_REFRESH_KEY,
+  fetchCurrentAuthUser,
   fetchVendorUsers,
-  refreshVendorSessionSingleFlight,
-  VENDOR_AUTH_LAST_REFRESH_KEY,
+  refreshAuthSessionSingleFlight,
 } from "./api";
 
-describe("vendor-auth apiClient", () => {
+describe("auth apiClient", () => {
   beforeEach(() => {
-    globalThis.localStorage?.removeItem(VENDOR_AUTH_LAST_REFRESH_KEY);
+    globalThis.localStorage?.removeItem(AUTH_LAST_REFRESH_KEY);
   });
 
   afterEach(() => {
@@ -26,7 +26,9 @@ describe("vendor-auth apiClient", () => {
       id: "user-1",
       email: "admin@vendor.example.com",
       display_name: "管理者",
-      role: "admin",
+      affiliation_type: "vendor",
+      tenant_id: null,
+      roles: ["vendor_admin"],
       status: "active",
       created_at: "2026-11-26T00:00:00Z",
       updated_at: "2026-11-26T00:00:00Z",
@@ -34,7 +36,7 @@ describe("vendor-auth apiClient", () => {
 
     vi.spyOn(globalThis, "fetch").mockImplementation(async (input) => {
       const url = String(input);
-      if (url === "/api/vendor/auth/me") {
+      if (url === "/api/auth/me") {
         meCalls += 1;
         if (meCalls === 1) {
           return new Response(JSON.stringify({ code: "AUTH_TOKEN_EXPIRED", detail: "expired" }), {
@@ -52,7 +54,7 @@ describe("vendor-auth apiClient", () => {
         }
         return new Response(JSON.stringify({ items: [sampleUser], total: 1 }), { status: 200 });
       }
-      if (url === "/api/vendor/auth/refresh") {
+      if (url === "/api/auth/refresh") {
         refreshCalls += 1;
         return new Response(
           JSON.stringify({
@@ -66,7 +68,7 @@ describe("vendor-auth apiClient", () => {
       return new Response(null, { status: 404 });
     });
 
-    const [me, list] = await Promise.all([fetchCurrentVendorUser(), fetchVendorUsers()]);
+    const [me, list] = await Promise.all([fetchCurrentAuthUser(), fetchVendorUsers()]);
 
     expect(refreshCalls).toBe(1);
     expect(me.email).toBe("admin@vendor.example.com");
@@ -80,12 +82,12 @@ describe("vendor-auth apiClient", () => {
       }),
     );
 
-    await expect(fetchCurrentVendorUser()).rejects.toBeInstanceOf(ApiError);
+    await expect(fetchCurrentAuthUser()).rejects.toBeInstanceOf(ApiError);
   });
 
   it("別タブがすでにリフレッシュ済みの場合は Web Locks 内でリフレッシュを再送信しない", async () => {
     const requestStartedAt = Date.now();
-    globalThis.localStorage.setItem(VENDOR_AUTH_LAST_REFRESH_KEY, String(requestStartedAt + 50));
+    globalThis.localStorage.setItem(AUTH_LAST_REFRESH_KEY, String(requestStartedAt + 50));
 
     const fetchSpy = vi.spyOn(globalThis, "fetch");
     const requestLockMock = vi.fn(
@@ -95,7 +97,7 @@ describe("vendor-auth apiClient", () => {
       locks: { request: requestLockMock },
     });
 
-    const result = await refreshVendorSessionSingleFlight(requestStartedAt);
+    const result = await refreshAuthSessionSingleFlight(requestStartedAt);
 
     expect(requestLockMock).toHaveBeenCalledTimes(1);
     expect(fetchSpy).not.toHaveBeenCalled();
