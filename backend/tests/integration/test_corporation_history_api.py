@@ -9,17 +9,31 @@ from alembic.config import Config
 from fastapi.testclient import TestClient
 from sqlalchemy import Engine, text
 
+from app.application.auth.contracts import AuthPrincipal
 from app.infrastructure.config import Settings
 from app.main import APP_ENGINE_RESOURCE_NAME, create_app
+from app.presentation.dependencies import get_current_auth_principal
 
 _ALEMBIC = Path(__file__).resolve().parents[2] / "alembic.ini"
+
+
+def _vendor_principal() -> AuthPrincipal:
+    return AuthPrincipal(
+        user_id="vendor-admin-1",
+        email="admin@vendor.example.com",
+        display_name="システム管理者",
+        scope_type="vendor",
+        tenant_id=None,
+        roles=("vendor_admin",),
+    )
 
 
 @pytest.fixture
 def client(tmp_path: Path) -> Iterator[TestClient]:
     app = create_app(Settings(database_path=str(tmp_path / "history.sqlite3")))
+    app.dependency_overrides[get_current_auth_principal] = _vendor_principal
     config = Config(str(_ALEMBIC))
-    with TestClient(app) as client:
+    with TestClient(app, headers={"X-Requested-With": "XMLHttpRequest"}) as client:
         engine = app.state.resources.require(APP_ENGINE_RESOURCE_NAME, Engine)
         with engine.begin() as connection:
             config.attributes["connection"] = connection
@@ -166,6 +180,7 @@ def test_corrects_a_known_terminal_snapshot_without_restoring_active_status(
 
 def test_migration_keeps_legacy_rows_and_leaves_unknown_past_unfilled(tmp_path: Path) -> None:
     app = create_app(Settings(database_path=str(tmp_path / "legacy.sqlite3")))
+    app.dependency_overrides[get_current_auth_principal] = _vendor_principal
     config = Config(str(_ALEMBIC))
     with TestClient(app) as client:
         engine = app.state.resources.require(APP_ENGINE_RESOURCE_NAME, Engine)

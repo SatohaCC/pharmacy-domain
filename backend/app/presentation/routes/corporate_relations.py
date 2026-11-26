@@ -14,6 +14,8 @@ from app.application.corporate.contracts import (
 from app.presentation.dependencies import (
     get_corporate_relation_commands,
     get_corporate_relation_queries,
+    require_vendor_user,
+    verify_csrf_origin,
 )
 from app.presentation.dto.corporate_relations import (
     CorporateRelationCorrectionRequest,
@@ -31,7 +33,15 @@ from app.presentation.mappers.corporate_relations import (
     to_revision_response,
 )
 
-router = APIRouter(prefix="/api/corporate-relations", tags=["corporate-relations"])
+router = APIRouter(
+    prefix="/api/corporate-relations",
+    tags=["corporate-relations"],
+    dependencies=[Depends(require_vendor_user), Depends(verify_csrf_origin)],
+    responses={
+        401: {"model": ErrorResponse},
+        403: {"model": ErrorResponse},
+    },
+)
 _WRITE_ERRORS: dict[int | str, dict[str, Any]] = {
     404: {"model": ErrorResponse},
     409: {"model": ErrorResponse},

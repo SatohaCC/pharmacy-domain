@@ -236,12 +236,27 @@ def test_tenant_login_issues_unified_auth_cookies(vendor_auth_db: Path) -> None:
     tenant_email = "staff@pharmacy.example.com"
 
     with TestClient(app, base_url="https://testserver") as client:
+        assert (
+            client.post(
+                "/api/auth/login",
+                json={"email": "admin@vendor.example.com", "password": "VendorAdmin123!"},
+            ).status_code
+            == 200
+        )
         corporation = client.post(
             "/api/corporations",
+            headers={"X-Requested-With": "XMLHttpRequest"},
             json={"category": "corporation", "name": "さくら薬局", "address": "東京都新宿区"},
         )
         assert corporation.status_code == 201
         tenant_id = corporation.json()["id"]
+        assert (
+            client.post(
+                "/api/auth/logout",
+                headers={"X-Requested-With": "XMLHttpRequest"},
+            ).status_code
+            == 204
+        )
         with closing(sqlite3.connect(vendor_auth_db)) as connection, connection:
             connection.execute(
                 """

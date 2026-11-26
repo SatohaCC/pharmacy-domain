@@ -12,11 +12,24 @@ from fastapi.testclient import TestClient
 from httpx import Response
 from sqlalchemy import Connection, Engine, event, text
 
+from app.application.auth.contracts import AuthPrincipal
 from app.infrastructure.config import Settings
 from app.infrastructure.persistence.unit_of_work import SqlAlchemyCorporationUnitOfWork
 from app.main import APP_ENGINE_RESOURCE_NAME, create_app
+from app.presentation.dependencies import get_current_auth_principal
 
 _RELATIONS = "/api/corporate-relations"
+
+
+def _vendor_principal() -> AuthPrincipal:
+    return AuthPrincipal(
+        user_id="vendor-admin-1",
+        email="admin@vendor.example.com",
+        display_name="システム管理者",
+        scope_type="vendor",
+        tenant_id=None,
+        roles=("vendor_admin",),
+    )
 
 
 def _create_corporation(client: TestClient, name: str, category: str = "corporation") -> str:
@@ -41,8 +54,9 @@ def _register(client: TestClient, source: str, target: str, kind: str = "parent_
 @pytest.fixture
 def relations_api(tmp_path: Path) -> Iterator[tuple[TestClient, Engine, str]]:
     app = create_app(Settings(database_path=str(tmp_path / "relations.sqlite3")))
+    app.dependency_overrides[get_current_auth_principal] = _vendor_principal
     config = Config(str(Path(__file__).resolve().parents[2] / "alembic.ini"))
-    with TestClient(app) as client:
+    with TestClient(app, headers={"X-Requested-With": "XMLHttpRequest"}) as client:
         engine = app.state.resources.require(APP_ENGINE_RESOURCE_NAME, Engine)
         with engine.begin() as connection:
             config.attributes["connection"] = connection

@@ -1,5 +1,7 @@
-"""法人 API の CRUD・バリデーション統合テスト。"""
+"""法人 API の CRUD・バリデーション・認可・CSRF 統合テスト。"""
 
+import io
+import sqlite3
 from pathlib import Path
 
 import pytest
@@ -7,10 +9,24 @@ from alembic import command
 from alembic.config import Config
 from fastapi.testclient import TestClient
 
+from app.application.auth.contracts import AuthPrincipal
+from app.cli.bootstrap_vendor_admin import main as cli_main
 from app.infrastructure.config import Settings
 from app.main import create_app
+from app.presentation.dependencies import get_current_auth_principal
 
 _ALEMBIC_INI = Path(__file__).resolve().parents[2] / "alembic.ini"
+
+
+def _vendor_principal() -> AuthPrincipal:
+    return AuthPrincipal(
+        user_id="vendor-admin-1",
+        email="admin@vendor.example.com",
+        display_name="システム管理者",
+        scope_type="vendor",
+        tenant_id=None,
+        roles=("vendor_admin",),
+    )
 
 
 def test_corporations_api_crud_and_validation_flow(
@@ -20,8 +36,9 @@ def test_corporations_api_crud_and_validation_flow(
     monkeypatch.setenv("DATABASE_PATH", str(db_path))
     command.upgrade(Config(str(_ALEMBIC_INI)), "head")
     app = create_app(Settings(database_path=str(db_path)))
+    app.dependency_overrides[get_current_auth_principal] = _vendor_principal
 
-    with TestClient(app) as client:
+    with TestClient(app, headers={"X-Requested-With": "XMLHttpRequest"}) as client:
         full_width_number = "１２３４５６７８９０１２３"
         invalid_number_create = client.post(
             "/api/corporations",
@@ -171,3 +188,156 @@ def test_corporations_api_crud_and_validation_flow(
         )
         assert re_transition.status_code == 400
         assert re_transition.json()["code"] == "INVALID_CORPORATION_TRANSITION"
+
+
+def test_corporations_and_relations_require_vendor_auth_and_csrf(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    db_path = tmp_path / "corp_auth.db"
+    monkeypatch.setenv("DATABASE_PATH", str(db_path))
+    command.upgrade(Config(str(_ALEMBIC_INI)), "head")
+
+    monkeypatch.setattr("sys.stdin", io.StringIO("VendorAdmin123!\n"))
+    assert (
+        cli_main(
+            [
+                "--email",
+                "admin@vendor.example.com",
+                "--name",
+                "初期管理者",
+                "--password-stdin",
+            ]
+        )
+        == 0
+    )
+
+    app = create_app(Settings(database_path=str(db_path)))
+
+    with TestClient(app) as client:
+        # 1. 未認証時は GET / POST ともに 401 UNAUTHORIZED
+        unauth_list = client.get("/api/corporations")
+        assert unauth_list.status_code == 401
+        assert unauth_list.json()["code"] == "UNAUTHORIZED"
+
+        unauth_create = client.post(
+            "/api/corporations",
+            headers={"X-Requested-With": "XMLHttpRequest"},
+            json={"category": "corporation", "name": "未認証法人"},
+        )
+        assert unauth_create.status_code == 401
+        assert unauth_create.json()["code"] == "UNAUTHORIZED"
+
+        unauth_relations = client.get("/api/corporate-relations")
+        assert unauth_relations.status_code == 401
+        assert unauth_relations.json()["code"] == "UNAUTHORIZED"
+
+        # 2. vendor_admin でログインし、vendor_member を発行する
+        login_res = client.post(
+            "/api/auth/login",
+            json={"email": "admin@vendor.example.com", "password": "VendorAdmin123!"},
+        )
+        assert login_res.status_code == 200
+
+        # CSRF ヘッダーなしの POST /api/corporations は 403 CSRF_VALIDATION_FAILED
+        no_csrf = client.post(
+            "/api/corporations",
+            json={"category": "corporation", "name": "CSRFなし法人"},
+        )
+        assert no_csrf.status_code == 403
+        assert no_csrf.json()["code"] == "CSRF_VALIDATION_FAILED"
+
+        member_res = client.post(
+            "/api/vendor/users",
+            headers={"X-Requested-With": "XMLHttpRequest"},
+            json={
+                "email": "member@vendor.example.com",
+                "display_name": "一般社員",
+                "roles": ["vendor_member"],
+                "password": "VendorMember123!",
+            },
+        )
+        assert member_res.status_code == 201
+
+        # 3. vendor_member でログインしても法人の登録・参照・更新がすべて実行できる
+        client.post("/api/auth/logout", headers={"X-Requested-With": "XMLHttpRequest"})
+        member_login = client.post(
+            "/api/auth/login",
+            json={"email": "member@vendor.example.com", "password": "VendorMember123!"},
+        )
+        assert member_login.status_code == 200
+
+        created_corp = client.post(
+            "/api/corporations",
+            headers={"X-Requested-With": "XMLHttpRequest"},
+            json={
+                "category": "corporation",
+                "name": "株式会社あおぞら薬局",
+                "corporate_number": "1111222233334",
+                "address": "東京都千代田区1-1",
+            },
+        )
+        assert created_corp.status_code == 201
+        corp_id = created_corp.json()["id"]
+
+        assert client.get("/api/corporations").status_code == 200
+        assert client.get(f"/api/corporations/{corp_id}").status_code == 200
+
+        patched_corp = client.patch(
+            f"/api/corporations/{corp_id}",
+            headers={"X-Requested-With": "XMLHttpRequest"},
+            json={"address": "東京都千代田区2-2"},
+        )
+        assert patched_corp.status_code == 200
+        assert patched_corp.json()["address"] == "東京都千代田区2-2"
+
+        # 4. 薬局テナント所属ユーザー（tenant_admin）でログインした場合は 403 INSUFFICIENT_ROLE
+        client.post("/api/auth/logout", headers={"X-Requested-With": "XMLHttpRequest"})
+        with sqlite3.connect(db_path) as conn:
+            conn.execute(
+                """
+                INSERT INTO auth_users (
+                    id, email, display_name, affiliation_type, tenant_id,
+                    status, password_hash, created_at, updated_at
+                )
+                SELECT 'tenant-user-1', 'admin@pharmacy.example.com', '薬局管理者', 'tenant', ?,
+                       status, password_hash, created_at, updated_at
+                FROM auth_users WHERE email = 'admin@vendor.example.com'
+                """,
+                (corp_id,),
+            )
+            conn.execute(
+                """
+                INSERT INTO auth_role_assignments (
+                    id, user_id, role, scope_type, tenant_id,
+                    valid_from, valid_to, revoked_at, granted_by, granted_at
+                )
+                VALUES (
+                    'ra-tenant-1', 'tenant-user-1', 'tenant_admin', 'tenant', ?,
+                    '2025-01-01T00:00:00+00:00', NULL, NULL, NULL, '2025-01-01T00:00:00+00:00'
+                )
+                """,
+                (corp_id,),
+            )
+
+        tenant_login = client.post(
+            "/api/auth/login",
+            json={
+                "email": "admin@pharmacy.example.com",
+                "password": "VendorAdmin123!",
+                "scope_type": "tenant",
+                "tenant_id": corp_id,
+            },
+        )
+        assert tenant_login.status_code == 200
+
+        forbidden_get = client.get("/api/corporations")
+        assert forbidden_get.status_code == 403
+        assert forbidden_get.json()["code"] == "INSUFFICIENT_ROLE"
+
+        forbidden_post = client.post(
+            "/api/corporations",
+            headers={"X-Requested-With": "XMLHttpRequest"},
+            json={"category": "corporation", "name": "テナントからの不正登録"},
+        )
+        assert forbidden_post.status_code == 403
+        assert forbidden_post.json()["code"] == "INSUFFICIENT_ROLE"

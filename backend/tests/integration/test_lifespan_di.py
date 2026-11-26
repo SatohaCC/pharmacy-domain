@@ -6,6 +6,7 @@ import pytest
 from fastapi import FastAPI
 from fastapi.testclient import TestClient
 
+from app.application.auth.contracts import AuthPrincipal
 from app.application.corporate.contracts import (
     CorporationItem,
     CorporationListResult,
@@ -14,7 +15,7 @@ from app.application.corporate.contracts import (
 from app.infrastructure.config import Settings
 from app.infrastructure.resources import ResourceRegistry
 from app.main import create_app
-from app.presentation.dependencies import get_corporation_queries
+from app.presentation.dependencies import get_corporation_queries, get_current_auth_principal
 
 
 class _DummyAsyncResource:
@@ -78,6 +79,14 @@ def test_dependency_overrides_can_replace_corporation_use_cases_in_tests() -> No
             )
 
     app.dependency_overrides[get_corporation_queries] = lambda: _StubUseCases()
+    app.dependency_overrides[get_current_auth_principal] = lambda: AuthPrincipal(
+        user_id="vendor-admin-1",
+        email="admin@vendor.example.com",
+        display_name="システム管理者",
+        scope_type="vendor",
+        tenant_id=None,
+        roles=("vendor_admin",),
+    )
 
     with TestClient(app) as client:
         response = client.get("/api/corporations")
