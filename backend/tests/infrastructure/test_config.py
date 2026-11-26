@@ -12,6 +12,7 @@ def test_load_settings_parses_existing_environment_formats(monkeypatch: pytest.M
     monkeypatch.setenv("DOCS_ENABLED", " Off ")
     monkeypatch.setenv("LOG_LEVEL", " debug ")
     monkeypatch.setenv("DATABASE_PATH", " :memory: ")
+    monkeypatch.setenv("DATABASE_URL", " postgresql://user:pass@127.0.0.1:5432/pharmacy ")
 
     loaded = load_settings()
 
@@ -19,13 +20,15 @@ def test_load_settings_parses_existing_environment_formats(monkeypatch: pytest.M
     assert loaded.docs_enabled is False
     assert loaded.log_level == "DEBUG"
     assert loaded.database_path == ":memory:"
+    assert loaded.database_url == "postgresql://user:pass@127.0.0.1:5432/pharmacy"
+    assert loaded.effective_database_target == "postgresql://user:pass@127.0.0.1:5432/pharmacy"
 
 
 @pytest.mark.parametrize("empty_value", [None, ""])
 def test_load_settings_uses_defaults(
     monkeypatch: pytest.MonkeyPatch, empty_value: str | None
 ) -> None:
-    for key in ("CORS_ORIGINS", "DOCS_ENABLED", "LOG_LEVEL", "DATABASE_PATH"):
+    for key in ("CORS_ORIGINS", "DOCS_ENABLED", "LOG_LEVEL", "DATABASE_PATH", "DATABASE_URL"):
         if empty_value is None:
             monkeypatch.delenv(key, raising=False)
         else:
@@ -37,6 +40,8 @@ def test_load_settings_uses_defaults(
     assert loaded.docs_enabled is True
     assert loaded.log_level == "INFO"
     assert loaded.database_path == "data/app.db"
+    assert loaded.database_url is None
+    assert loaded.effective_database_target == "data/app.db"
 
 
 def test_load_settings_reads_only_supported_environment_fields(

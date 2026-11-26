@@ -8,6 +8,7 @@ const pythonPath =
   process.platform === "win32"
     ? path.join(backendDir, ".venv", "Scripts", "python.exe")
     : path.join(backendDir, ".venv", "bin", "python");
+const e2eDatabaseUrl = process.env.E2E_DATABASE_URL?.trim();
 const e2eDbPath = (() => {
   const configured = process.env.E2E_DATABASE_PATH?.trim();
   if (!configured) {
@@ -18,6 +19,18 @@ const e2eDbPath = (() => {
     : path.resolve(backendDir, configured);
 })();
 
+function buildBackendEnv(): NodeJS.ProcessEnv {
+  const nextEnv: NodeJS.ProcessEnv = { ...process.env };
+  if (e2eDatabaseUrl) {
+    nextEnv.DATABASE_URL = e2eDatabaseUrl;
+    delete nextEnv.DATABASE_PATH;
+  } else {
+    nextEnv.DATABASE_PATH = e2eDbPath;
+    delete nextEnv.DATABASE_URL;
+  }
+  return nextEnv;
+}
+
 function resetAuthAndCorporationTables(): void {
   execFileSync(
     pythonPath,
@@ -25,22 +38,19 @@ function resetAuthAndCorporationTables(): void {
       "-B",
       "-c",
       [
-        "import os, sqlite3",
-        "conn = sqlite3.connect(os.environ['DATABASE_PATH'])",
-        "conn.execute('DELETE FROM auth_refresh_sessions')",
-        "conn.execute('DELETE FROM auth_role_assignments')",
-        "conn.execute('DELETE FROM auth_users')",
-        "conn.execute('DELETE FROM corporate_relation_revisions')",
-        "conn.execute('DELETE FROM corporate_relations')",
-        "conn.execute('DELETE FROM corporation_history')",
-        "conn.execute('DELETE FROM corporations')",
-        "conn.commit()",
-        "conn.close()",
-      ].join("; "),
+        "from sqlalchemy import text",
+        "from app.infrastructure.config import load_settings",
+        "from app.infrastructure.persistence.database import create_app_engine",
+        "engine = create_app_engine(load_settings().effective_database_target)",
+        "with engine.begin() as conn:",
+        "    for tbl in ('auth_refresh_sessions', 'auth_role_assignments', 'auth_users', 'corporate_relation_revisions', 'corporate_relations', 'corporation_history', 'corporations'):",
+        "        conn.execute(text(f'DELETE FROM {tbl}'))",
+        "engine.dispose()",
+      ].join("\n"),
     ],
     {
       cwd: backendDir,
-      env: { ...process.env, DATABASE_PATH: e2eDbPath },
+      env: buildBackendEnv(),
       encoding: "utf8",
     },
   );
@@ -61,7 +71,7 @@ function runBootstrapCli(args: { email: string; name: string; password: string }
     ],
     {
       cwd: backendDir,
-      env: { ...process.env, DATABASE_PATH: e2eDbPath },
+      env: buildBackendEnv(),
       input: `${args.password}\n`,
       encoding: "utf8",
     },

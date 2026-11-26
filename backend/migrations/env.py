@@ -24,14 +24,14 @@ def run_migrations() -> None:
         run_with_connection(connection)
         return
 
-    database_path = load_settings().database_path
+    database_target = load_settings().effective_database_target
     if context.is_offline_mode():
-        context.configure(url=database_url(database_path), target_metadata=metadata)
+        context.configure(url=database_url(database_target), target_metadata=metadata)
         with context.begin_transaction():
             context.run_migrations()
         return
 
-    engine = create_app_engine(database_path)
+    engine = create_app_engine(database_target)
     try:
         with migration_connection(engine) as connection:
             run_with_connection(connection)

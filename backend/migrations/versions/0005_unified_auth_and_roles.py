@@ -37,6 +37,7 @@ def upgrade() -> None:
         ["email"],
         unique=True,
         sqlite_where=sa.text("affiliation_type = 'vendor'"),
+        postgresql_where=sa.text("affiliation_type = 'vendor'"),
     )
     op.create_index(
         "uq_auth_users_tenant_email",
@@ -44,6 +45,7 @@ def upgrade() -> None:
         ["tenant_id", "email"],
         unique=True,
         sqlite_where=sa.text("affiliation_type = 'tenant'"),
+        postgresql_where=sa.text("affiliation_type = 'tenant'"),
     )
 
     op.create_table(

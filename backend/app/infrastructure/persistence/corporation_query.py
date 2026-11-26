@@ -53,20 +53,38 @@ class SqlAlchemyCorporationQueryPort:
 
     def list_corporations(self, query: ListCorporationsQuery) -> CorporationListResult:
         """検索条件に一致する法人投影一覧を作成日時降順で返す。"""
+        is_sqlite = self._engine.dialect.name == "sqlite"
         stmt = select(corporations_table)
         if query.category is not None:
             stmt = stmt.where(corporations_table.c.category == query.category)
         if query.status is not None:
             stmt = stmt.where(corporations_table.c.status == query.status)
         if query.query is not None:
-            stmt = stmt.where(
-                or_(
-                    func.unicode_contains(corporations_table.c.name, query.query),
-                    func.unicode_contains(corporations_table.c.address, query.query),
-                    func.unicode_contains(corporations_table.c.corporate_number, query.query),
+            if is_sqlite:
+                stmt = stmt.where(
+                    or_(
+                        func.unicode_contains(corporations_table.c.name, query.query),
+                        func.unicode_contains(corporations_table.c.address, query.query),
+                        func.unicode_contains(corporations_table.c.corporate_number, query.query),
+                    )
                 )
+            else:
+                escaped = query.query.replace("\\", "\\\\").replace("%", "\\%").replace("_", "\\_")
+                pattern = f"%{escaped}%"
+                stmt = stmt.where(
+                    or_(
+                        corporations_table.c.name.ilike(pattern, escape="\\"),
+                        corporations_table.c.address.ilike(pattern, escape="\\"),
+                        corporations_table.c.corporate_number.ilike(pattern, escape="\\"),
+                    )
+                )
+        if is_sqlite:
+            stmt = stmt.order_by(corporations_table.c.created_at.desc(), text("rowid DESC"))
+        else:
+            stmt = stmt.order_by(
+                corporations_table.c.created_at.desc(),
+                corporations_table.c.id.desc(),
             )
-        stmt = stmt.order_by(corporations_table.c.created_at.desc(), text("rowid DESC"))
 
         with self._engine.connect() as connection:
             rows = connection.execute(stmt).mappings().all()

@@ -1,10 +1,8 @@
 """SQLAlchemy を用いた Unit of Work 実装。"""
 
-import sqlite3
 from types import TracebackType
 
 from sqlalchemy import Connection, Engine, RootTransaction
-from sqlalchemy.exc import OperationalError
 
 from app.application.foundation.errors import ApplicationConflictError
 from app.infrastructure.persistence.corporate_relation_repository import (
@@ -13,7 +11,11 @@ from app.infrastructure.persistence.corporate_relation_repository import (
 from app.infrastructure.persistence.corporation_repository import (
     SqlAlchemyCorporationRepository,
 )
-from app.infrastructure.persistence.database import begin_write_transaction
+from app.infrastructure.persistence.database import (
+    CORPORATION_WRITE_LOCK_KEY,
+    begin_write_transaction,
+    is_write_lock_conflict,
+)
 
 
 class SqlAlchemyCorporationUnitOfWork:
@@ -40,15 +42,10 @@ class SqlAlchemyCorporationUnitOfWork:
     def __enter__(self) -> SqlAlchemyCorporationUnitOfWork:
         connection = self._engine.connect()
         try:
-            transaction = begin_write_transaction(connection)
+            transaction = begin_write_transaction(connection, lock_key=CORPORATION_WRITE_LOCK_KEY)
         except BaseException as exc:
             connection.close()
-            # 拡張結果コードの下位 8 ビットは基本結果コードを表す。
-            if (
-                isinstance(exc, OperationalError)
-                and isinstance(exc.orig, sqlite3.OperationalError)
-                and (exc.orig.sqlite_errorcode & 0xFF) == sqlite3.SQLITE_BUSY
-            ):
+            if is_write_lock_conflict(exc):
                 raise ApplicationConflictError(
                     "法人データの書き込みが競合しました。再試行してください。",
                     code="CORPORATION_CONFLICT",

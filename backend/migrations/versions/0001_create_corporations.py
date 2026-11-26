@@ -32,6 +32,7 @@ def upgrade() -> None:
         ["corporate_number"],
         unique=True,
         sqlite_where=sa.text("corporate_number IS NOT NULL"),
+        postgresql_where=sa.text("corporate_number IS NOT NULL"),
     )
 
 

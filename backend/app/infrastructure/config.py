@@ -21,9 +21,17 @@ class Settings:
     docs_enabled: bool = True
     log_level: str = "INFO"
     database_path: str = "data/app.db"
+    database_url: str | None = None
     jwt_secret_key: str = _DEFAULT_DEV_JWT_SECRET
     jwt_issuer: str = "pharmacy-domain"
     auth_cookie_secure: bool = False
+
+    @property
+    def effective_database_target(self) -> str:
+        """接続先 URL が指定されていれば優先し、未指定時は SQLite パスを返す。"""
+        if self.database_url is not None and self.database_url.strip():
+            return self.database_url.strip()
+        return self.database_path
 
 
 def _parse_bool(raw: str) -> bool:
@@ -62,6 +70,7 @@ def load_settings() -> Settings:
     raw_docs = os.environ.get("DOCS_ENABLED", "")
     raw_log = os.environ.get("LOG_LEVEL", "")
     raw_db = os.environ.get("DATABASE_PATH", "")
+    raw_db_url = os.environ.get("DATABASE_URL", "")
     raw_jwt_secret = os.environ.get("JWT_SECRET_KEY")
     raw_jwt_issuer = os.environ.get("JWT_ISSUER", "")
     raw_cookie_secure = os.environ.get("AUTH_COOKIE_SECURE", "")
@@ -72,6 +81,7 @@ def load_settings() -> Settings:
     docs_enabled = _parse_bool(raw_docs) if raw_docs.strip() else True
     log_level = _parse_log_level(raw_log) if raw_log.strip() else "INFO"
     database_path = raw_db.strip() if raw_db.strip() else "data/app.db"
+    database_url = raw_db_url.strip() or None
     jwt_secret_key = _parse_jwt_secret_key(raw_jwt_secret)
     jwt_issuer = raw_jwt_issuer.strip() if raw_jwt_issuer.strip() else "pharmacy-domain"
     auth_cookie_secure = _parse_bool(raw_cookie_secure) if raw_cookie_secure.strip() else False
@@ -81,6 +91,7 @@ def load_settings() -> Settings:
         docs_enabled=docs_enabled,
         log_level=log_level,
         database_path=database_path,
+        database_url=database_url,
         jwt_secret_key=jwt_secret_key,
         jwt_issuer=jwt_issuer,
         auth_cookie_secure=auth_cookie_secure,
