@@ -86,7 +86,7 @@ describe("VendorUsersContainer / LoginContainer 認証キャッシュ制御", ()
     await waitFor(() => {
       expect(screen.getByRole("heading", { name: "システムベンダーログイン" })).toBeVisible();
     });
-    expect(replaceMock).not.toHaveBeenCalledWith("/vendor/users");
+    expect(replaceMock).not.toHaveBeenCalledWith("/vendor/corporations");
   });
 
   it("503 のような一過性エラー時はキャッシュ済みユーザーで画面を維持し /login へ遷移しない", async () => {
