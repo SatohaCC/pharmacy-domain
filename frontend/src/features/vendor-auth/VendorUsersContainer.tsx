@@ -5,8 +5,10 @@ import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 import { ApiError } from "@/shared/lib/api/apiClient";
 import { Spinner } from "@/shared/ui/spinner/Spinner";
+import { isAuthenticationError } from "./api";
 import type { VendorUser } from "./schemas";
 import {
+  useClearVendorAuthCache,
   useCreateVendorUser,
   useCurrentVendorUser,
   useVendorLogout,
@@ -15,9 +17,10 @@ import {
 import { VendorUsersWorkspace } from "./VendorUsersWorkspace";
 import { vendorUsersWorkspaceStyles as s } from "./VendorUsersWorkspace.styles";
 
-/** ベンダーアカウント管理画面のコンテナ。未認証時は /login へ遷移する。 */
+/** ベンダーアカウント管理画面のコンテナ。未認証・認証失効時はキャッシュを削除して /login へ遷移する。 */
 export function VendorUsersContainer() {
   const router = useRouter();
+  const clearVendorAuthCache = useClearVendorAuthCache();
   const currentUserQuery = useCurrentVendorUser();
   const isAdmin = currentUserQuery.data?.role === "admin";
   const usersQuery = useVendorUsers(isAdmin);
@@ -31,13 +34,29 @@ export function VendorUsersContainer() {
     initialPassword: string;
   } | null>(null);
 
+  const hasSessionAuthError =
+    currentUserQuery.isAuthError ||
+    isAuthenticationError(usersQuery.error) ||
+    isAuthenticationError(createUserMutation.error);
+
   useEffect(() => {
+    if (hasSessionAuthError) {
+      clearVendorAuthCache();
+      router.replace("/login");
+      return;
+    }
     if (!currentUserQuery.isLoading && !currentUserQuery.data) {
       router.replace("/login");
     }
-  }, [currentUserQuery.data, currentUserQuery.isLoading, router]);
+  }, [
+    clearVendorAuthCache,
+    currentUserQuery.data,
+    currentUserQuery.isLoading,
+    hasSessionAuthError,
+    router,
+  ]);
 
-  if (currentUserQuery.isLoading || !currentUserQuery.data) {
+  if (currentUserQuery.isLoading || hasSessionAuthError || !currentUserQuery.data) {
     return (
       <div {...stylex.props(s.loadingBox)}>
         <Spinner size="lg" label="認証状態を確認中…" showLabel />

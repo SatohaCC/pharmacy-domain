@@ -1,11 +1,14 @@
 "use client";
 
+import { useCallback } from "react";
 import { useAppMutation } from "@/shared/lib/query/useAppMutation";
 import { useAppQuery } from "@/shared/lib/query/useAppQuery";
+import { useRemoveQueries } from "@/shared/lib/query/useRemoveQueries";
 import {
   createVendorUser,
   fetchCurrentVendorUser,
   fetchVendorUsers,
+  isAuthenticationError,
   loginVendorUser,
   logoutVendorUser,
 } from "./api";
@@ -17,13 +20,28 @@ export const vendorAuthKeys = {
   users: ["vendor-auth", "users"] as const,
 };
 
-/** 現在ログイン中のベンダーユーザー情報を取得する。 */
+/** 現在ログイン中のベンダーユーザー情報を取得する（認証失効時はキャッシュを隠蔽する）。 */
 export function useCurrentVendorUser() {
-  return useAppQuery({
+  const query = useAppQuery({
     queryKey: vendorAuthKeys.me,
     queryFn: ({ signal }) => fetchCurrentVendorUser(signal),
     retry: false,
   });
+  const isAuthError = isAuthenticationError(query.error);
+
+  return {
+    ...query,
+    data: isAuthError ? null : query.data,
+    isAuthError,
+  };
+}
+
+/** 認証キャッシュ（vendor-auth）をすべて削除するコールバックを返す。 */
+export function useClearVendorAuthCache() {
+  const removeQueries = useRemoveQueries();
+  return useCallback(() => {
+    removeQueries(vendorAuthKeys.all);
+  }, [removeQueries]);
 }
 
 /** ベンダーログインを実行する。 */

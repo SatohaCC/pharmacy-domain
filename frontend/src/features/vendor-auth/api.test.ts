@@ -1,10 +1,20 @@
-import { afterEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { ApiError } from "@/shared/lib/api/apiClient";
-import { fetchCurrentVendorUser, fetchVendorUsers } from "./api";
+import {
+  fetchCurrentVendorUser,
+  fetchVendorUsers,
+  refreshVendorSessionSingleFlight,
+  VENDOR_AUTH_LAST_REFRESH_KEY,
+} from "./api";
 
 describe("vendor-auth apiClient", () => {
+  beforeEach(() => {
+    globalThis.localStorage?.removeItem(VENDOR_AUTH_LAST_REFRESH_KEY);
+  });
+
   afterEach(() => {
     vi.restoreAllMocks();
+    vi.unstubAllGlobals();
   });
 
   it("並列リクエストが401になったときリフレッシュを1回だけ実行して両方リトライする", async () => {
@@ -71,5 +81,24 @@ describe("vendor-auth apiClient", () => {
     );
 
     await expect(fetchCurrentVendorUser()).rejects.toBeInstanceOf(ApiError);
+  });
+
+  it("別タブがすでにリフレッシュ済みの場合は Web Locks 内でリフレッシュを再送信しない", async () => {
+    const requestStartedAt = Date.now();
+    globalThis.localStorage.setItem(VENDOR_AUTH_LAST_REFRESH_KEY, String(requestStartedAt + 50));
+
+    const fetchSpy = vi.spyOn(globalThis, "fetch");
+    const requestLockMock = vi.fn(
+      async (_name: string, callback: () => Promise<unknown>) => await callback(),
+    );
+    vi.stubGlobal("navigator", {
+      locks: { request: requestLockMock },
+    });
+
+    const result = await refreshVendorSessionSingleFlight(requestStartedAt);
+
+    expect(requestLockMock).toHaveBeenCalledTimes(1);
+    expect(fetchSpy).not.toHaveBeenCalled();
+    expect(result).toBeNull();
   });
 });
