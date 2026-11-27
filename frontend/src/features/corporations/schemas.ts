@@ -26,6 +26,30 @@ export const corporationListSchema = z.object({
 });
 export type CorporationList = z.infer<typeof corporationListSchema>;
 
+export const corporationChangeKindSchema = z.enum([
+  "registration",
+  "profile",
+  "dissolution",
+  "merger",
+  "correction",
+  "legacy",
+]);
+export type CorporationChangeKind = z.infer<typeof corporationChangeKindSchema>;
+
+export const corporationHistoryRecordSchema = z.object({
+  corporation: corporationSchema,
+  valid_from: z.string(),
+  valid_to: z.string().nullable(),
+  recorded_at: z.string(),
+  kind: corporationChangeKindSchema,
+  evidence: z.string().nullable(),
+  surviving_corporation_id: z.string().nullable(),
+  recorded_by: z.string().nullable().optional(),
+});
+export type CorporationHistoryRecord = z.infer<typeof corporationHistoryRecordSchema>;
+
+export const corporationHistoryListSchema = z.array(corporationHistoryRecordSchema);
+
 export interface CorporationListFilter {
   q?: string;
   category?: CorporationCategory;

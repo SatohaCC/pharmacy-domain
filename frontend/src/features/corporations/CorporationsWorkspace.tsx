@@ -13,10 +13,12 @@ import { RadioGroup, type RadioOption } from "@/shared/ui/radio-group/RadioGroup
 import { Select, type SelectOption } from "@/shared/ui/select/Select";
 import { Spinner } from "@/shared/ui/spinner/Spinner";
 import { TextField } from "@/shared/ui/text-field/TextField";
+import { CorporationHistoryPanel } from "./CorporationHistoryPanel";
 import { corporationsWorkspaceStyles as s } from "./CorporationsWorkspace.styles";
 import type {
   Corporation,
   CorporationCategory,
+  CorporationHistoryRecord,
   CorporationListFilter,
   CorporationStatus,
 } from "./schemas";
@@ -135,6 +137,41 @@ export interface CorporationsWorkspaceProps {
   ) => Promise<boolean>;
   isLoggingOut: boolean;
   onLogout: () => void;
+  selectedHistoryCorpId?: string | null;
+  onSelectHistoryCorp?: (corporationId: string | null) => void;
+  historyRecords?: readonly CorporationHistoryRecord[];
+  isLoadingHistory?: boolean;
+  historyErrorMessage?: string | null;
+  snapshotParams?: { as_of?: string; recorded_as_of?: string } | null;
+  onLookupSnapshot?: (params: { as_of?: string; recorded_as_of?: string } | null) => void;
+  snapshotCorporation?: Corporation | null;
+  isLoadingSnapshot?: boolean;
+  snapshotErrorMessage?: string | null;
+  isChangingStatus?: boolean;
+  statusErrorMessage?: string | null;
+  onChangeStatus?: (
+    corporationId: string,
+    input: {
+      status: "dissolved" | "merged_out";
+      effective_date?: string | null;
+      surviving_corporation_id?: string | null;
+      evidence?: string | null;
+    },
+  ) => Promise<boolean>;
+  isCorrectingHistory?: boolean;
+  correctionErrorMessage?: string | null;
+  onCorrectHistory?: (
+    corporationId: string,
+    input: {
+      as_of: string;
+      name?: string | null;
+      corporate_number?: string | null;
+      address?: string | null;
+      valid_from?: string | null;
+      valid_to?: string | null;
+      evidence: string;
+    },
+  ) => Promise<boolean>;
 }
 
 /** Material Design 3 準拠の導入企業（法人・個人開設者）管理ワークスペース。 */
@@ -161,6 +198,22 @@ export function CorporationsWorkspace({
   onUpdateCorporation,
   isLoggingOut,
   onLogout,
+  selectedHistoryCorpId = null,
+  onSelectHistoryCorp,
+  historyRecords = [],
+  isLoadingHistory = false,
+  historyErrorMessage = null,
+  snapshotParams = null,
+  onLookupSnapshot,
+  snapshotCorporation = null,
+  isLoadingSnapshot = false,
+  snapshotErrorMessage = null,
+  isChangingStatus = false,
+  statusErrorMessage = null,
+  onChangeStatus,
+  isCorrectingHistory = false,
+  correctionErrorMessage = null,
+  onCorrectHistory,
 }: CorporationsWorkspaceProps) {
   const [category, setCategory] = useState<CorporationCategory>("corporation");
   const [name, setName] = useState("");
@@ -600,23 +653,64 @@ export function CorporationsWorkspace({
                           </p>
                         </div>
 
-                        {item.status === "active" ? (
-                          <Button
-                            variant={isEditing ? "tonal" : "outlined"}
-                            size="sm"
-                            disabled={!isEditing && isFetchingCorporations}
-                            onClick={() => {
-                              if (isEditing) {
-                                setEditingCorpId(null);
-                              } else {
-                                startEditing(item);
-                              }
-                            }}
-                          >
-                            {isEditing ? "編集を閉じる" : "基本情報を編集"}
-                          </Button>
-                        ) : null}
+                        <div {...stylex.props(s.actionRow)}>
+                          {onSelectHistoryCorp ? (
+                            <Button
+                              variant={selectedHistoryCorpId === item.id ? "tonal" : "outlined"}
+                              size="sm"
+                              onClick={() => {
+                                onSelectHistoryCorp(
+                                  selectedHistoryCorpId === item.id ? null : item.id,
+                                );
+                              }}
+                            >
+                              {selectedHistoryCorpId === item.id
+                                ? "履歴を閉じる"
+                                : "履歴・状態管理"}
+                            </Button>
+                          ) : null}
+                          {item.status === "active" ? (
+                            <Button
+                              variant={isEditing ? "tonal" : "outlined"}
+                              size="sm"
+                              disabled={!isEditing && isFetchingCorporations}
+                              onClick={() => {
+                                if (isEditing) {
+                                  setEditingCorpId(null);
+                                } else {
+                                  startEditing(item);
+                                }
+                              }}
+                            >
+                              {isEditing ? "編集を閉じる" : "基本情報を編集"}
+                            </Button>
+                          ) : null}
+                        </div>
                       </div>
+
+                      {selectedHistoryCorpId === item.id &&
+                      onLookupSnapshot &&
+                      onChangeStatus &&
+                      onCorrectHistory ? (
+                        <CorporationHistoryPanel
+                          corporation={item}
+                          activeCorporations={corporations.filter((c) => c.status === "active")}
+                          historyRecords={historyRecords}
+                          isLoadingHistory={isLoadingHistory}
+                          historyErrorMessage={historyErrorMessage}
+                          snapshotParams={snapshotParams}
+                          onLookupSnapshot={onLookupSnapshot}
+                          snapshotCorporation={snapshotCorporation}
+                          isLoadingSnapshot={isLoadingSnapshot}
+                          snapshotErrorMessage={snapshotErrorMessage}
+                          isChangingStatus={isChangingStatus}
+                          statusErrorMessage={statusErrorMessage}
+                          onChangeStatus={onChangeStatus}
+                          isCorrectingHistory={isCorrectingHistory}
+                          correctionErrorMessage={correctionErrorMessage}
+                          onCorrectHistory={onCorrectHistory}
+                        />
+                      ) : null}
 
                       {isEditing ? (
                         <form

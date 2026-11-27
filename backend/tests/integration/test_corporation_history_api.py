@@ -335,3 +335,30 @@ def test_backdated_update_returns_current_state_period(client: TestClient) -> No
     assert backdated.json()["name"] == "現在法人"
     assert backdated.json()["valid_from"] == "2025-03-01"
     assert backdated.json()["valid_to"] is None
+
+
+def test_merge_requires_active_surviving_corporation(client: TestClient) -> None:
+    target = _register(client, "消滅予定法人")
+    dissolved_surviving = _register(client, "解散済み合併先")
+    dissolved_id = dissolved_surviving.rsplit("/", 1)[-1]
+    assert (
+        client.patch(
+            f"{dissolved_surviving}/status",
+            json={"status": "dissolved", "effective_date": "2025-02-01"},
+        ).status_code
+        == 200
+    )
+
+    rejected = client.post(
+        f"{target}/merge",
+        json={
+            "effective_date": "2025-03-01",
+            "surviving_corporation_id": dissolved_id,
+            "evidence": "合併テスト",
+        },
+    )
+
+    assert (rejected.status_code, rejected.json()["code"]) == (
+        400,
+        "INVALID_CORPORATION_TRANSITION",
+    )
