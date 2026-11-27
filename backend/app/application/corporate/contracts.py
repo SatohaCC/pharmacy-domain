@@ -17,6 +17,7 @@ class RegisterCorporationInput:
     valid_to: date | None = None
     evidence: str | None = None
     recorded_by: str | None = None
+    usage_status: str = "not_started"
 
 
 @dataclass(frozen=True, slots=True)
@@ -45,12 +46,21 @@ class ChangeCorporationStatusInput:
 
 
 @dataclass(frozen=True, slots=True)
+class ChangeCorporationUsageStatusInput:
+    """法人システム利用状態変更コマンドの入力。"""
+
+    usage_status: str
+    recorded_by: str | None = None
+
+
+@dataclass(frozen=True, slots=True)
 class ListCorporationsQuery:
     """法人一覧取得クエリの検索条件。"""
 
     category: str | None = None
     status: str | None = None
     query: str | None = None
+    usage_status: str | None = None
 
 
 @dataclass(frozen=True, slots=True)
@@ -67,6 +77,7 @@ class CorporationItem:
     updated_at: datetime
     valid_from: date | None = None
     valid_to: date | None = None
+    usage_status: str = "not_started"
 
 
 @dataclass(frozen=True, slots=True)
@@ -122,6 +133,16 @@ class CorporationCommandPort(Protocol):
         now: datetime | None = None,
     ) -> CorporationItem:
         """法人の存続状態を変更する。"""
+        ...
+
+    def change_usage_status(
+        self,
+        corporation_id: str,
+        data: ChangeCorporationUsageStatusInput,
+        *,
+        now: datetime | None = None,
+    ) -> CorporationItem:
+        """法人のシステム利用状態を変更する。"""
         ...
 
     def correct_history(

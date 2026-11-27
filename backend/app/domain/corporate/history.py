@@ -126,6 +126,7 @@ class CorporationHistory:
                     corporation=replace(
                         selected.corporation,
                         status=status_change.corporation.status,
+                        usage_status=status_change.corporation.usage_status,
                         updated_at=max(selected.recorded_at, status_change.recorded_at),
                     ),
                     period=EffectiveDateRange(max(start, transition), end),
@@ -156,7 +157,12 @@ class CorporationHistory:
             else CorporationChangeKind.DISSOLUTION
         )
         return CorporationHistoryRecord(
-            replace(baseline.corporation, status=updated.status, updated_at=recorded_at),
+            replace(
+                baseline.corporation,
+                status=updated.status,
+                usage_status=updated.usage_status,
+                updated_at=recorded_at,
+            ),
             EffectiveDateRange(effective_date),
             kind,
             evidence,

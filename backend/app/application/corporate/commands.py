@@ -5,6 +5,7 @@ from datetime import UTC, date, datetime, timedelta, timezone
 
 from app.application.corporate.contracts import (
     ChangeCorporationStatusInput,
+    ChangeCorporationUsageStatusInput,
     CorporationHistoryItem,
     CorporationItem,
     RegisterCorporationInput,
@@ -13,6 +14,7 @@ from app.application.corporate.contracts import (
 from app.application.corporate.mappers import (
     parse_category,
     parse_status,
+    parse_usage_status,
     to_application_error,
     to_corporation_history_item,
     to_corporation_item,
@@ -39,7 +41,7 @@ from app.domain.corporate.primitives import (
     CorporateNumber,
     CorporationName,
 )
-from app.domain.corporate.value_objects import CorporationStatus
+from app.domain.corporate.value_objects import CorporationStatus, CorporationUsageStatus
 from app.domain.foundation.exceptions import DomainError, DomainValidationError
 from app.domain.foundation.primitives import AwareDatetime
 from app.domain.foundation.value_objects import EffectiveDateRange
@@ -94,6 +96,7 @@ class CorporationCommandService:
         resolved_now = now or self._clock.now()
         resolved_id = corporation_id if corporation_id is not None else self._id_generator.new_id()
         category = parse_category(data.category)
+        usage_status = parse_usage_status(data.usage_status)
 
         try:
             corporate_number = (
@@ -114,6 +117,7 @@ class CorporationCommandService:
                 status=CorporationStatus.ACTIVE,
                 created_at=resolved_timestamp,
                 updated_at=resolved_timestamp,
+                usage_status=usage_status,
             )
             with self._uow_factory() as uow:
                 if corporate_number is not None and uow.corporations.exists_by_corporate_number(
@@ -268,7 +272,11 @@ class CorporationCommandService:
                 )
                 appended = history.append(record)
                 latest = appended.at(today) or appended.records[-1]
-                updated = replace(latest.corporation, updated_at=resolved_now)
+                updated = replace(
+                    latest.corporation,
+                    usage_status=current.usage_status,
+                    updated_at=resolved_now,
+                )
                 if (
                     updated.corporate_number is not None
                     and uow.corporations.exists_by_corporate_number(
@@ -334,9 +342,45 @@ class CorporationCommandService:
                             "合併先の存続法人は存続（active）状態である必要があります。",
                             details={"surviving_corporation_id": surviving_id.value},
                         )
-                updated = replace(current, status=next_status, updated_at=resolved_now)
+                next_usage_status = (
+                    CorporationUsageStatus.SUSPENDED
+                    if next_status in (CorporationStatus.DISSOLVED, CorporationStatus.MERGED_OUT)
+                    else current.usage_status
+                )
+                updated = replace(
+                    current,
+                    status=next_status,
+                    usage_status=next_usage_status,
+                    updated_at=resolved_now,
+                )
                 uow.corporations.save(updated)
                 uow.corporations.append_history(record)
+                uow.commit()
+        except DomainError as exc:
+            raise to_application_error(exc) from exc
+
+        return to_corporation_item(updated)
+
+    def change_usage_status(
+        self,
+        corporation_id: str,
+        data: ChangeCorporationUsageStatusInput,
+        *,
+        now: datetime | None = None,
+    ) -> CorporationItem:
+        """法人のシステム利用状態を変更する。"""
+        next_usage_status = parse_usage_status(data.usage_status)
+
+        try:
+            parsed_id = CorporationId.parse(corporation_id)
+            with self._uow_factory() as uow:
+                current = uow.corporations.get(parsed_id)
+                if current is None:
+                    raise CorporationNotFoundError()
+                clock_time = AwareDatetime(now or self._clock.now())
+                resolved_now = _next_recorded_time(clock_time, current)
+                updated = current.change_usage_status(next_usage_status, updated_at=resolved_now)
+                uow.corporations.save(updated)
                 uow.commit()
         except DomainError as exc:
             raise to_application_error(exc) from exc

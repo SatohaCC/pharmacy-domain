@@ -21,6 +21,7 @@ import type {
   CorporationHistoryRecord,
   CorporationListFilter,
   CorporationStatus,
+  CorporationUsageStatus,
 } from "./schemas";
 
 const CATEGORY_RADIO_ITEMS: readonly RadioOption[] = [
@@ -40,6 +41,39 @@ const STATUS_FILTER_OPTIONS: readonly SelectOption[] = [
   { value: "dissolved", label: "解散（dissolved）" },
   { value: "merged_out", label: "合併消滅（merged_out）" },
 ];
+
+const USAGE_STATUS_OPTIONS: readonly SelectOption[] = [
+  { value: "not_started", label: "未利用（参照専用）" },
+  { value: "active", label: "利用中" },
+  { value: "suspended", label: "利用停止" },
+];
+
+const USAGE_STATUS_FILTER_OPTIONS: readonly SelectOption[] = [
+  { value: "all", label: "すべての利用状態" },
+  ...USAGE_STATUS_OPTIONS,
+];
+
+function usageStatusLabel(status: CorporationUsageStatus): string {
+  switch (status) {
+    case "not_started":
+      return "未利用";
+    case "active":
+      return "利用中";
+    case "suspended":
+      return "利用停止";
+  }
+}
+
+function usageStatusTone(status: CorporationUsageStatus): "success" | "neutral" | "danger" {
+  switch (status) {
+    case "active":
+      return "success";
+    case "not_started":
+      return "neutral";
+    case "suspended":
+      return "danger";
+  }
+}
 
 function categoryLabel(category: CorporationCategory): string {
   return category === "corporation" ? "法人" : "個人開設者";
@@ -118,6 +152,7 @@ export interface CorporationsWorkspaceProps {
     valid_from?: string | null;
     valid_to?: string | null;
     evidence?: string | null;
+    usage_status?: CorporationUsageStatus;
   }) => Promise<boolean>;
   isUpdatingCorporation: boolean;
   updateErrorMessage: string | null;
@@ -158,6 +193,11 @@ export interface CorporationsWorkspaceProps {
       surviving_corporation_id?: string | null;
       evidence?: string | null;
     },
+  ) => Promise<boolean>;
+  isChangingUsageStatus?: boolean;
+  onChangeUsageStatus?: (
+    corporationId: string,
+    usageStatus: CorporationUsageStatus,
   ) => Promise<boolean>;
   isCorrectingHistory?: boolean;
   correctionErrorMessage?: string | null;
@@ -213,6 +253,8 @@ export function CorporationsWorkspace({
   isChangingStatus = false,
   statusErrorMessage = null,
   onChangeStatus,
+  isChangingUsageStatus = false,
+  onChangeUsageStatus,
   isCorrectingHistory = false,
   correctionErrorMessage = null,
   onCorrectHistory,
@@ -224,6 +266,7 @@ export function CorporationsWorkspace({
   const [validFrom, setValidFrom] = useState("");
   const [validTo, setValidTo] = useState("");
   const [evidence, setEvidence] = useState("");
+  const [usageStatus, setUsageStatus] = useState<CorporationUsageStatus>("not_started");
 
   const [nameError, setNameError] = useState<string | undefined>(undefined);
   const [corporateNumberError, setCorporateNumberError] = useState<string | undefined>(undefined);
@@ -274,6 +317,7 @@ export function CorporationsWorkspace({
       valid_from: trimmedValidFrom || null,
       valid_to: trimmedValidTo || null,
       evidence: trimmedEvidence || null,
+      usage_status: usageStatus,
     });
     if (created) {
       setName("");
@@ -282,6 +326,7 @@ export function CorporationsWorkspace({
       setValidFrom("");
       setValidTo("");
       setEvidence("");
+      setUsageStatus("not_started");
     }
   }
 
@@ -524,6 +569,19 @@ export function CorporationsWorkspace({
                   onValueChange={setEvidence}
                   disabled={isCreatingCorporation}
                 />
+
+                <Select
+                  label="初期システム利用状態"
+                  name="usage_status"
+                  items={USAGE_STATUS_OPTIONS}
+                  value={usageStatus}
+                  onValueChange={(value) => {
+                    if (value === "not_started" || value === "active" || value === "suspended") {
+                      setUsageStatus(value);
+                    }
+                  }}
+                  disabled={isCreatingCorporation}
+                />
               </div>
 
               <div {...stylex.props(s.submitRow)}>
@@ -613,6 +671,22 @@ export function CorporationsWorkspace({
                   });
                 }}
               />
+
+              <Select
+                label="システム利用状態"
+                name="filter_usage_status"
+                items={USAGE_STATUS_FILTER_OPTIONS}
+                value={filter.usage_status ?? "all"}
+                onValueChange={(value) => {
+                  onFilterChange({
+                    ...filter,
+                    usage_status:
+                      value === "not_started" || value === "active" || value === "suspended"
+                        ? value
+                        : undefined,
+                  });
+                }}
+              />
             </search>
 
             {isLoadingCorporations ? (
@@ -636,6 +710,9 @@ export function CorporationsWorkspace({
                             <p {...stylex.props(s.corpName)}>{item.name}</p>
                             <Badge tone="neutral">{categoryLabel(item.category)}</Badge>
                             <Badge tone={statusTone(item.status)}>{statusLabel(item.status)}</Badge>
+                            <Badge tone={usageStatusTone(item.usage_status ?? "not_started")}>
+                              利用: {usageStatusLabel(item.usage_status ?? "not_started")}
+                            </Badge>
                           </div>
                           <p {...stylex.props(s.metaGrid)}>
                             <span>
@@ -656,6 +733,24 @@ export function CorporationsWorkspace({
                         </div>
 
                         <div {...stylex.props(s.actionRow)}>
+                          {item.status === "active" && onChangeUsageStatus ? (
+                            <Button
+                              variant="outlined"
+                              size="sm"
+                              disabled={isChangingUsageStatus}
+                              onClick={() => {
+                                const nextUsage =
+                                  (item.usage_status ?? "not_started") === "active"
+                                    ? "suspended"
+                                    : "active";
+                                void onChangeUsageStatus(item.id, nextUsage);
+                              }}
+                            >
+                              {(item.usage_status ?? "not_started") === "active"
+                                ? "利用停止"
+                                : "利用開始"}
+                            </Button>
+                          ) : null}
                           {onSelectHistoryCorp ? (
                             <Button
                               variant={selectedHistoryCorpId === item.id ? "tonal" : "outlined"}

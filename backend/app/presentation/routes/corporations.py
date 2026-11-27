@@ -27,10 +27,12 @@ from app.presentation.dto.corporations import (
     CorporationResponse,
     CorporationStatusChangeRequest,
     CorporationUpdateRequest,
+    CorporationUsageStatusChangeRequest,
 )
 from app.presentation.dto.error import ErrorResponse
 from app.presentation.mappers.corporations import (
     to_change_status_input,
+    to_change_usage_status_input,
     to_corporation_history_response,
     to_corporation_list_response,
     to_corporation_response,
@@ -60,11 +62,17 @@ def list_corporations(
         Literal["active", "dissolved", "merged_out"] | None,
         Query(alias="status"),
     ] = None,
+    usage_status: Literal["not_started", "active", "suspended"] | None = None,
     q: str | None = None,
 ) -> CorporationListResponse:
     """条件に一致する法人一覧を返す。"""
     result = queries.list_corporations(
-        to_list_corporations_query(category=category, status=corporation_status, q=q)
+        to_list_corporations_query(
+            category=category,
+            status=corporation_status,
+            usage_status=usage_status,
+            q=q,
+        )
     )
     return to_corporation_list_response(result)
 
@@ -155,6 +163,29 @@ def change_corporation_status(
     updated = commands.change_status(
         corporation_id,
         to_change_status_input(payload, recorded_by=principal.user_id),
+    )
+    return to_corporation_response(updated)
+
+
+@router.patch(
+    "/{corporation_id}/usage-status",
+    response_model=CorporationResponse,
+    responses={
+        400: {"model": ErrorResponse},
+        404: {"model": ErrorResponse},
+        422: {"model": ErrorResponse},
+    },
+)
+def change_corporation_usage_status(
+    corporation_id: str,
+    payload: CorporationUsageStatusChangeRequest,
+    principal: Annotated[AuthPrincipal, Depends(require_vendor_user)],
+    commands: Annotated[CorporationCommandPort, Depends(get_corporation_commands)],
+) -> CorporationResponse:
+    """指定 ID の法人のシステム利用状態を変更する。"""
+    updated = commands.change_usage_status(
+        corporation_id,
+        to_change_usage_status_input(payload, recorded_by=principal.user_id),
     )
     return to_corporation_response(updated)
 

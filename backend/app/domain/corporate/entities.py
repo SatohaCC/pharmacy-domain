@@ -20,6 +20,7 @@ from app.domain.corporate.value_objects import (
     CorporateRelationType,
     CorporationCategory,
     CorporationStatus,
+    CorporationUsageStatus,
 )
 from app.domain.foundation.exceptions import DomainValidationError
 from app.domain.foundation.primitives import AwareDatetime
@@ -37,6 +38,7 @@ class Corporation:
     status: CorporationStatus
     created_at: AwareDatetime
     updated_at: AwareDatetime
+    usage_status: CorporationUsageStatus = CorporationUsageStatus.NOT_STARTED
 
     def __post_init__(self) -> None:
         if self.category == CorporationCategory.INDIVIDUAL and self.corporate_number is not None:
@@ -49,6 +51,26 @@ class Corporation:
                 "更新日時は作成日時以降の日時である必要があります。",
                 details={"field": "updated_at"},
             )
+
+    def change_usage_status(
+        self,
+        next_usage_status: CorporationUsageStatus,
+        *,
+        updated_at: AwareDatetime,
+    ) -> Corporation:
+        """システム利用状態を変更する。解散・合併消滅法人の利用開始・再開は不可。"""
+        if (
+            self.status != CorporationStatus.ACTIVE
+            and next_usage_status == CorporationUsageStatus.ACTIVE
+        ):
+            raise InvalidCorporationTransitionError(
+                "解散または吸収合併で消滅した法人のシステム利用は開始・再開できません。",
+                details={
+                    "status": self.status.value,
+                    "usage_status": next_usage_status.value,
+                },
+            )
+        return replace(self, usage_status=next_usage_status, updated_at=updated_at)
 
     def update_profile(
         self,
@@ -122,6 +144,7 @@ class Corporation:
             status=self.status,
             created_at=self.created_at,
             updated_at=updated_at,
+            usage_status=self.usage_status,
         )
 
     def change_status(
@@ -153,6 +176,11 @@ class Corporation:
                 details={"field": "updated_at"},
             )
 
+        next_usage_status = (
+            CorporationUsageStatus.SUSPENDED
+            if next_status in (CorporationStatus.DISSOLVED, CorporationStatus.MERGED_OUT)
+            else self.usage_status
+        )
         return Corporation(
             id=self.id,
             category=self.category,
@@ -162,6 +190,7 @@ class Corporation:
             status=next_status,
             created_at=self.created_at,
             updated_at=updated_at,
+            usage_status=next_usage_status,
         )
 
 

@@ -6,6 +6,9 @@ export type CorporationCategory = z.infer<typeof corporationCategorySchema>;
 export const corporationStatusSchema = z.enum(["active", "dissolved", "merged_out"]);
 export type CorporationStatus = z.infer<typeof corporationStatusSchema>;
 
+export const corporationUsageStatusSchema = z.enum(["not_started", "active", "suspended"]);
+export type CorporationUsageStatus = z.infer<typeof corporationUsageStatusSchema>;
+
 export const corporationSchema = z.object({
   id: z.string().min(1),
   category: corporationCategorySchema,
@@ -13,6 +16,7 @@ export const corporationSchema = z.object({
   corporate_number: z.string().nullable(),
   address: z.string(),
   status: corporationStatusSchema,
+  usage_status: corporationUsageStatusSchema.optional(),
   created_at: z.string(),
   updated_at: z.string(),
   valid_from: z.string().nullable().optional(),
@@ -54,4 +58,5 @@ export interface CorporationListFilter {
   q?: string;
   category?: CorporationCategory;
   status?: CorporationStatus;
+  usage_status?: CorporationUsageStatus;
 }

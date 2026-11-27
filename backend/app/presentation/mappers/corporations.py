@@ -4,6 +4,7 @@ from typing import Literal, cast
 
 from app.application.corporate.contracts import (
     ChangeCorporationStatusInput,
+    ChangeCorporationUsageStatusInput,
     CorporationHistoryItem,
     CorporationItem,
     CorporationListResult,
@@ -20,6 +21,7 @@ from app.presentation.dto.corporations import (
     CorporationResponse,
     CorporationStatusChangeRequest,
     CorporationUpdateRequest,
+    CorporationUsageStatusChangeRequest,
 )
 
 
@@ -38,6 +40,7 @@ def to_register_corporation_input(
         valid_to=dto.valid_to,
         evidence=dto.evidence,
         recorded_by=recorded_by,
+        usage_status=dto.usage_status,
     )
 
 
@@ -106,14 +109,32 @@ def to_correction_input(
     )
 
 
+def to_change_usage_status_input(
+    dto: CorporationUsageStatusChangeRequest,
+    *,
+    recorded_by: str | None = None,
+) -> ChangeCorporationUsageStatusInput:
+    """システム利用状態変更リクエスト DTO をアプリケーション入力へ変換する。"""
+    return ChangeCorporationUsageStatusInput(
+        usage_status=dto.usage_status,
+        recorded_by=recorded_by,
+    )
+
+
 def to_list_corporations_query(
     *,
     category: Literal["corporation", "individual"] | None,
     status: Literal["active", "dissolved", "merged_out"] | None,
+    usage_status: Literal["not_started", "active", "suspended"] | None = None,
     q: str | None,
 ) -> ListCorporationsQuery:
     """クエリパラメータをアプリケーション検索条件へ変換する。"""
-    return ListCorporationsQuery(category=category, status=status, query=q)
+    return ListCorporationsQuery(
+        category=category,
+        status=status,
+        usage_status=usage_status,
+        query=q,
+    )
 
 
 def to_corporation_response(item: CorporationItem) -> CorporationResponse:
@@ -129,6 +150,7 @@ def to_corporation_response(item: CorporationItem) -> CorporationResponse:
         updated_at=item.updated_at,
         valid_from=item.valid_from,
         valid_to=item.valid_to,
+        usage_status=cast(Literal["not_started", "active", "suspended"], item.usage_status),
     )
 
 

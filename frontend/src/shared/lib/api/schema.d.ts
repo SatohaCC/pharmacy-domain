@@ -326,6 +326,7 @@ export interface paths {
           category?: "corporation" | "individual" | null;
           q?: string | null;
           status?: "active" | "dissolved" | "merged_out" | null;
+          usage_status?: "not_started" | "active" | "suspended" | null;
         };
       };
       responses: {
@@ -662,6 +663,52 @@ export interface paths {
       };
     };
   };
+  "/api/corporations/{corporation_id}/usage-status": {
+    patch: {
+      parameters: {
+        path: {
+          corporation_id: string;
+        };
+      };
+      requestBody: {
+        content: {
+          "application/json": components["schemas"]["CorporationUsageStatusChangeRequest"];
+        };
+      };
+      responses: {
+        200: {
+          content: {
+            "application/json": components["schemas"]["CorporationResponse"];
+          };
+        };
+        400: {
+          content: {
+            "application/json": components["schemas"]["ErrorResponse"];
+          };
+        };
+        401: {
+          content: {
+            "application/json": components["schemas"]["ErrorResponse"];
+          };
+        };
+        403: {
+          content: {
+            "application/json": components["schemas"]["ErrorResponse"];
+          };
+        };
+        404: {
+          content: {
+            "application/json": components["schemas"]["ErrorResponse"];
+          };
+        };
+        422: {
+          content: {
+            "application/json": components["schemas"]["ErrorResponse"];
+          };
+        };
+      };
+    };
+  };
   "/api/health": {
     get: {
       responses: {
@@ -806,6 +853,7 @@ export interface components {
       corporate_number?: string | null;
       evidence?: string | null;
       name: string;
+      usage_status?: "not_started" | "active" | "suspended";
       valid_from?: string | null;
       valid_to?: string | null;
     };
@@ -846,6 +894,7 @@ export interface components {
       name: string;
       status: "active" | "dissolved" | "merged_out";
       updated_at: string;
+      usage_status?: "not_started" | "active" | "suspended";
       valid_from?: string | null;
       valid_to?: string | null;
     };
@@ -861,6 +910,9 @@ export interface components {
       name?: string | null;
       valid_from?: string | null;
       valid_to?: string | null;
+    };
+    CorporationUsageStatusChangeRequest: {
+      usage_status: "not_started" | "active" | "suspended";
     };
     CreateVendorUserV2Request: {
       display_name: string;

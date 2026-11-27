@@ -14,7 +14,11 @@ from app.domain.corporate.exceptions import (
     InvalidCorporationUpdateError,
 )
 from app.domain.corporate.history import CorporationHistoryRecord
-from app.domain.corporate.value_objects import CorporationCategory, CorporationStatus
+from app.domain.corporate.value_objects import (
+    CorporationCategory,
+    CorporationStatus,
+    CorporationUsageStatus,
+)
 from app.domain.foundation.exceptions import DomainError
 from app.domain.foundation.value_objects import EffectiveDateRange
 
@@ -56,6 +60,7 @@ def to_corporation_item(
         updated_at=corporation.updated_at.value,
         valid_from=period.valid_from if period is not None else None,
         valid_to=period.valid_to if period is not None else None,
+        usage_status=corporation.usage_status.value,
     )
 
 
@@ -98,4 +103,16 @@ def parse_status(raw: str) -> CorporationStatus:
             "不正な存続状態です。",
             code="VALIDATION_ERROR",
             details={"field": "status"},
+        ) from exc
+
+
+def parse_usage_status(raw: str) -> CorporationUsageStatus:
+    """システム利用状態文字列を検証付きで Value Object へ変換する。"""
+    try:
+        return CorporationUsageStatus(raw)
+    except ValueError as exc:
+        raise ApplicationValidationError(
+            "不正なシステム利用状態です。",
+            code="VALIDATION_ERROR",
+            details={"field": "usage_status"},
         ) from exc

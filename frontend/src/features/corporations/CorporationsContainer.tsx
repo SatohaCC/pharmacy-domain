@@ -12,6 +12,7 @@ import { corporationsWorkspaceStyles as s } from "./CorporationsWorkspace.styles
 import type { Corporation, CorporationListFilter } from "./schemas";
 import {
   useChangeCorporationStatus,
+  useChangeCorporationUsageStatus,
   useCorporationAt,
   useCorporationHistory,
   useCorporations,
@@ -47,6 +48,7 @@ export function CorporationsContainer() {
   const createMutation = useCreateCorporation();
   const updateMutation = useUpdateCorporation();
   const changeStatusMutation = useChangeCorporationStatus();
+  const changeUsageStatusMutation = useChangeCorporationUsageStatus();
   const correctHistoryMutation = useCorrectCorporationHistory();
   const logoutMutation = useAuthLogout(() => {
     router.replace("/login");
@@ -64,6 +66,7 @@ export function CorporationsContainer() {
     isAuthenticationError(createMutation.error) ||
     isAuthenticationError(updateMutation.error) ||
     isAuthenticationError(changeStatusMutation.error) ||
+    isAuthenticationError(changeUsageStatusMutation.error) ||
     isAuthenticationError(correctHistoryMutation.error);
 
   useEffect(() => {
@@ -157,6 +160,19 @@ export function CorporationsContainer() {
       onChangeStatus={async (corporationId, payload) => {
         try {
           const updated = await changeStatusMutation.mutateAsync({ corporationId, payload });
+          setLastUpdatedCorporation(updated);
+          return true;
+        } catch {
+          return false;
+        }
+      }}
+      isChangingUsageStatus={changeUsageStatusMutation.isPending}
+      onChangeUsageStatus={async (corporationId, usageStatus) => {
+        try {
+          const updated = await changeUsageStatusMutation.mutateAsync({
+            corporationId,
+            usageStatus,
+          });
           setLastUpdatedCorporation(updated);
           return true;
         } catch {
