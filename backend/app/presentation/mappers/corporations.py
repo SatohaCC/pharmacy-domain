@@ -31,6 +31,7 @@ def to_register_corporation_input(dto: CorporationCreateRequest) -> RegisterCorp
         corporate_number=dto.corporate_number,
         address=dto.address,
         valid_from=dto.valid_from,
+        valid_to=dto.valid_to,
         evidence=dto.evidence,
     )
 
@@ -43,6 +44,7 @@ def to_update_corporation_input(dto: CorporationUpdateRequest) -> UpdateCorporat
         corporate_number=dto.corporate_number,
         provided_fields=frozenset(dto.model_fields_set),
         valid_from=dto.valid_from,
+        valid_to=dto.valid_to,
         evidence=dto.evidence,
     )
 
@@ -72,6 +74,8 @@ def to_correction_input(dto: CorporationHistoryCorrectionRequest) -> UpdateCorpo
         name=dto.name,
         address=dto.address,
         corporate_number=dto.corporate_number,
+        valid_from=dto.valid_from,
+        valid_to=dto.valid_to,
         evidence=dto.evidence,
         provided_fields=frozenset(dto.model_fields_set),
     )
@@ -98,6 +102,8 @@ def to_corporation_response(item: CorporationItem) -> CorporationResponse:
         status=cast(Literal["active", "dissolved", "merged_out"], item.status),
         created_at=item.created_at,
         updated_at=item.updated_at,
+        valid_from=item.valid_from,
+        valid_to=item.valid_to,
     )
 
 

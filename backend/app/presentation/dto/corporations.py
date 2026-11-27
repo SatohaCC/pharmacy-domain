@@ -14,6 +14,7 @@ class CorporationCreateRequest(BaseModel):
     corporate_number: str | None = None
     address: str = ""
     valid_from: date | None = None
+    valid_to: date | None = None
     evidence: str | None = None
 
 
@@ -24,6 +25,7 @@ class CorporationUpdateRequest(BaseModel):
     address: str | None = None
     corporate_number: str | None = None
     valid_from: date | None = None
+    valid_to: date | None = None
     evidence: str | None = None
 
 
@@ -45,6 +47,8 @@ class CorporationHistoryCorrectionRequest(BaseModel):
     name: str | None = None
     address: str | None = None
     corporate_number: str | None = None
+    valid_from: date | None = None
+    valid_to: date | None = None
 
 
 class CorporationMergerRequest(BaseModel):
@@ -68,6 +72,8 @@ class CorporationResponse(BaseModel):
     status: Literal["active", "dissolved", "merged_out"]
     created_at: datetime
     updated_at: datetime
+    valid_from: date | None = None
+    valid_to: date | None = None
 
 
 class CorporationListResponse(BaseModel):

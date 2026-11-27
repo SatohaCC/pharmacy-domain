@@ -45,6 +45,7 @@ from app.domain.foundation.value_objects import EffectiveDateRange
 
 _JAPAN_TIME = timezone(timedelta(hours=9))
 _PROFILE_FIELDS = frozenset({"name", "address", "corporate_number"})
+_UPDATE_FIELDS = frozenset({"name", "address", "corporate_number", "valid_to"})
 
 
 def _effective_date(requested: date | None, today: date) -> date:
@@ -118,11 +119,12 @@ class CorporationCommandService:
                     corporate_number
                 ):
                     raise DuplicateCorporateNumberError()
+                period = EffectiveDateRange(effective_date, data.valid_to)
                 uow.corporations.add(corporation)
                 uow.corporations.append_history(
                     CorporationHistoryRecord(
                         corporation,
-                        EffectiveDateRange(effective_date),
+                        period,
                         CorporationChangeKind.REGISTRATION,
                         _evidence(data.evidence),
                     )
@@ -131,7 +133,7 @@ class CorporationCommandService:
         except DomainError as exc:
             raise to_application_error(exc) from exc
 
-        return to_corporation_item(corporation)
+        return to_corporation_item(corporation, period=period)
 
     def update_corporation(
         self,
@@ -140,11 +142,11 @@ class CorporationCommandService:
         *,
         now: datetime | None = None,
     ) -> CorporationItem:
-        """既存法人の名称・所在地・法人番号を更新する。"""
-        updated, _record = self._record_profile_change(
+        """既存法人の名称・所在地・法人番号・有効終了日を更新する。"""
+        updated, record = self._record_profile_change(
             corporation_id, data.valid_from, data, correction=False, now=now
         )
-        return to_corporation_item(updated)
+        return to_corporation_item(updated, period=record.period)
 
     def correct_history(
         self, corporation_id: str, as_of: date, data: UpdateCorporationInput
@@ -165,7 +167,7 @@ class CorporationCommandService:
         now: datetime | None,
     ) -> tuple[Corporation, CorporationHistoryRecord]:
         provided = (
-            data.provided_fields & _PROFILE_FIELDS if data.provided_fields is not None else None
+            data.provided_fields & _UPDATE_FIELDS if data.provided_fields is not None else None
         )
         clear_corporate_number = False
         if provided is not None:
@@ -177,6 +179,8 @@ class CorporationCommandService:
                 if getattr(data, field_name) is None:
                     if field_name == "corporate_number":
                         clear_corporate_number = True
+                    elif field_name == "valid_to":
+                        continue
                     else:
                         raise ApplicationBadRequestError(
                             f"更新項目 {field_name} に null は指定できません",
@@ -217,27 +221,49 @@ class CorporationCommandService:
                     raise DomainValidationError("効力日が確認済みの法人情報より前です。")
                 # 当日の通常更新は、トランザクション内で確定済みの現在行を基にする。
                 baseline = current if effective == today and not correction else old.corporation
-                change_profile = baseline.correct_profile if correction else baseline.update_profile
-                revised = change_profile(
-                    name=next_name,
-                    address=next_address,
-                    corporate_number=next_corporate_number,
-                    clear_corporate_number=clear_corporate_number,
-                    updated_at=resolved_now,
+                has_profile_change = (
+                    next_name is not None
+                    or next_address is not None
+                    or next_corporate_number is not None
+                    or clear_corporate_number
+                )
+                if has_profile_change:
+                    change_profile = (
+                        baseline.correct_profile if correction else baseline.update_profile
+                    )
+                    revised = change_profile(
+                        name=next_name,
+                        address=next_address,
+                        corporate_number=next_corporate_number,
+                        clear_corporate_number=clear_corporate_number,
+                        updated_at=resolved_now,
+                    )
+                else:
+                    revised = replace(baseline, updated_at=resolved_now)
+                valid_to_provided = (
+                    "valid_to" in provided if provided is not None else data.valid_to is not None
+                )
+                next_valid_to = data.valid_to if valid_to_provided else old.period.valid_to
+                next_period = (
+                    EffectiveDateRange(
+                        data.valid_from
+                        if correction and data.valid_from is not None
+                        else old.period.valid_from,
+                        next_valid_to,
+                    )
+                    if correction
+                    else EffectiveDateRange(effective, next_valid_to)
                 )
                 record = CorporationHistoryRecord(
                     revised,
-                    old.period
-                    if correction
-                    else EffectiveDateRange(effective, old.period.valid_to),
+                    next_period,
                     CorporationChangeKind.CORRECTION
                     if correction
                     else CorporationChangeKind.PROFILE,
                     evidence,
                 )
-                latest = history.append(record).at(today)
-                if latest is None:
-                    raise DomainValidationError("現在有効な法人情報がありません。")
+                appended = history.append(record)
+                latest = appended.at(today) or appended.records[-1]
                 updated = replace(latest.corporation, updated_at=resolved_now)
                 if (
                     updated.corporate_number is not None

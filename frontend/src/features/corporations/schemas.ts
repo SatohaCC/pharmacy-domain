@@ -15,6 +15,8 @@ export const corporationSchema = z.object({
   status: corporationStatusSchema,
   created_at: z.string(),
   updated_at: z.string(),
+  valid_from: z.string().nullable().optional(),
+  valid_to: z.string().nullable().optional(),
 });
 export type Corporation = z.infer<typeof corporationSchema>;
 
