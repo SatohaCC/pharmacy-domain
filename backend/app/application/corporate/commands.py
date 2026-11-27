@@ -143,16 +143,16 @@ class CorporationCommandService:
         now: datetime | None = None,
     ) -> CorporationItem:
         """既存法人の名称・所在地・法人番号・有効終了日を更新する。"""
-        updated, record = self._record_profile_change(
+        updated, _record, latest = self._record_profile_change(
             corporation_id, data.valid_from, data, correction=False, now=now
         )
-        return to_corporation_item(updated, period=record.period)
+        return to_corporation_item(updated, period=latest.period)
 
     def correct_history(
         self, corporation_id: str, as_of: date, data: UpdateCorporationInput
     ) -> CorporationHistoryItem:
         """対象期間の基本情報を訂正し、それ以前の記録を保持する。"""
-        _current, record = self._record_profile_change(
+        _current, record, _latest = self._record_profile_change(
             corporation_id, as_of, data, correction=True, now=None
         )
         return to_corporation_history_item(record)
@@ -165,9 +165,10 @@ class CorporationCommandService:
         *,
         correction: bool,
         now: datetime | None,
-    ) -> tuple[Corporation, CorporationHistoryRecord]:
+    ) -> tuple[Corporation, CorporationHistoryRecord, CorporationHistoryRecord]:
+        allowed_fields = _UPDATE_FIELDS | {"valid_from"} if correction else _UPDATE_FIELDS
         provided = (
-            data.provided_fields & _UPDATE_FIELDS if data.provided_fields is not None else None
+            data.provided_fields & allowed_fields if data.provided_fields is not None else None
         )
         clear_corporate_number = False
         if provided is not None:
@@ -279,7 +280,7 @@ class CorporationCommandService:
         except DomainError as exc:
             raise to_application_error(exc) from exc
 
-        return updated, record
+        return updated, record, latest
 
     def change_status(
         self,

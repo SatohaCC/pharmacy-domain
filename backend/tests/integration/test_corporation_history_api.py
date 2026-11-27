@@ -274,7 +274,18 @@ def test_corporation_valid_to_registration_update_clear_and_correction(
     assert cleared.status_code == 200
     assert cleared.json()["valid_to"] is None
 
-    # 3. 履歴訂正で valid_from / valid_to を訂正できる。
+    # 3. 履歴訂正で valid_from のみ、および valid_from / valid_to を訂正できる。
+    start_only = client.patch(
+        f"/api/corporations/{corp_id}/history",
+        json={
+            "as_of": "2025-06-01",
+            "valid_from": "2025-01-15",
+            "evidence": "開始日のみ訂正",
+        },
+    )
+    assert start_only.status_code == 200
+    assert start_only.json()["valid_from"] == "2025-01-15"
+
     corrected = client.patch(
         f"/api/corporations/{corp_id}/history",
         json={
@@ -287,3 +298,31 @@ def test_corporation_valid_to_registration_update_clear_and_correction(
     assert corrected.status_code == 200
     assert corrected.json()["valid_from"] == "2025-02-01"
     assert corrected.json()["valid_to"] == "2026-06-30"
+
+
+def test_backdated_update_returns_current_state_period(client: TestClient) -> None:
+    created = client.post(
+        "/api/corporations",
+        json={
+            "category": "corporation",
+            "name": "当初法人",
+            "valid_from": "2025-01-01",
+        },
+    )
+    assert created.status_code == 201
+    corp_id = created.json()["id"]
+
+    future_renamed = client.patch(
+        f"/api/corporations/{corp_id}",
+        json={"name": "現在法人", "valid_from": "2025-03-01"},
+    )
+    assert future_renamed.status_code == 200
+
+    backdated = client.patch(
+        f"/api/corporations/{corp_id}",
+        json={"name": "中間法人", "valid_from": "2025-02-01"},
+    )
+    assert backdated.status_code == 200
+    assert backdated.json()["name"] == "現在法人"
+    assert backdated.json()["valid_from"] == "2025-03-01"
+    assert backdated.json()["valid_to"] is None
