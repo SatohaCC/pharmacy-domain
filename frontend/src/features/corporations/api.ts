@@ -97,6 +97,10 @@ export function fetchCorporationHistory(
   });
 }
 
+function todayInTokyo(): string {
+  return new Intl.DateTimeFormat("sv-SE", { timeZone: "Asia/Tokyo" }).format(new Date());
+}
+
 /** 指定 ID の企業の存続状態を変更（解散・吸収合併）する。 */
 export function changeCorporationStatus(
   corporationId: string,
@@ -113,7 +117,7 @@ export function changeCorporationStatus(
       params: { corporation_id: corporationId },
       body: {
         surviving_corporation_id: input.surviving_corporation_id ?? "",
-        effective_date: input.effective_date || new Date().toISOString().slice(0, 10),
+        effective_date: input.effective_date || todayInTokyo(),
         evidence: input.evidence ?? "",
       },
       parse: (data) => parseZodResponse(corporationSchema, data),

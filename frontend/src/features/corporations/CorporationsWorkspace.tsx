@@ -139,6 +139,7 @@ export interface CorporationsWorkspaceProps {
   onLogout: () => void;
   selectedHistoryCorpId?: string | null;
   onSelectHistoryCorp?: (corporationId: string | null) => void;
+  activeCorporations?: readonly Corporation[];
   historyRecords?: readonly CorporationHistoryRecord[];
   isLoadingHistory?: boolean;
   historyErrorMessage?: string | null;
@@ -200,6 +201,7 @@ export function CorporationsWorkspace({
   onLogout,
   selectedHistoryCorpId = null,
   onSelectHistoryCorp,
+  activeCorporations,
   historyRecords = [],
   isLoadingHistory = false,
   historyErrorMessage = null,
@@ -694,7 +696,9 @@ export function CorporationsWorkspace({
                       onCorrectHistory ? (
                         <CorporationHistoryPanel
                           corporation={item}
-                          activeCorporations={corporations.filter((c) => c.status === "active")}
+                          activeCorporations={
+                            activeCorporations ?? corporations.filter((c) => c.status === "active")
+                          }
                           historyRecords={historyRecords}
                           isLoadingHistory={isLoadingHistory}
                           historyErrorMessage={historyErrorMessage}

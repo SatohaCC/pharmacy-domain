@@ -125,6 +125,7 @@ export function CorporationHistoryPanel({
   const [correctValidTo, setCorrectValidTo] = useState("");
   const [correctEvidence, setCorrectEvidence] = useState("");
   const [correctFormError, setCorrectFormError] = useState<string | undefined>(undefined);
+  const [baselineRecord, setBaselineRecord] = useState<CorporationHistoryRecord | null>(null);
 
   const survivingOptions: readonly SelectOption[] = [
     { value: "", label: "存続法人を選択してください" },
@@ -195,19 +196,45 @@ export function CorporationHistoryPanel({
       as_of: correctAsOf.trim(),
       evidence: correctEvidence.trim(),
     };
-    if (correctName.trim()) payload.name = correctName.trim();
-    if (correctCorpNumber.trim()) payload.corporate_number = correctCorpNumber.trim();
-    if (correctAddress.trim()) payload.address = correctAddress.trim();
-    if (correctValidFrom.trim()) payload.valid_from = correctValidFrom.trim();
-    if (correctValidTo.trim()) payload.valid_to = correctValidTo.trim();
+    const trimmedName = correctName.trim();
+    const trimmedNumber = correctCorpNumber.trim();
+    const trimmedAddress = correctAddress.trim();
+    const trimmedValidFrom = correctValidFrom.trim();
+    const trimmedValidTo = correctValidTo.trim();
+
+    if (baselineRecord) {
+      if (trimmedName && trimmedName !== baselineRecord.corporation.name) {
+        payload.name = trimmedName;
+      }
+      if (trimmedNumber !== (baselineRecord.corporation.corporate_number ?? "")) {
+        payload.corporate_number = trimmedNumber || null;
+      }
+      if (trimmedAddress !== baselineRecord.corporation.address) {
+        payload.address = trimmedAddress;
+      }
+      if (trimmedValidFrom && trimmedValidFrom !== baselineRecord.valid_from) {
+        payload.valid_from = trimmedValidFrom;
+      }
+      if (trimmedValidTo !== (baselineRecord.valid_to ?? "")) {
+        payload.valid_to = trimmedValidTo || null;
+      }
+    } else {
+      if (trimmedName) payload.name = trimmedName;
+      if (trimmedNumber) payload.corporate_number = trimmedNumber;
+      if (trimmedAddress) payload.address = trimmedAddress;
+      if (trimmedValidFrom) payload.valid_from = trimmedValidFrom;
+      if (trimmedValidTo) payload.valid_to = trimmedValidTo;
+    }
 
     const ok = await onCorrectHistory(corporation.id, payload);
     if (ok) {
       setCorrectEvidence("");
+      setBaselineRecord(null);
     }
   }
 
   function prefillCorrection(record: CorporationHistoryRecord) {
+    setBaselineRecord(record);
     setCorrectAsOf(record.valid_from);
     setCorrectName(record.corporation.name);
     setCorrectCorpNumber(record.corporation.corporate_number ?? "");

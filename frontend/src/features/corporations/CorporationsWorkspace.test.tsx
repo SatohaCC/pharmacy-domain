@@ -304,16 +304,17 @@ describe("CorporationsWorkspace", () => {
       recorded_as_of: undefined,
     });
 
-    // タイムラインの「この記録を訂正」から履歴訂正を送信
+    // タイムラインの「この記録を訂正」から法人番号・所在地をクリアして履歴訂正を送信
     await user.click(screen.getByRole("button", { name: "この記録を訂正" }));
+    await user.clear(screen.getByLabelText("訂正後の法人番号"));
+    await user.clear(screen.getByLabelText("訂正後の所在地"));
     await user.type(screen.getByLabelText(/訂正の根拠/), "登記簿修正");
     await user.click(screen.getByRole("button", { name: "履歴を訂正" }));
-    expect(onCorrectHistory).toHaveBeenCalledWith(
-      "corp-1",
-      expect.objectContaining({
-        as_of: "2026-01-01",
-        evidence: "登記簿修正",
-      }),
-    );
+    expect(onCorrectHistory).toHaveBeenCalledWith("corp-1", {
+      as_of: "2026-01-01",
+      corporate_number: null,
+      address: "",
+      evidence: "登記簿修正",
+    });
   });
 });

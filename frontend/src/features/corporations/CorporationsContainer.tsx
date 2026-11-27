@@ -34,6 +34,7 @@ export function CorporationsContainer() {
 
   const isVendorUser = currentUserQuery.data?.affiliation_type === "vendor";
   const corporationsQuery = useCorporations(filter, Boolean(isVendorUser));
+  const activeCorporationsQuery = useCorporations({ status: "active" }, Boolean(isVendorUser));
   const historyQuery = useCorporationHistory(
     selectedHistoryCorpId ?? "",
     Boolean(isVendorUser && selectedHistoryCorpId),
@@ -57,6 +58,7 @@ export function CorporationsContainer() {
   const hasSessionAuthError =
     currentUserQuery.isAuthError ||
     isAuthenticationError(corporationsQuery.error) ||
+    isAuthenticationError(activeCorporationsQuery.error) ||
     isAuthenticationError(historyQuery.error) ||
     isAuthenticationError(snapshotQuery.error) ||
     isAuthenticationError(createMutation.error) ||
@@ -141,6 +143,7 @@ export function CorporationsContainer() {
         setSelectedHistoryCorpId(corporationId);
         setSnapshotParams(null);
       }}
+      activeCorporations={activeCorporationsQuery.data?.items ?? []}
       historyRecords={historyQuery.data ?? []}
       isLoadingHistory={historyQuery.isLoading}
       historyErrorMessage={historyQuery.errorMessage}
