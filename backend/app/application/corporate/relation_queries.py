@@ -14,7 +14,9 @@ from app.domain.corporate import (
     CorporateRelation,
     CorporateRelationId,
     CorporateRelationNotFoundError,
+    CorporateRelationType,
     CorporationId,
+    RelationConfirmationStatus,
 )
 from app.domain.foundation import AwareDatetime, DomainError, DomainValidationError
 
@@ -48,7 +50,23 @@ class CorporateRelationQueryService:
             recorded = (
                 _recorded_cutoff(query.recorded_as_of) if query.recorded_as_of is not None else None
             )
-            relations = self._query_gateway.list_relations(corporation_id, query.as_of, recorded)
+            relation_type = (
+                CorporateRelationType(query.relation_type)
+                if query.relation_type is not None
+                else None
+            )
+            confirmation_status = (
+                RelationConfirmationStatus(query.confirmation_status)
+                if query.confirmation_status is not None
+                else None
+            )
+            relations = self._query_gateway.list_relations(
+                corporation_id,
+                query.as_of,
+                recorded,
+                relation_type,
+                confirmation_status,
+            )
         except DomainError as exc:
             raise from_domain_error(exc) from exc
         return tuple(to_relation_item(relation, relation.current) for relation in relations)

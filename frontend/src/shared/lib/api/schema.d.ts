@@ -85,8 +85,10 @@ export interface paths {
       parameters: {
         query: {
           as_of?: string | null;
+          confirmation_status?: "unverified" | "verified" | null;
           corporation_id?: string | null;
           recorded_as_of?: string | null;
+          relation_type?: "parent_child" | "affiliate" | "fc_vc" | null;
         };
       };
       responses: {

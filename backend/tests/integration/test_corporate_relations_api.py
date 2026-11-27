@@ -241,3 +241,36 @@ def test_concurrent_registration_validates_committed_relation_before_writing(
     assert saved.status_code == 201
     assert (rejected.status_code, rejected.json()["code"]) == (409, error_code)
     assert client.get(_RELATIONS).json()["total"] == 1
+
+
+def test_list_relations_filters_by_relation_type_and_confirmation_status(
+    relations_api: tuple[TestClient, Engine, str],
+) -> None:
+    client, _engine, parent = relations_api
+    child = _create_corporation(client, "子法人")
+    partner = _create_corporation(client, "提携法人")
+
+    parent_rel = _register(client, parent, child, kind="parent_child")
+    affiliate_rel = client.post(
+        _RELATIONS,
+        json={
+            "source_corporation_id": parent,
+            "target_corporation_id": partner,
+            "relation_type": "affiliate",
+            "valid_from": "2026-01-01",
+            "evidence": "提携契約書",
+            "confirmation_status": "verified",
+        },
+    )
+    assert parent_rel.status_code == affiliate_rel.status_code == 201
+
+    only_affiliate = client.get(_RELATIONS, params={"relation_type": "affiliate"})
+    only_verified = client.get(_RELATIONS, params={"confirmation_status": "verified"})
+    both_mismatch = client.get(
+        _RELATIONS,
+        params={"relation_type": "parent_child", "confirmation_status": "verified"},
+    )
+
+    assert [item["id"] for item in only_affiliate.json()["items"]] == [affiliate_rel.json()["id"]]
+    assert [item["id"] for item in only_verified.json()["items"]] == [affiliate_rel.json()["id"]]
+    assert both_mismatch.json() == {"items": [], "total": 0}
