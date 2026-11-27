@@ -45,6 +45,7 @@ class CorporationHistoryRecord:
     kind: CorporationChangeKind
     evidence: CorporationEvidence | None = None
     surviving_corporation_id: CorporationId | None = None
+    recorded_by: str | None = None
 
     def __post_init__(self) -> None:
         if self.surviving_corporation_id == self.corporation.id:
@@ -142,6 +143,7 @@ class CorporationHistory:
         recorded_at: AwareDatetime,
         evidence: CorporationEvidence | None,
         surviving_corporation_id: CorporationId | None,
+        recorded_by: str | None = None,
     ) -> CorporationHistoryRecord:
         """存続状態が指定日から変わる事実を追記するための記録を作る。"""
         updated = current.change_status(status, updated_at=recorded_at)
@@ -159,4 +161,5 @@ class CorporationHistory:
             kind,
             evidence,
             surviving_corporation_id,
+            recorded_by,
         )

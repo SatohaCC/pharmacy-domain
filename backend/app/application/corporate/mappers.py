@@ -73,6 +73,7 @@ def to_corporation_history_item(record: CorporationHistoryRecord) -> Corporation
             if record.surviving_corporation_id is not None
             else None
         ),
+        recorded_by=record.recorded_by,
     )
 
 

@@ -76,7 +76,11 @@ class CorporateRelationCommandService:
                     kind,
                     (
                         CorporateRelationRevision(
-                            period, evidence, confirmation, AwareDatetime(self._clock.now())
+                            period,
+                            evidence,
+                            confirmation,
+                            AwareDatetime(self._clock.now()),
+                            recorded_by=data.recorded_by,
                         ),
                     ),
                 )
@@ -132,14 +136,31 @@ class CorporateRelationCommandService:
                 if "confirmation_status" in fields and data.confirmation_status is not None
                 else old.confirmation_status
             )
-            return relation.correct(CorporateRelationRevision(period, evidence, confirmation, now))
+            return relation.correct(
+                CorporateRelationRevision(
+                    period,
+                    evidence,
+                    confirmation,
+                    now,
+                    recorded_by=data.recorded_by,
+                )
+            )
 
         return self._update(relation_id, correct)
 
-    def end_relation(self, relation_id: str, end_date: date) -> CorporateRelationItem:
+    def end_relation(
+        self,
+        relation_id: str,
+        end_date: date,
+        *,
+        recorded_by: str | None = None,
+    ) -> CorporateRelationItem:
         """最新の関係を切替日で終了する。"""
         return self._update(
-            relation_id, lambda relation, now: relation.end(end_date=end_date, recorded_at=now)
+            relation_id,
+            lambda relation, now: relation.end(
+                end_date=end_date, recorded_at=now, recorded_by=recorded_by
+            ),
         )
 
     def _update(

@@ -117,6 +117,11 @@ def test_revision_history_and_business_date_filters_survive_migration(
         "2026-01-02",
     ]
     assert history.json()[-1]["confirmation_status"] == "verified"
+    assert [record["recorded_by"] for record in history.json()] == [
+        "vendor-admin-1",
+        "vendor-admin-1",
+        "vendor-admin-1",
+    ]
     assert before_end.json()["items"][0]["id"] == initial["id"]
     assert after_end.json() == {"items": [], "total": 0}
     assert previously_known.json()["items"] == [initial]

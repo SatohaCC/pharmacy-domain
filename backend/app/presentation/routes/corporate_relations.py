@@ -6,6 +6,7 @@ from typing import Annotated, Any
 from fastapi import APIRouter, Depends, status
 from pydantic import AwareDatetime
 
+from app.application.auth.contracts import AuthPrincipal
 from app.application.corporate.contracts import (
     CorporateRelationCommandPort,
     CorporateRelationQueryPort,
@@ -56,10 +57,13 @@ _READ_ERRORS: dict[int | str, dict[str, Any]] = {
 @router.post("", status_code=status.HTTP_201_CREATED, responses=_WRITE_ERRORS)
 def register_relation(
     body: CorporateRelationCreateRequest,
+    principal: Annotated[AuthPrincipal, Depends(require_vendor_user)],
     commands: Annotated[CorporateRelationCommandPort, Depends(get_corporate_relation_commands)],
 ) -> CorporateRelationResponse:
     """両端の法人を指定して関係を登録する。"""
-    return to_relation_response(commands.register_relation(to_register_relation_input(body)))
+    return to_relation_response(
+        commands.register_relation(to_register_relation_input(body, recorded_by=principal.user_id))
+    )
 
 
 @router.get("", responses={422: {"model": ErrorResponse}})
@@ -92,11 +96,15 @@ def get_relation(
 def correct_relation(
     relation_id: str,
     body: CorporateRelationCorrectionRequest,
+    principal: Annotated[AuthPrincipal, Depends(require_vendor_user)],
     commands: Annotated[CorporateRelationCommandPort, Depends(get_corporate_relation_commands)],
 ) -> CorporateRelationResponse:
     """関係の期間・根拠・確認状態を訂正する。"""
     return to_relation_response(
-        commands.correct_relation(relation_id, to_correct_relation_input(body))
+        commands.correct_relation(
+            relation_id,
+            to_correct_relation_input(body, recorded_by=principal.user_id),
+        )
     )
 
 
@@ -104,10 +112,13 @@ def correct_relation(
 def end_relation(
     relation_id: str,
     body: CorporateRelationEndRequest,
+    principal: Annotated[AuthPrincipal, Depends(require_vendor_user)],
     commands: Annotated[CorporateRelationCommandPort, Depends(get_corporate_relation_commands)],
 ) -> CorporateRelationResponse:
     """指定日で法人間関係の有効期間を終了する。"""
-    return to_relation_response(commands.end_relation(relation_id, body.valid_to))
+    return to_relation_response(
+        commands.end_relation(relation_id, body.valid_to, recorded_by=principal.user_id)
+    )
 
 
 @router.get("/{relation_id}/history", responses=_READ_ERRORS)

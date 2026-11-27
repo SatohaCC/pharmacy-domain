@@ -127,6 +127,7 @@ class CorporationCommandService:
                         period,
                         CorporationChangeKind.REGISTRATION,
                         _evidence(data.evidence),
+                        recorded_by=data.recorded_by,
                     )
                 )
                 uow.commit()
@@ -262,6 +263,7 @@ class CorporationCommandService:
                     if correction
                     else CorporationChangeKind.PROFILE,
                     evidence,
+                    recorded_by=data.recorded_by,
                 )
                 appended = history.append(record)
                 latest = appended.at(today) or appended.records[-1]
@@ -315,6 +317,7 @@ class CorporationCommandService:
                     recorded_at=resolved_now,
                     evidence=_evidence(data.evidence),
                     surviving_corporation_id=surviving_id,
+                    recorded_by=data.recorded_by,
                 )
                 if surviving_id is not None and uow.corporations.get(surviving_id) is None:
                     raise CorporationNotFoundError()

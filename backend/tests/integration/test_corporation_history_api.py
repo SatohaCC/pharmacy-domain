@@ -298,6 +298,15 @@ def test_corporation_valid_to_registration_update_clear_and_correction(
     assert corrected.status_code == 200
     assert corrected.json()["valid_from"] == "2025-02-01"
     assert corrected.json()["valid_to"] == "2026-06-30"
+    assert corrected.json()["recorded_by"] == "vendor-admin-1"
+    history = client.get(f"/api/corporations/{corp_id}/history").json()
+    assert [item["recorded_by"] for item in history] == [
+        "vendor-admin-1",
+        "vendor-admin-1",
+        "vendor-admin-1",
+        "vendor-admin-1",
+        "vendor-admin-1",
+    ]
 
 
 def test_backdated_update_returns_current_state_period(client: TestClient) -> None:

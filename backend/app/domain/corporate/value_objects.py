@@ -46,3 +46,4 @@ class CorporateRelationRevision:
     evidence: RelationEvidence
     confirmation_status: RelationConfirmationStatus
     recorded_at: AwareDatetime
+    recorded_by: str | None = None

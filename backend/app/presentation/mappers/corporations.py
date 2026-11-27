@@ -23,7 +23,11 @@ from app.presentation.dto.corporations import (
 )
 
 
-def to_register_corporation_input(dto: CorporationCreateRequest) -> RegisterCorporationInput:
+def to_register_corporation_input(
+    dto: CorporationCreateRequest,
+    *,
+    recorded_by: str | None = None,
+) -> RegisterCorporationInput:
     """法人登録リクエスト DTO をアプリケーション入力へ変換する。"""
     return RegisterCorporationInput(
         category=dto.category,
@@ -33,10 +37,15 @@ def to_register_corporation_input(dto: CorporationCreateRequest) -> RegisterCorp
         valid_from=dto.valid_from,
         valid_to=dto.valid_to,
         evidence=dto.evidence,
+        recorded_by=recorded_by,
     )
 
 
-def to_update_corporation_input(dto: CorporationUpdateRequest) -> UpdateCorporationInput:
+def to_update_corporation_input(
+    dto: CorporationUpdateRequest,
+    *,
+    recorded_by: str | None = None,
+) -> UpdateCorporationInput:
     """法人部分更新リクエスト DTO をアプリケーション入力へ変換する。"""
     return UpdateCorporationInput(
         name=dto.name,
@@ -46,29 +55,44 @@ def to_update_corporation_input(dto: CorporationUpdateRequest) -> UpdateCorporat
         valid_from=dto.valid_from,
         valid_to=dto.valid_to,
         evidence=dto.evidence,
+        recorded_by=recorded_by,
     )
 
 
-def to_change_status_input(dto: CorporationStatusChangeRequest) -> ChangeCorporationStatusInput:
+def to_change_status_input(
+    dto: CorporationStatusChangeRequest,
+    *,
+    recorded_by: str | None = None,
+) -> ChangeCorporationStatusInput:
     """存続状態変更リクエスト DTO をアプリケーション入力へ変換する。"""
     return ChangeCorporationStatusInput(
         status=dto.status,
         effective_date=dto.effective_date,
         evidence=dto.evidence,
+        recorded_by=recorded_by,
     )
 
 
-def to_merger_input(dto: CorporationMergerRequest) -> ChangeCorporationStatusInput:
+def to_merger_input(
+    dto: CorporationMergerRequest,
+    *,
+    recorded_by: str | None = None,
+) -> ChangeCorporationStatusInput:
     """吸収合併の必要事項を存続状態変更入力に変換する。"""
     return ChangeCorporationStatusInput(
         status="merged_out",
         effective_date=dto.effective_date,
         evidence=dto.evidence,
         surviving_corporation_id=dto.surviving_corporation_id,
+        recorded_by=recorded_by,
     )
 
 
-def to_correction_input(dto: CorporationHistoryCorrectionRequest) -> UpdateCorporationInput:
+def to_correction_input(
+    dto: CorporationHistoryCorrectionRequest,
+    *,
+    recorded_by: str | None = None,
+) -> UpdateCorporationInput:
     """法人履歴訂正に指定された項目を保持して変換する。"""
     return UpdateCorporationInput(
         name=dto.name,
@@ -78,6 +102,7 @@ def to_correction_input(dto: CorporationHistoryCorrectionRequest) -> UpdateCorpo
         valid_to=dto.valid_to,
         evidence=dto.evidence,
         provided_fields=frozenset(dto.model_fields_set),
+        recorded_by=recorded_by,
     )
 
 
