@@ -1,9 +1,15 @@
 ---
 name: github-issue-workflow
-description: dev-workflow で開発着手時の Issue を用意するときや、GitHub Issue の起票・下書き・分割を直接依頼されたときに使う。作業単位を確認し、分割する場合は GitHub で親子関係を登録・確認する。
+description: GitHub Issue を URL・番号から参照・要約するとき、下書き・起票・分割を依頼されたとき、dev-workflow で開発対象の Issue を確認・用意するときに使う。
 ---
 
-# GitHub Issue の起票
+# GitHub Issue の参照と起票
+
+## 既存 Issue を参照する
+
+URL または番号から対象リポジトリと Issue を特定する。本文・ステータスを読み、依頼に応じて関連する親子 Issue、コメント、PR を確認する。URL や番号だけの場合は、概要と現在の状態を伝える。参照・要約・進捗確認は読み取りの範囲で対応する。
+
+実装・修正を依頼された場合は、[dev-workflow](../dev-workflow/SKILL.md) に従い、Issue と参照先から目的・受入条件・検証方法・未決事項を確認して着手する。
 
 ## サブ Issue に切り出す基準
 

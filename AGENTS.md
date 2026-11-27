@@ -9,6 +9,18 @@
 
 `frontend/` を変更する場合は、その配下の `AGENTS.md` も読む。プロジェクト固有のSkillは `.agents/skills/` にある。
 
+## GitHub Issue の依頼で使う Skill
+
+このリポジトリの Issue URL や Issue 番号が今回の依頼の対象になっている場合は、Issue の取得前に [github-issue-workflow Skill](.agents/skills/github-issue-workflow/SKILL.md) を読む。URL や番号だけが渡された場合も、まず参照として扱う。
+
+| 依頼 | 適用する Skill とタイミング |
+| --- | --- |
+| 参照・要約・進捗確認 | `github-issue-workflow` を読み、依頼された情報を取得・確認する。 |
+| 下書き・起票・分割 | `github-issue-workflow` を読み、必要に応じて要求と受入条件を整理してから本文を作る。 |
+| 実装・修正・着手 | Issue を参照する際に `github-issue-workflow` を読み、作業を始める前に `dev-workflow` も読む。Issue の内容をもとに要求を分析し、受入条件と検証方法を整理する。 |
+
+該当する依頼では、何のためにどの Skill を使うかを着手時の進捗メッセージで短く伝える。
+
 ## 開発作業
 
 - このリポジトリへの変更を伴う開発作業は、着手時に [dev-workflow Skill](.agents/skills/dev-workflow/SKILL.md) を読み、入口として使う。
