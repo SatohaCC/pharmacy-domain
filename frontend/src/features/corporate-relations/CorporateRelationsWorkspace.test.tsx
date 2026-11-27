@@ -1,6 +1,6 @@
 import { render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
-import { afterAll, beforeAll, describe, expect, it, vi } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 import type { AuthUser } from "@/features/auth/schemas";
 import type { Corporation } from "@/features/corporations/schemas";
 import { CorporateRelationsWorkspace } from "./CorporateRelationsWorkspace";
@@ -50,22 +50,6 @@ const sampleRelation: CorporateRelation = {
 };
 
 describe("CorporateRelationsWorkspace", () => {
-  const getAnimations = Element.prototype.getAnimations;
-  const scrollIntoView = Element.prototype.scrollIntoView;
-  let popoverStyle: HTMLStyleElement | null = null;
-  beforeAll(() => {
-    Element.prototype.getAnimations = () => [];
-    Element.prototype.scrollIntoView = () => {};
-    popoverStyle = document.createElement("style");
-    popoverStyle.textContent = "[popover][data-open] { display: block !important; }";
-    document.head.append(popoverStyle);
-  });
-  afterAll(() => {
-    Element.prototype.getAnimations = getAnimations;
-    Element.prototype.scrollIntoView = scrollIntoView;
-    popoverStyle?.remove();
-  });
-
   it("新規法人間関係を登録し、一覧・絞り込み・終了操作を呼び出せる", async () => {
     const user = userEvent.setup();
     const onRegisterRelation = vi.fn().mockResolvedValue(true);

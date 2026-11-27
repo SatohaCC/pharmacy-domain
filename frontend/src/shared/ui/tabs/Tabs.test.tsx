@@ -1,6 +1,6 @@
 import { render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
-import { afterAll, beforeAll, describe, expect, it, vi } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 import { Tabs } from "./Tabs";
 
 const items = [
@@ -10,14 +10,6 @@ const items = [
 ];
 
 describe("Tabs", () => {
-  const getAnimations = Element.prototype.getAnimations;
-  beforeAll(() => {
-    // jsdomにないWeb Animations APIを、アニメーションなしのブラウザとして補う。
-    Element.prototype.getAnimations = () => [];
-  });
-  afterAll(() => {
-    Element.prototype.getAnimations = getAnimations;
-  });
   it("タブとパネルを関連付け、クリックで内容を切り替える", async () => {
     const user = userEvent.setup();
     render(<Tabs aria-label="表示内容" items={items} />);

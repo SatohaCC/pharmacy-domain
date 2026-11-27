@@ -1,7 +1,7 @@
 import { render, screen } from "@testing-library/react";
 import { createAgent } from "@ui-sdk/react/agent";
 import { useState } from "react";
-import { afterAll, beforeAll, describe, expect, it, vi } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 import { Button } from "./button/Button";
 import { Checkbox } from "./checkbox/Checkbox";
 import { Dialog, DialogCloseButton } from "./dialog/Dialog";
@@ -190,25 +190,6 @@ function SharedSettingsForm({
 }
 
 describe("共有 UI のエージェント操作契約", () => {
-  const getAnimations = Element.prototype.getAnimations;
-  const scrollIntoView = Element.prototype.scrollIntoView;
-  let popoverStyle: HTMLStyleElement | null = null;
-
-  beforeAll(() => {
-    // jsdomにないWeb Animations API・scrollIntoView・Popover表示スタイルを補う。
-    Element.prototype.getAnimations = () => [];
-    Element.prototype.scrollIntoView = () => {};
-    popoverStyle = document.createElement("style");
-    popoverStyle.textContent = "[popover][data-open] { display: block !important; }";
-    document.head.append(popoverStyle);
-  });
-
-  afterAll(() => {
-    Element.prototype.getAnimations = getAnimations;
-    Element.prototype.scrollIntoView = scrollIntoView;
-    popoverStyle?.remove();
-  });
-
   it("エージェントがフォーム入力・選択・切り替え・送信・ダイアログ操作を名前から実行できる", async () => {
     const onSubmitted = vi.fn();
     const onValuesChange = vi.fn();

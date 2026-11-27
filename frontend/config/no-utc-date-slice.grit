@@ -1,0 +1,7 @@
+or {
+  `$d.toISOString().slice(0, 10)`,
+  `$d.toISOString().substring(0, 10)`,
+  `$d.toISOString().split("T")[0]`
+} as $call where {
+  register_diagnostic(span=$call, message="UTC 文字列からの日付切り出しは業務日付とずれるため、formatBusinessDateInTokyo() を使用してください。")
+}

@@ -1,5 +1,5 @@
 {
-  "$schema": "https://biomejs.dev/schemas/2.6.7/schema.json",
+  "$schema": "https://biomejs.dev/schemas/2.6.8/schema.json",
   "vcs": {
     "enabled": true,
     "clientKind": "git",
@@ -63,6 +63,14 @@
         "!**/*.spec.*",
         "!**/*.stories.*"
       ]
+    },
+    {
+      "path": "./config/no-utc-date-slice.grit",
+      "includes": ["src/**", "!**/*.test.*", "!**/*.spec.*", "!**/*.stories.*"]
+    },
+    {
+      "path": "./config/no-duplicate-test-polyfills.grit",
+      "includes": ["src/**/*.test.*", "src/**/*.spec.*"]
     }
   ],
   "overrides": [

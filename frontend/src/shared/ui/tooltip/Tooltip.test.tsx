@@ -1,28 +1,13 @@
 import * as stylex from "@stylexjs/stylex";
 import { render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
-import { afterAll, beforeAll, describe, expect, it } from "vitest";
+import { describe, expect, it } from "vitest";
 import { Button } from "../button/Button";
 import { Tooltip } from "./Tooltip";
 
 const overrides = stylex.create({ width: (width: number) => ({ width }) });
 
 describe("Tooltip", () => {
-  const getAnimations = Element.prototype.getAnimations;
-  let popoverStyle: HTMLStyleElement | null = null;
-
-  beforeAll(() => {
-    Element.prototype.getAnimations = () => [];
-    popoverStyle = document.createElement("style");
-    popoverStyle.textContent = "[popover][data-open] { display: block !important; }";
-    document.head.append(popoverStyle);
-  });
-
-  afterAll(() => {
-    Element.prototype.getAnimations = getAnimations;
-    popoverStyle?.remove();
-  });
-
   it("フォーカスで開き、Escape で閉じてもトリガーにフォーカスを維持する", async () => {
     const user = userEvent.setup();
 
