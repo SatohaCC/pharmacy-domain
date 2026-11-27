@@ -18,7 +18,7 @@ description: このリポジトリへの変更を伴う開発作業の着手時�
    - 未マージの先行 PR に依存する場合は、そのブランチをベースとする PR を使ってよい。本文に先行 PR と担当 Issue を明記する。先行 PR のマージ後にベースを既定ブランチに切り替え、差分と `Closes #番号` による紐付けを確認する。既存 PR 本文を更新する際、`gh pr edit` が GraphQL エラー（旧 Projects `projectCards` 廃止等）で失敗する場合は REST API（`gh api --method PATCH repos/<owner>/<repo>/pulls/<number> -F body=@<file>`）で更新し、コマンド成功と本文反映を確認する。
    - Stacked PR の先行ブランチに修正が入った場合は、force-push を避け、先行ブランチを後続ブランチにマージして同期する。後続 PR のベースに対する差分が担当範囲だけであることを確認し、影響する検証を再実行してから後続ブランチを push する。
    - PR 作成後に対象 Issue・ベース・差分を確認する。PR 作成後と PR ブランチへの追加 push 後は、そのコミットの CI を `gh pr checks <番号> --watch` などで確認する。失敗または実行待ちのチェックがあれば、対応が必要なものと結果を記録する。
-   - PR にレビュー指摘（インラインレビューコメント・一般コメント）が付いた場合は、修正・検証・push の完了後、**各レビューコメントに対して対応結果（修正内容・対応コミット SHA・確認した検証結果、または対応しない判断と理由）を返信コメントとして残す**。インラインレビューコメントへの返信には `gh api --method POST repos/<owner>/<repo>/pulls/<pr番号>/comments/<comment_id>/replies -F body=@<file>` 等を使用し、投稿成功を確認する。
+   - PR 作成後や追加 push 後の確認では、対象 PR に提出済みのレビュー指摘があるかも確認する。対応対象の指摘が見つかった場合や、既存 PR のレビュー対応を依頼された場合は、[github-pr-review-response](../github-pr-review-response/SKILL.md) を読み、各指摘の返信確認まで進める。
 
 ## 合意済みの要求が変わるとき
 
