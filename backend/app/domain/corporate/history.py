@@ -126,6 +126,7 @@ class CorporationHistory:
                     corporation=replace(
                         selected.corporation,
                         status=status_change.corporation.status,
+                        usage_status=status_change.corporation.usage_status,
                         updated_at=max(selected.recorded_at, status_change.recorded_at),
                     ),
                     period=EffectiveDateRange(max(start, transition), end),

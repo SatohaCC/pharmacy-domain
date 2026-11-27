@@ -272,7 +272,11 @@ class CorporationCommandService:
                 )
                 appended = history.append(record)
                 latest = appended.at(today) or appended.records[-1]
-                updated = replace(latest.corporation, updated_at=resolved_now)
+                updated = replace(
+                    latest.corporation,
+                    usage_status=current.usage_status,
+                    updated_at=resolved_now,
+                )
                 if (
                     updated.corporate_number is not None
                     and uow.corporations.exists_by_corporate_number(

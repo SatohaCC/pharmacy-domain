@@ -397,6 +397,14 @@ def test_usage_status_lifecycle_and_dissolution_sync(client: TestClient) -> None
     assert activated.status_code == 200
     assert activated.json()["usage_status"] == "active"
 
+    # 利用開始後に基本情報を更新しても usage_status が active のまま維持される
+    renamed_ref = client.patch(
+        f"/api/corporations/{ref_corp.json()['id']}",
+        json={"name": "持株会社（改）"},
+    )
+    assert renamed_ref.status_code == 200
+    assert renamed_ref.json()["usage_status"] == "active"
+
     # 解散すると usage_status は自動で suspended になる
     dissolved = client.patch(
         f"/api/corporations/{active_corp.json()['id']}/status",
@@ -405,6 +413,29 @@ def test_usage_status_lifecycle_and_dissolution_sync(client: TestClient) -> None
     assert dissolved.status_code == 200
     assert dissolved.json()["status"] == "dissolved"
     assert dissolved.json()["usage_status"] == "suspended"
+
+    # 解散後の時点参照・履歴訂正でも usage_status は suspended のまま維持される
+    as_of_dissolved = client.get(
+        f"/api/corporations/{active_corp.json()['id']}",
+        params={"as_of": "2025-02-10"},
+    )
+    assert as_of_dissolved.status_code == 200
+    assert as_of_dissolved.json()["usage_status"] == "suspended"
+
+    corrected_dissolved = client.patch(
+        f"/api/corporations/{active_corp.json()['id']}/history",
+        json={
+            "as_of": "2025-02-10",
+            "address": "東京都港区",
+            "evidence": "登記簿住所修正",
+        },
+    )
+    assert corrected_dissolved.status_code == 200
+    assert corrected_dissolved.json()["corporation"]["usage_status"] == "suspended"
+    assert (
+        client.get(f"/api/corporations/{active_corp.json()['id']}").json()["usage_status"]
+        == "suspended"
+    )
 
     # 解散済み法人のシステム利用を active にすることはできない
     reopen_rejected = client.patch(
