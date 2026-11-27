@@ -104,6 +104,7 @@ describe("CorporationsWorkspace", () => {
       valid_from: null,
       valid_to: null,
       evidence: null,
+      usage_status: "not_started",
     });
     expect(nameInput).toHaveValue("");
     expect(numberInput).toHaveValue("");
@@ -316,5 +317,48 @@ describe("CorporationsWorkspace", () => {
       address: "",
       evidence: "登記簿修正",
     });
+  });
+
+  it("システム利用状態（初期値 not_started・フィルタ・利用開始切替）を操作できる", async () => {
+    const user = userEvent.setup();
+    const onFilterChange = vi.fn();
+    const onChangeUsageStatus = vi.fn().mockResolvedValue(true);
+
+    render(
+      <CorporationsWorkspace
+        currentUser={vendorMember}
+        corporations={[{ ...sampleCorporation, usage_status: "not_started" }]}
+        totalCount={1}
+        filter={{}}
+        onFilterChange={onFilterChange}
+        isLoadingCorporations={false}
+        isFetchingCorporations={false}
+        corporationsErrorMessage={null}
+        isCreatingCorporation={false}
+        createErrorMessage={null}
+        createUserFacingError={null}
+        lastCreatedCorporation={null}
+        onDismissCreatedBanner={vi.fn()}
+        onCreateCorporation={vi.fn().mockResolvedValue(true)}
+        isUpdatingCorporation={false}
+        updateErrorMessage={null}
+        updateUserFacingError={null}
+        lastUpdatedCorporation={null}
+        onDismissUpdatedBanner={vi.fn()}
+        onUpdateCorporation={vi.fn().mockResolvedValue(true)}
+        isLoggingOut={false}
+        onLogout={vi.fn()}
+        onChangeUsageStatus={onChangeUsageStatus}
+      />,
+    );
+
+    expect(screen.getByText("利用: 未利用")).toBeInTheDocument();
+
+    await user.click(screen.getByRole("button", { name: "利用開始" }));
+    expect(onChangeUsageStatus).toHaveBeenCalledWith("corp-1", "active");
+
+    await user.click(screen.getByRole("combobox", { name: "システム利用状態" }));
+    await user.click(screen.getByRole("option", { name: "利用中" }));
+    expect(onFilterChange).toHaveBeenCalledWith({ usage_status: "active" });
   });
 });

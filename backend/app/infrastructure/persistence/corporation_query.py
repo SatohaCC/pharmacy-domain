@@ -46,6 +46,7 @@ def _row_to_item(
         updated_at=_parse_iso_utc(str(row["updated_at"])),
         valid_from=valid_from,
         valid_to=valid_to,
+        usage_status=str(row["usage_status"]),
     )
 
 
@@ -108,6 +109,8 @@ class SqlAlchemyCorporationQueryPort:
             stmt = stmt.where(corporations_table.c.category == query.category)
         if query.status is not None:
             stmt = stmt.where(corporations_table.c.status == query.status)
+        if query.usage_status is not None:
+            stmt = stmt.where(corporations_table.c.usage_status == query.usage_status)
         if query.query is not None:
             if is_sqlite:
                 stmt = stmt.where(

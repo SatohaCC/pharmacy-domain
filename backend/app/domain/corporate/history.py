@@ -156,7 +156,12 @@ class CorporationHistory:
             else CorporationChangeKind.DISSOLUTION
         )
         return CorporationHistoryRecord(
-            replace(baseline.corporation, status=updated.status, updated_at=recorded_at),
+            replace(
+                baseline.corporation,
+                status=updated.status,
+                usage_status=updated.usage_status,
+                updated_at=recorded_at,
+            ),
             EffectiveDateRange(effective_date),
             kind,
             evidence,

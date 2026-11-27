@@ -6,6 +6,7 @@ import {
   type CorporationHistoryRecord,
   type CorporationList,
   type CorporationListFilter,
+  type CorporationUsageStatus,
   corporationHistoryListSchema,
   corporationHistoryRecordSchema,
   corporationListSchema,
@@ -23,6 +24,7 @@ export function fetchCorporations(
       q: filter.q?.trim() || undefined,
       category: filter.category,
       status: filter.status,
+      usage_status: filter.usage_status,
     },
     signal,
     parse: (data) => parseZodResponse(corporationListSchema, data),
@@ -38,6 +40,7 @@ export function createCorporation(input: {
   valid_from?: string | null;
   valid_to?: string | null;
   evidence?: string | null;
+  usage_status?: CorporationUsageStatus;
 }): Promise<Corporation> {
   return authApiRequest("/api/corporations", {
     method: "post",
@@ -131,6 +134,19 @@ export function changeCorporationStatus(
       effective_date: input.effective_date ?? undefined,
       evidence: input.evidence ?? undefined,
     },
+    parse: (data) => parseZodResponse(corporationSchema, data),
+  });
+}
+
+/** 指定 ID の企業のシステム利用状態を変更する。 */
+export function changeCorporationUsageStatus(
+  corporationId: string,
+  usageStatus: CorporationUsageStatus,
+): Promise<Corporation> {
+  return authApiRequest("/api/corporations/{corporation_id}/usage-status", {
+    method: "patch",
+    params: { corporation_id: corporationId },
+    body: { usage_status: usageStatus },
     parse: (data) => parseZodResponse(corporationSchema, data),
   });
 }

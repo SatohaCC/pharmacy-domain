@@ -4,6 +4,7 @@ import { useAppMutation } from "@/shared/lib/query/useAppMutation";
 import { useAppQuery } from "@/shared/lib/query/useAppQuery";
 import {
   changeCorporationStatus,
+  changeCorporationUsageStatus,
   correctCorporationHistory,
   createCorporation,
   fetchCorporationAt,
@@ -11,7 +12,7 @@ import {
   fetchCorporations,
   updateCorporation,
 } from "./api";
-import type { CorporationCategory, CorporationListFilter } from "./schemas";
+import type { CorporationCategory, CorporationListFilter, CorporationUsageStatus } from "./schemas";
 
 export const corporationKeys = {
   all: ["corporations"] as const,
@@ -22,6 +23,7 @@ export const corporationKeys = {
       filter.q?.trim() ?? "",
       filter.category ?? "all",
       filter.status ?? "all",
+      filter.usage_status ?? "all",
     ] as const,
   history: (corporationId: string) => ["corporations", "history", corporationId] as const,
   snapshot: (corporationId: string, asOf?: string, recordedAsOf?: string) =>
@@ -50,6 +52,7 @@ export function useCreateCorporation() {
       valid_from?: string | null;
       valid_to?: string | null;
       evidence?: string | null;
+      usage_status?: CorporationUsageStatus;
     }) => createCorporation(input),
     invalidateKeys: [corporationKeys.all],
   });
@@ -128,6 +131,15 @@ export function useCorrectCorporationHistory() {
         evidence: string;
       };
     }) => correctCorporationHistory(input.corporationId, input.payload),
+    invalidateKeys: [corporationKeys.all],
+  });
+}
+
+/** 指定企業のシステム利用状態を変更する。 */
+export function useChangeCorporationUsageStatus() {
+  return useAppMutation({
+    mutationFn: (input: { corporationId: string; usageStatus: CorporationUsageStatus }) =>
+      changeCorporationUsageStatus(input.corporationId, input.usageStatus),
     invalidateKeys: [corporationKeys.all],
   });
 }

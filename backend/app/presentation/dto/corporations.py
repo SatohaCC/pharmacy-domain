@@ -16,6 +16,7 @@ class CorporationCreateRequest(BaseModel):
     valid_from: date | None = None
     valid_to: date | None = None
     evidence: str | None = None
+    usage_status: Literal["not_started", "active", "suspended"] = "not_started"
 
 
 class CorporationUpdateRequest(BaseModel):
@@ -35,6 +36,12 @@ class CorporationStatusChangeRequest(BaseModel):
     status: Literal["active", "dissolved", "merged_out"]
     effective_date: date | None = None
     evidence: str | None = None
+
+
+class CorporationUsageStatusChangeRequest(BaseModel):
+    """法人システム利用状態変更リクエスト DTO。"""
+
+    usage_status: Literal["not_started", "active", "suspended"]
 
 
 class CorporationHistoryCorrectionRequest(BaseModel):
@@ -74,6 +81,7 @@ class CorporationResponse(BaseModel):
     updated_at: datetime
     valid_from: date | None = None
     valid_to: date | None = None
+    usage_status: Literal["not_started", "active", "suspended"] = "not_started"
 
 
 class CorporationListResponse(BaseModel):

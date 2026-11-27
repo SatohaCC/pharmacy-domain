@@ -362,3 +362,56 @@ def test_merge_requires_active_surviving_corporation(client: TestClient) -> None
         400,
         "INVALID_CORPORATION_TRANSITION",
     )
+
+
+def test_usage_status_lifecycle_and_dissolution_sync(client: TestClient) -> None:
+    # 1. デフォルトは not_started。参照専用法人として登録でき、active に切り替えられる。
+    ref_corp = client.post(
+        "/api/corporations",
+        json={"category": "corporation", "name": "持株会社"},
+    )
+    assert ref_corp.status_code == 201
+    assert ref_corp.json()["usage_status"] == "not_started"
+
+    active_corp = client.post(
+        "/api/corporations",
+        json={
+            "category": "corporation",
+            "name": "利用中薬局",
+            "valid_from": "2025-01-01",
+            "usage_status": "active",
+        },
+    )
+    assert active_corp.status_code == 201
+    assert active_corp.json()["usage_status"] == "active"
+
+    # usage_status でフィルタリングできる
+    only_not_started = client.get("/api/corporations", params={"usage_status": "not_started"})
+    assert [item["id"] for item in only_not_started.json()["items"]] == [ref_corp.json()["id"]]
+
+    # PATCH /usage-status で利用開始・停止を切り替えられる
+    activated = client.patch(
+        f"/api/corporations/{ref_corp.json()['id']}/usage-status",
+        json={"usage_status": "active"},
+    )
+    assert activated.status_code == 200
+    assert activated.json()["usage_status"] == "active"
+
+    # 解散すると usage_status は自動で suspended になる
+    dissolved = client.patch(
+        f"/api/corporations/{active_corp.json()['id']}/status",
+        json={"status": "dissolved", "effective_date": "2025-02-01"},
+    )
+    assert dissolved.status_code == 200
+    assert dissolved.json()["status"] == "dissolved"
+    assert dissolved.json()["usage_status"] == "suspended"
+
+    # 解散済み法人のシステム利用を active にすることはできない
+    reopen_rejected = client.patch(
+        f"/api/corporations/{active_corp.json()['id']}/usage-status",
+        json={"usage_status": "active"},
+    )
+    assert (reopen_rejected.status_code, reopen_rejected.json()["code"]) == (
+        400,
+        "INVALID_CORPORATION_TRANSITION",
+    )
