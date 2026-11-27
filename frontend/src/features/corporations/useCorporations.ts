@@ -37,6 +37,7 @@ export function useCreateCorporation() {
       corporate_number?: string | null;
       address?: string;
       valid_from?: string | null;
+      valid_to?: string | null;
       evidence?: string | null;
     }) => createCorporation(input),
     invalidateKeys: [corporationKeys.all],
@@ -53,6 +54,7 @@ export function useUpdateCorporation() {
         corporate_number?: string | null;
         address?: string | null;
         valid_from?: string | null;
+        valid_to?: string | null;
         evidence?: string | null;
       };
     }) => updateCorporation(input.corporationId, input.payload),

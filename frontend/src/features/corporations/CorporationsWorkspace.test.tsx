@@ -86,6 +86,7 @@ describe("CorporationsWorkspace", () => {
       corporate_number: "9876543210123",
       address: "大阪府大阪市北区1-1",
       valid_from: null,
+      valid_to: null,
       evidence: null,
     });
     expect(nameInput).toHaveValue("");
@@ -130,7 +131,7 @@ describe("CorporationsWorkspace", () => {
     await user.click(screen.getByRole("button", { name: "基本情報を保存" }));
     expect(
       screen.getByText(
-        "変更された項目がありません。名称・法人番号・所在地のいずれかを変更してください。",
+        "変更された項目がありません。名称・法人番号・所在地・有効終了日のいずれかを変更してください。",
       ),
     ).toBeInTheDocument();
     expect(onUpdateCorporation).not.toHaveBeenCalled();
@@ -139,14 +140,70 @@ describe("CorporationsWorkspace", () => {
     const editValidFromInput = screen.getByLabelText(/変更の有効開始日（任意）/, {
       selector: "input",
     });
+    const editValidToInput = screen.getByLabelText(/変更後の有効終了日（任意）/, {
+      selector: "input",
+    });
     await user.clear(editAddressInput);
     await user.type(editAddressInput, "東京都渋谷区9-9-9");
     await user.type(editValidFromInput, "2026-09-01");
+    await user.type(editValidToInput, "2027-08-31");
     await user.click(screen.getByRole("button", { name: "基本情報を保存" }));
 
     expect(onUpdateCorporation).toHaveBeenCalledWith("corp-1", {
       address: "東京都渋谷区9-9-9",
       valid_from: "2026-09-01",
+      valid_to: "2027-08-31",
     });
+  });
+
+  it("有効終了日が有効開始日以前の場合は登録を拒否する", async () => {
+    const user = userEvent.setup();
+    const onCreateCorporation = vi.fn().mockResolvedValue(true);
+
+    render(
+      <CorporationsWorkspace
+        currentUser={vendorMember}
+        corporations={[sampleCorporation]}
+        totalCount={1}
+        filter={{}}
+        onFilterChange={vi.fn()}
+        isLoadingCorporations={false}
+        isFetchingCorporations={false}
+        corporationsErrorMessage={null}
+        isCreatingCorporation={false}
+        createErrorMessage={null}
+        createUserFacingError={null}
+        lastCreatedCorporation={null}
+        onDismissCreatedBanner={vi.fn()}
+        onCreateCorporation={onCreateCorporation}
+        isUpdatingCorporation={false}
+        updateErrorMessage={null}
+        updateUserFacingError={null}
+        lastUpdatedCorporation={null}
+        onDismissUpdatedBanner={vi.fn()}
+        onUpdateCorporation={vi.fn()}
+        isLoggingOut={false}
+        onLogout={vi.fn()}
+      />,
+    );
+
+    await user.type(
+      screen.getByLabelText(/法人名（個人の場合は氏名・屋号）/, { selector: "input" }),
+      "期間不正法人",
+    );
+    await user.type(
+      screen.getByLabelText(/有効開始日（任意）/, { selector: "input" }),
+      "2026-05-01",
+    );
+    await user.type(
+      screen.getByLabelText(/有効終了日（任意）/, { selector: "input" }),
+      "2026-05-01",
+    );
+    await user.click(screen.getByRole("button", { name: "企業（法人・個人）を登録" }));
+
+    expect(
+      screen.getByText("有効終了日は有効開始日より後の日付を指定してください。"),
+    ).toBeInTheDocument();
+    expect(onCreateCorporation).not.toHaveBeenCalled();
   });
 });

@@ -803,6 +803,7 @@ export interface components {
       evidence?: string | null;
       name: string;
       valid_from?: string | null;
+      valid_to?: string | null;
     };
     CorporationHistoryCorrectionRequest: {
       address?: string | null;
@@ -810,6 +811,8 @@ export interface components {
       corporate_number?: string | null;
       evidence: string;
       name?: string | null;
+      valid_from?: string | null;
+      valid_to?: string | null;
     };
     CorporationHistoryResponse: {
       corporation: components["schemas"]["CorporationResponse"];
@@ -838,6 +841,8 @@ export interface components {
       name: string;
       status: "active" | "dissolved" | "merged_out";
       updated_at: string;
+      valid_from?: string | null;
+      valid_to?: string | null;
     };
     CorporationStatusChangeRequest: {
       effective_date?: string | null;
@@ -850,6 +855,7 @@ export interface components {
       evidence?: string | null;
       name?: string | null;
       valid_from?: string | null;
+      valid_to?: string | null;
     };
     CreateVendorUserV2Request: {
       display_name: string;

@@ -16,6 +16,7 @@ from app.domain.corporate.exceptions import (
 from app.domain.corporate.history import CorporationHistoryRecord
 from app.domain.corporate.value_objects import CorporationCategory, CorporationStatus
 from app.domain.foundation.exceptions import DomainError
+from app.domain.foundation.value_objects import EffectiveDateRange
 
 
 def to_application_error(exc: DomainError) -> ApplicationError:
@@ -36,7 +37,11 @@ def to_application_error(exc: DomainError) -> ApplicationError:
     return from_domain_error(exc)
 
 
-def to_corporation_item(corporation: Corporation) -> CorporationItem:
+def to_corporation_item(
+    corporation: Corporation,
+    *,
+    period: EffectiveDateRange | None = None,
+) -> CorporationItem:
     """法人集約を公開用読み取り結果へ変換する。"""
     return CorporationItem(
         id=corporation.id.value,
@@ -49,13 +54,15 @@ def to_corporation_item(corporation: Corporation) -> CorporationItem:
         status=corporation.status.value,
         created_at=corporation.created_at.value,
         updated_at=corporation.updated_at.value,
+        valid_from=period.valid_from if period is not None else None,
+        valid_to=period.valid_to if period is not None else None,
     )
 
 
 def to_corporation_history_item(record: CorporationHistoryRecord) -> CorporationHistoryItem:
     """有効期間つきの法人記録を公開契約に変換する。"""
     return CorporationHistoryItem(
-        corporation=to_corporation_item(record.corporation),
+        corporation=to_corporation_item(record.corporation, period=record.period),
         valid_from=record.period.valid_from,
         valid_to=record.period.valid_to,
         recorded_at=record.recorded_at.value,

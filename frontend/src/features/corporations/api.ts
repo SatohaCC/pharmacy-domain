@@ -33,6 +33,7 @@ export function createCorporation(input: {
   corporate_number?: string | null;
   address?: string;
   valid_from?: string | null;
+  valid_to?: string | null;
   evidence?: string | null;
 }): Promise<Corporation> {
   return authApiRequest("/api/corporations", {
@@ -50,6 +51,7 @@ export function updateCorporation(
     corporate_number?: string | null;
     address?: string | null;
     valid_from?: string | null;
+    valid_to?: string | null;
     evidence?: string | null;
   },
 ): Promise<Corporation> {

@@ -1,7 +1,8 @@
 """SQLAlchemy を用いた CorporationQueryPort 実装。"""
 
-from datetime import UTC, datetime
+from datetime import UTC, date, datetime, timedelta, timezone
 
+import sqlalchemy as sa
 from sqlalchemy import Engine, RowMapping, func, or_, select, text
 
 from app.application.corporate.contracts import (
@@ -9,10 +10,15 @@ from app.application.corporate.contracts import (
     CorporationListResult,
     ListCorporationsQuery,
 )
-from app.domain.corporate.history import CorporationHistoryRecord
+from app.domain.corporate.history import CorporationHistory, CorporationHistoryRecord
 from app.domain.corporate.identifiers import CorporationId
-from app.infrastructure.persistence.corporation_repository import SqlAlchemyCorporationRepository
-from app.infrastructure.persistence.database import corporations_table
+from app.infrastructure.persistence.corporation_repository import (
+    SqlAlchemyCorporationRepository,
+    _row_to_history_record,
+)
+from app.infrastructure.persistence.database import corporation_history_table, corporations_table
+
+_JAPAN_TIME = timezone(timedelta(hours=9))
 
 
 def _parse_iso_utc(raw: str) -> datetime:
@@ -22,7 +28,12 @@ def _parse_iso_utc(raw: str) -> datetime:
     return parsed
 
 
-def _row_to_item(row: RowMapping) -> CorporationItem:
+def _row_to_item(
+    row: RowMapping,
+    *,
+    valid_from: date | None = None,
+    valid_to: date | None = None,
+) -> CorporationItem:
     raw_number = row["corporate_number"]
     return CorporationItem(
         id=str(row["id"]),
@@ -33,7 +44,42 @@ def _row_to_item(row: RowMapping) -> CorporationItem:
         status=str(row["status"]),
         created_at=_parse_iso_utc(str(row["created_at"])),
         updated_at=_parse_iso_utc(str(row["updated_at"])),
+        valid_from=valid_from,
+        valid_to=valid_to,
     )
+
+
+def _current_periods_by_corporation_id(
+    connection: sa.Connection,
+    corporation_ids: list[str],
+    today: date,
+) -> dict[str, tuple[date, date | None]]:
+    if not corporation_ids:
+        return {}
+    stmt = (
+        select(
+            corporation_history_table,
+            corporations_table.c.category,
+            corporations_table.c.created_at,
+        )
+        .join(
+            corporations_table,
+            corporation_history_table.c.corporation_id == corporations_table.c.id,
+        )
+        .where(corporation_history_table.c.corporation_id.in_(corporation_ids))
+        .order_by(corporation_history_table.c.corporation_id, corporation_history_table.c.sequence)
+    )
+    grouped: dict[str, list[CorporationHistoryRecord]] = {}
+    for row in connection.execute(stmt).mappings():
+        corp_id = str(row["corporation_id"])
+        grouped.setdefault(corp_id, []).append(_row_to_history_record(row))
+
+    periods: dict[str, tuple[date, date | None]] = {}
+    for corp_id, records in grouped.items():
+        history = CorporationHistory(tuple(records))
+        current = history.at(today) or records[-1]
+        periods[corp_id] = (current.period.valid_from, current.period.valid_to)
+    return periods
 
 
 class SqlAlchemyCorporationQueryPort:
@@ -45,11 +91,14 @@ class SqlAlchemyCorporationQueryPort:
     def get_corporation(self, corporation_id: str) -> CorporationItem | None:
         """ID に一致する法人投影を返す。"""
         stmt = select(corporations_table).where(corporations_table.c.id == corporation_id)
+        today = datetime.now(_JAPAN_TIME).date()
         with self._engine.connect() as connection:
             row = connection.execute(stmt).mappings().first()
-        if row is None:
-            return None
-        return _row_to_item(row)
+            if row is None:
+                return None
+            periods = _current_periods_by_corporation_id(connection, [corporation_id], today)
+        valid_from, valid_to = periods.get(corporation_id, (None, None))
+        return _row_to_item(row, valid_from=valid_from, valid_to=valid_to)
 
     def list_corporations(self, query: ListCorporationsQuery) -> CorporationListResult:
         """検索条件に一致する法人投影一覧を作成日時降順で返す。"""
@@ -86,10 +135,21 @@ class SqlAlchemyCorporationQueryPort:
                 corporations_table.c.id.desc(),
             )
 
+        today = datetime.now(_JAPAN_TIME).date()
         with self._engine.connect() as connection:
             rows = connection.execute(stmt).mappings().all()
+            periods = _current_periods_by_corporation_id(
+                connection, [str(row["id"]) for row in rows], today
+            )
 
-        items = tuple(_row_to_item(row) for row in rows)
+        items = tuple(
+            _row_to_item(
+                row,
+                valid_from=periods.get(str(row["id"]), (None, None))[0],
+                valid_to=periods.get(str(row["id"]), (None, None))[1],
+            )
+            for row in rows
+        )
         return CorporationListResult(items=items, total=len(items))
 
     def get_history(

@@ -82,6 +82,18 @@ function validateCorporateNumber(
   return undefined;
 }
 
+function validateValidTo(validFrom: string, validTo: string): string | undefined {
+  const trimmedTo = validTo.trim();
+  if (!trimmedTo) {
+    return undefined;
+  }
+  const trimmedFrom = validFrom.trim();
+  if (trimmedFrom && trimmedTo <= trimmedFrom) {
+    return "有効終了日は有効開始日より後の日付を指定してください。";
+  }
+  return undefined;
+}
+
 export interface CorporationsWorkspaceProps {
   currentUser: AuthUser;
   corporations: readonly Corporation[];
@@ -102,6 +114,7 @@ export interface CorporationsWorkspaceProps {
     corporate_number?: string | null;
     address?: string;
     valid_from?: string | null;
+    valid_to?: string | null;
     evidence?: string | null;
   }) => Promise<boolean>;
   isUpdatingCorporation: boolean;
@@ -116,6 +129,7 @@ export interface CorporationsWorkspaceProps {
       corporate_number?: string | null;
       address?: string | null;
       valid_from?: string | null;
+      valid_to?: string | null;
       evidence?: string | null;
     },
   ) => Promise<boolean>;
@@ -153,21 +167,25 @@ export function CorporationsWorkspace({
   const [corporateNumber, setCorporateNumber] = useState("");
   const [address, setAddress] = useState("");
   const [validFrom, setValidFrom] = useState("");
+  const [validTo, setValidTo] = useState("");
   const [evidence, setEvidence] = useState("");
 
   const [nameError, setNameError] = useState<string | undefined>(undefined);
   const [corporateNumberError, setCorporateNumberError] = useState<string | undefined>(undefined);
+  const [validToError, setValidToError] = useState<string | undefined>(undefined);
 
   const [editingCorpId, setEditingCorpId] = useState<string | null>(null);
   const [editName, setEditName] = useState("");
   const [editCorporateNumber, setEditCorporateNumber] = useState("");
   const [editAddress, setEditAddress] = useState("");
   const [editValidFrom, setEditValidFrom] = useState("");
+  const [editValidTo, setEditValidTo] = useState("");
   const [editEvidence, setEditEvidence] = useState("");
   const [editNameError, setEditNameError] = useState<string | undefined>(undefined);
   const [editCorporateNumberError, setEditCorporateNumberError] = useState<string | undefined>(
     undefined,
   );
+  const [editValidToError, setEditValidToError] = useState<string | undefined>(undefined);
   const [editFormError, setEditFormError] = useState<string | undefined>(undefined);
 
   async function handleCreateSubmit(event: React.FormEvent<HTMLFormElement>) {
@@ -176,17 +194,20 @@ export function CorporationsWorkspace({
     const trimmedNumber = corporateNumber.trim();
     const trimmedAddress = address.trim();
     const trimmedValidFrom = validFrom.trim();
+    const trimmedValidTo = validTo.trim();
     const trimmedEvidence = evidence.trim();
 
     const nextNameError = trimmedName
       ? undefined
       : "法人名（または個人開設者の氏名・屋号）を入力してください。";
     const nextNumberError = validateCorporateNumber(category, trimmedNumber);
+    const nextValidToError = validateValidTo(trimmedValidFrom, trimmedValidTo);
 
     setNameError(nextNameError);
     setCorporateNumberError(nextNumberError);
+    setValidToError(nextValidToError);
 
-    if (nextNameError || nextNumberError) {
+    if (nextNameError || nextNumberError || nextValidToError) {
       return;
     }
 
@@ -196,6 +217,7 @@ export function CorporationsWorkspace({
       corporate_number: category === "corporation" && trimmedNumber ? trimmedNumber : null,
       address: trimmedAddress,
       valid_from: trimmedValidFrom || null,
+      valid_to: trimmedValidTo || null,
       evidence: trimmedEvidence || null,
     });
     if (created) {
@@ -203,6 +225,7 @@ export function CorporationsWorkspace({
       setCorporateNumber("");
       setAddress("");
       setValidFrom("");
+      setValidTo("");
       setEvidence("");
     }
   }
@@ -213,9 +236,11 @@ export function CorporationsWorkspace({
     setEditCorporateNumber(item.corporate_number ?? "");
     setEditAddress(item.address);
     setEditValidFrom("");
+    setEditValidTo(item.valid_to ?? "");
     setEditEvidence("");
     setEditNameError(undefined);
     setEditCorporateNumberError(undefined);
+    setEditValidToError(undefined);
     setEditFormError(undefined);
   }
 
@@ -226,15 +251,18 @@ export function CorporationsWorkspace({
     const trimmedNumber = editCorporateNumber.trim();
     const trimmedAddress = editAddress.trim();
     const trimmedValidFrom = editValidFrom.trim();
+    const trimmedValidTo = editValidTo.trim();
     const trimmedEvidence = editEvidence.trim();
 
     const nextNameError = trimmedName ? undefined : "変更後の名称を入力してください。";
     const nextNumberError = validateCorporateNumber(item.category, trimmedNumber);
+    const nextValidToError = validateValidTo(trimmedValidFrom, trimmedValidTo);
 
     setEditNameError(nextNameError);
     setEditCorporateNumberError(nextNumberError);
+    setEditValidToError(nextValidToError);
 
-    if (nextNameError || nextNumberError) {
+    if (nextNameError || nextNumberError || nextValidToError) {
       return;
     }
 
@@ -243,6 +271,7 @@ export function CorporationsWorkspace({
       corporate_number?: string | null;
       address?: string | null;
       valid_from?: string | null;
+      valid_to?: string | null;
       evidence?: string | null;
     } = {};
 
@@ -255,10 +284,13 @@ export function CorporationsWorkspace({
     if (trimmedAddress !== item.address) {
       payload.address = trimmedAddress;
     }
+    if (trimmedValidTo !== (item.valid_to ?? "")) {
+      payload.valid_to = trimmedValidTo || null;
+    }
 
     if (Object.keys(payload).length === 0) {
       setEditFormError(
-        "変更された項目がありません。名称・法人番号・所在地のいずれかを変更してください。",
+        "変更された項目がありません。名称・法人番号・所在地・有効終了日のいずれかを変更してください。",
       );
       return;
     }
@@ -408,7 +440,24 @@ export function CorporationsWorkspace({
                   type="date"
                   description="設立日または確認できた基準日"
                   value={validFrom}
-                  onValueChange={setValidFrom}
+                  onValueChange={(value) => {
+                    setValidFrom(value);
+                    if (validToError) setValidToError(undefined);
+                  }}
+                  disabled={isCreatingCorporation}
+                />
+
+                <TextField
+                  label="有効終了日（任意）"
+                  name="valid_to"
+                  type="date"
+                  description="終了日が未定の場合は空欄のままにしてください"
+                  value={validTo}
+                  onValueChange={(value) => {
+                    setValidTo(value);
+                    if (validToError) setValidToError(undefined);
+                  }}
+                  errorMessage={validToError}
                   disabled={isCreatingCorporation}
                 />
 
@@ -542,6 +591,10 @@ export function CorporationsWorkspace({
                             </span>
                             <span>所在地: {item.address || "未設定"}</span>
                             <span>
+                              有効期間: {item.valid_from ?? "未設定"} 〜{" "}
+                              {item.valid_to ?? "終了未定"}
+                            </span>
+                            <span>
                               テナントID: <code {...stylex.props(s.metaCode)}>{item.id}</code>
                             </span>
                           </p>
@@ -634,7 +687,25 @@ export function CorporationsWorkspace({
                               name="edit_valid_from"
                               type="date"
                               value={editValidFrom}
-                              onValueChange={setEditValidFrom}
+                              onValueChange={(value) => {
+                                setEditValidFrom(value);
+                                if (editValidToError) setEditValidToError(undefined);
+                              }}
+                              disabled={isUpdatingCorporation}
+                            />
+
+                            <TextField
+                              label="変更後の有効終了日（任意）"
+                              name="edit_valid_to"
+                              type="date"
+                              description="空欄にすると終了未定になります"
+                              value={editValidTo}
+                              onValueChange={(value) => {
+                                setEditValidTo(value);
+                                if (editValidToError) setEditValidToError(undefined);
+                                if (editFormError) setEditFormError(undefined);
+                              }}
+                              errorMessage={editValidToError}
                               disabled={isUpdatingCorporation}
                             />
 

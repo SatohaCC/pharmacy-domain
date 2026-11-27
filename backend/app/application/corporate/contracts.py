@@ -14,6 +14,7 @@ class RegisterCorporationInput:
     corporate_number: str | None = None
     address: str = ""
     valid_from: date | None = None
+    valid_to: date | None = None
     evidence: str | None = None
 
 
@@ -26,6 +27,7 @@ class UpdateCorporationInput:
     corporate_number: str | None = None
     provided_fields: frozenset[str] | None = None
     valid_from: date | None = None
+    valid_to: date | None = None
     evidence: str | None = None
 
 
@@ -60,6 +62,8 @@ class CorporationItem:
     status: str
     created_at: datetime
     updated_at: datetime
+    valid_from: date | None = None
+    valid_to: date | None = None
 
 
 @dataclass(frozen=True, slots=True)
