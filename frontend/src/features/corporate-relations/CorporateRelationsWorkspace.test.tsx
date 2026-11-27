@@ -128,4 +128,60 @@ describe("CorporateRelationsWorkspace", () => {
     await user.click(screen.getByRole("button", { name: "この日で終了" }));
     expect(onEndRelation).toHaveBeenCalledWith("rel-1", "2026-12-31");
   });
+
+  it("訂正パネルと終了パネルは排他制御され、訂正時は変更された項目のみを送信する", async () => {
+    const user = userEvent.setup();
+    const onCorrectRelation = vi.fn().mockResolvedValue(true);
+
+    render(
+      <CorporateRelationsWorkspace
+        currentUser={vendorUser}
+        corporations={[parentCorp, childCorp]}
+        relations={[sampleRelation]}
+        totalCount={1}
+        filter={{}}
+        onFilterChange={vi.fn()}
+        isLoadingRelations={false}
+        relationsErrorMessage={null}
+        isRegistering={false}
+        registerErrorMessage={null}
+        onRegisterRelation={vi.fn().mockResolvedValue(true)}
+        isCorrecting={false}
+        correctErrorMessage={null}
+        onCorrectRelation={onCorrectRelation}
+        isEnding={false}
+        endErrorMessage={null}
+        onEndRelation={vi.fn().mockResolvedValue(true)}
+        selectedHistoryRelationId={null}
+        onSelectHistoryRelation={vi.fn()}
+        revisions={[]}
+        isLoadingRevisions={false}
+        revisionsErrorMessage={null}
+        isLoggingOut={false}
+        onLogout={vi.fn()}
+      />,
+    );
+
+    await user.click(screen.getByRole("button", { name: "訂正" }));
+    expect(screen.getByText("関係の訂正")).toBeInTheDocument();
+
+    // 終了パネルを開くと訂正パネルが閉じる
+    await user.click(screen.getByRole("button", { name: "関係を終了" }));
+    expect(screen.queryByText("関係の訂正")).not.toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "この日で終了" })).toBeInTheDocument();
+
+    // 再度訂正パネルを開き、根拠のみ変更して送信すると valid_to: null は送られない
+    await user.click(screen.getByRole("button", { name: "訂正" }));
+    expect(screen.queryByRole("button", { name: "この日で終了" })).not.toBeInTheDocument();
+    const evidenceInput = screen.getByLabelText("根拠・契約メモ", {
+      selector: 'input[name="edit_evidence_rel-1"]',
+    });
+    await user.clear(evidenceInput);
+    await user.type(evidenceInput, "登記簿再確認");
+    await user.click(screen.getByRole("button", { name: "訂正を保存" }));
+
+    expect(onCorrectRelation).toHaveBeenCalledWith("rel-1", {
+      evidence: "登記簿再確認",
+    });
+  });
 });

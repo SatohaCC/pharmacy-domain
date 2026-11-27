@@ -196,6 +196,7 @@ export function CorporateRelationsWorkspace({
   }
 
   function openEditPanel(rel: CorporateRelation) {
+    setEndingRelationId(null);
     setEditingRelationId(rel.id);
     setEditValidFrom(rel.valid_from);
     setEditValidTo(rel.valid_to ?? "");
@@ -203,14 +204,35 @@ export function CorporateRelationsWorkspace({
     setEditEvidence(rel.evidence);
   }
 
-  async function handleCorrectSubmit(event: React.FormEvent<HTMLFormElement>, relId: string) {
+  async function handleCorrectSubmit(
+    event: React.FormEvent<HTMLFormElement>,
+    rel: CorporateRelation,
+  ) {
     event.preventDefault();
-    const ok = await onCorrectRelation(relId, {
-      valid_from: editValidFrom.trim() || undefined,
-      valid_to: editValidTo.trim() ? editValidTo.trim() : null,
-      evidence: editEvidence.trim() || undefined,
-      confirmation_status: editConfirmationStatus,
-    });
+    const payload: {
+      valid_from?: string;
+      valid_to?: string | null;
+      evidence?: string;
+      confirmation_status?: ConfirmationStatus;
+    } = {};
+    const trimmedFrom = editValidFrom.trim();
+    const nextValidTo = editValidTo.trim() || null;
+    const trimmedEvidence = editEvidence.trim();
+
+    if (trimmedFrom && trimmedFrom !== rel.valid_from) {
+      payload.valid_from = trimmedFrom;
+    }
+    if (nextValidTo !== rel.valid_to) {
+      payload.valid_to = nextValidTo;
+    }
+    if (trimmedEvidence && trimmedEvidence !== rel.evidence) {
+      payload.evidence = trimmedEvidence;
+    }
+    if (editConfirmationStatus !== rel.confirmation_status) {
+      payload.confirmation_status = editConfirmationStatus;
+    }
+
+    const ok = await onCorrectRelation(rel.id, payload);
     if (ok) {
       setEditingRelationId(null);
     }
@@ -225,6 +247,9 @@ export function CorporateRelationsWorkspace({
     if (ok) {
       setEndingRelationId(null);
       setEndValidTo("");
+      if (editingRelationId === relId) {
+        setEditingRelationId(null);
+      }
     }
   }
 
@@ -463,6 +488,9 @@ export function CorporateRelationsWorkspace({
                             variant={isEndingThis ? "tonal" : "outlined"}
                             size="sm"
                             onClick={() => {
+                              if (!isEndingThis) {
+                                setEditingRelationId(null);
+                              }
                               setEndingRelationId(isEndingThis ? null : rel.id);
                               setEndValidTo("");
                             }}
@@ -474,7 +502,7 @@ export function CorporateRelationsWorkspace({
 
                       {isEditing ? (
                         <form
-                          onSubmit={(e) => void handleCorrectSubmit(e, rel.id)}
+                          onSubmit={(e) => void handleCorrectSubmit(e, rel)}
                           noValidate
                           {...stylex.props(s.panelBox)}
                         >
