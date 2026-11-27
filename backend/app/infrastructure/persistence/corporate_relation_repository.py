@@ -27,11 +27,13 @@ def _stored_time(value: AwareDatetime) -> str:
 
 
 def _revision(row: RowMapping) -> CorporateRelationRevision:
+    recorded_by = row["recorded_by"]
     return CorporateRelationRevision(
         EffectiveDateRange(row["valid_from"], row["valid_to"]),
         RelationEvidence(row["evidence"]),
         RelationConfirmationStatus(row["confirmation_status"]),
         AwareDatetime.parse(row["recorded_at"]),
+        recorded_by=str(recorded_by) if recorded_by is not None else None,
     )
 
 
@@ -151,6 +153,7 @@ class SqlAlchemyCorporateRelationRepository:
                 valid_to=revision.period.valid_to,
                 evidence=revision.evidence.value,
                 confirmation_status=revision.confirmation_status.value,
+                recorded_by=revision.recorded_by,
             )
         )
 

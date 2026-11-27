@@ -783,6 +783,7 @@ export interface components {
       evidence: string;
       id: string;
       recorded_at: string;
+      recorded_by?: string | null;
       relation_type: "parent_child" | "affiliate" | "fc_vc";
       source_corporation_id: string;
       target_corporation_id: string;
@@ -793,6 +794,7 @@ export interface components {
       confirmation_status: "unverified" | "verified";
       evidence: string;
       recorded_at: string;
+      recorded_by?: string | null;
       valid_from: string;
       valid_to: string | null;
     };
@@ -819,6 +821,7 @@ export interface components {
       evidence: string | null;
       kind: "legacy" | "registration" | "profile" | "correction" | "dissolution" | "merger";
       recorded_at: string;
+      recorded_by?: string | null;
       surviving_corporation_id: string | null;
       valid_from: string;
       valid_to: string | null;

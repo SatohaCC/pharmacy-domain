@@ -210,10 +210,19 @@ class CorporateRelation:
         """訂正前の記録を保ったまま、訂正後の記録を追加する。"""
         return replace(self, revisions=(*self.revisions, revision))
 
-    def end(self, *, end_date: date, recorded_at: AwareDatetime) -> CorporateRelation:
+    def end(
+        self,
+        *,
+        end_date: date,
+        recorded_at: AwareDatetime,
+        recorded_by: str | None = None,
+    ) -> CorporateRelation:
         """指定日で関係を終了し、それまでの記録を保持する。"""
         return self.correct(
             replace(
-                self.current, period=self.current.period.close_at(end_date), recorded_at=recorded_at
+                self.current,
+                period=self.current.period.close_at(end_date),
+                recorded_at=recorded_at,
+                recorded_by=recorded_by,
             )
         )

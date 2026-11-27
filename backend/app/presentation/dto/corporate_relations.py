@@ -52,6 +52,7 @@ class CorporateRelationRevisionResponse(BaseModel):
     evidence: str
     confirmation_status: ConfirmationStatus
     recorded_at: AwareDatetime
+    recorded_by: str | None = None
 
 
 class CorporateRelationResponse(CorporateRelationRevisionResponse):

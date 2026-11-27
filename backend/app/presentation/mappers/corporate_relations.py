@@ -16,6 +16,8 @@ from app.presentation.dto.corporate_relations import (
 
 def to_register_relation_input(
     data: CorporateRelationCreateRequest,
+    *,
+    recorded_by: str | None = None,
 ) -> RegisterCorporateRelationInput:
     """登録リクエストを公開コマンドに変換する。"""
     return RegisterCorporateRelationInput(
@@ -26,11 +28,14 @@ def to_register_relation_input(
         valid_to=data.valid_to,
         evidence=data.evidence,
         confirmation_status=data.confirmation_status,
+        recorded_by=recorded_by,
     )
 
 
 def to_correct_relation_input(
     data: CorporateRelationCorrectionRequest,
+    *,
+    recorded_by: str | None = None,
 ) -> CorrectCorporateRelationInput:
     """指定の有無を保持したまま訂正コマンドに変換する。"""
     return CorrectCorporateRelationInput(
@@ -39,6 +44,7 @@ def to_correct_relation_input(
         evidence=data.evidence,
         confirmation_status=data.confirmation_status,
         provided_fields=frozenset(data.model_fields_set),
+        recorded_by=recorded_by,
     )
 
 

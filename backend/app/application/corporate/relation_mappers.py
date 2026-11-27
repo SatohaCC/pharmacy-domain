@@ -13,6 +13,7 @@ def to_revision_item(revision: CorporateRelationRevision) -> CorporateRelationRe
         evidence=revision.evidence.value,
         confirmation_status=revision.confirmation_status.value,
         recorded_at=revision.recorded_at.value,
+        recorded_by=revision.recorded_by,
     )
 
 
@@ -30,4 +31,5 @@ def to_relation_item(
         evidence=revision.evidence.value,
         confirmation_status=revision.confirmation_status.value,
         recorded_at=revision.recorded_at.value,
+        recorded_by=revision.recorded_by,
     )

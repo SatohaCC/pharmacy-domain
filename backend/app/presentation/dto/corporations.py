@@ -93,3 +93,4 @@ class CorporationHistoryResponse(BaseModel):
     kind: Literal["legacy", "registration", "profile", "correction", "dissolution", "merger"]
     evidence: str | None
     surviving_corporation_id: str | None
+    recorded_by: str | None = None

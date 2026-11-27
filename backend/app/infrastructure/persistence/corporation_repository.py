@@ -53,6 +53,7 @@ def _row_to_history_record(row: RowMapping) -> CorporationHistoryRecord:
     value = row["corporate_number"]
     evidence = row["evidence"]
     survivor = row["surviving_corporation_id"]
+    recorded_by = row["recorded_by"]
     return CorporationHistoryRecord(
         corporation=Corporation(
             id=CorporationId(row["corporation_id"]),
@@ -68,6 +69,7 @@ def _row_to_history_record(row: RowMapping) -> CorporationHistoryRecord:
         kind=CorporationChangeKind(row["kind"]),
         evidence=CorporationEvidence(evidence) if evidence is not None else None,
         surviving_corporation_id=CorporationId(survivor) if survivor is not None else None,
+        recorded_by=str(recorded_by) if recorded_by is not None else None,
     )
 
 
@@ -186,5 +188,6 @@ class SqlAlchemyCorporationRepository:
                 kind=record.kind.value,
                 evidence=record.evidence.value if record.evidence is not None else None,
                 surviving_corporation_id=survivor.value if survivor is not None else None,
+                recorded_by=record.recorded_by,
             )
         )

@@ -16,6 +16,7 @@ class RegisterCorporationInput:
     valid_from: date | None = None
     valid_to: date | None = None
     evidence: str | None = None
+    recorded_by: str | None = None
 
 
 @dataclass(frozen=True, slots=True)
@@ -29,6 +30,7 @@ class UpdateCorporationInput:
     valid_from: date | None = None
     valid_to: date | None = None
     evidence: str | None = None
+    recorded_by: str | None = None
 
 
 @dataclass(frozen=True, slots=True)
@@ -39,6 +41,7 @@ class ChangeCorporationStatusInput:
     effective_date: date | None = None
     evidence: str | None = None
     surviving_corporation_id: str | None = None
+    recorded_by: str | None = None
 
 
 @dataclass(frozen=True, slots=True)
@@ -85,6 +88,7 @@ class CorporationHistoryItem:
     kind: str
     evidence: str | None
     surviving_corporation_id: str | None
+    recorded_by: str | None = None
 
 
 class CorporationCommandPort(Protocol):
@@ -160,6 +164,7 @@ class RegisterCorporateRelationInput:
     evidence: str
     valid_to: date | None = None
     confirmation_status: str = "unverified"
+    recorded_by: str | None = None
 
 
 @dataclass(frozen=True, slots=True)
@@ -171,6 +176,7 @@ class CorrectCorporateRelationInput:
     evidence: str | None = None
     confirmation_status: str | None = None
     provided_fields: frozenset[str] | None = None
+    recorded_by: str | None = None
 
 
 @dataclass(frozen=True, slots=True)
@@ -191,6 +197,7 @@ class CorporateRelationRevisionItem:
     evidence: str
     confirmation_status: str
     recorded_at: datetime
+    recorded_by: str | None
 
 
 @dataclass(frozen=True, slots=True)
@@ -216,7 +223,13 @@ class CorporateRelationCommandPort(Protocol):
         """指定の関係に訂正記録を追加する。"""
         ...
 
-    def end_relation(self, relation_id: str, end_date: date) -> CorporateRelationItem:
+    def end_relation(
+        self,
+        relation_id: str,
+        end_date: date,
+        *,
+        recorded_by: str | None = None,
+    ) -> CorporateRelationItem:
         """指定の関係を有効終了日で終了する。"""
         ...
 
