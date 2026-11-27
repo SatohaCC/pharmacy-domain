@@ -24,7 +24,7 @@ export function formatAuthRoleLabel(role: AuthRole): string {
 
 export interface VendorConsoleHeaderProps {
   title: string;
-  activeSection: "corporations" | "users";
+  activeSection: "corporations" | "relations" | "users";
   currentUser: AuthUser;
   isLoggingOut: boolean;
   onLogout: () => void;
@@ -69,6 +69,13 @@ export function VendorConsoleHeader({
           {...stylex.props(s.navLink, activeSection === "corporations" && s.navLinkActive)}
         >
           法人管理
+        </Link>
+        <Link
+          href="/vendor/corporations/relations"
+          aria-current={activeSection === "relations" ? "page" : undefined}
+          {...stylex.props(s.navLink, activeSection === "relations" && s.navLinkActive)}
+        >
+          法人間関係
         </Link>
         <Link
           href="/vendor/users"

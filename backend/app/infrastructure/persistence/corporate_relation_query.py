@@ -4,7 +4,13 @@ from datetime import date
 
 from sqlalchemy import Engine
 
-from app.domain.corporate import CorporateRelation, CorporateRelationId, CorporationId
+from app.domain.corporate import (
+    CorporateRelation,
+    CorporateRelationId,
+    CorporateRelationType,
+    CorporationId,
+    RelationConfirmationStatus,
+)
 from app.domain.foundation import AwareDatetime
 from app.infrastructure.persistence.corporate_relation_repository import (
     SqlAlchemyCorporateRelationRepository,
@@ -27,9 +33,15 @@ class SqlAlchemyCorporateRelationQueryPort:
         corporation_id: CorporationId | None,
         as_of: date | None,
         recorded_as_of: AwareDatetime | None,
+        relation_type: CorporateRelationType | None = None,
+        confirmation_status: RelationConfirmationStatus | None = None,
     ) -> tuple[CorporateRelation, ...]:
-        """両端の法人 ID、有効日および記録日時で絞り込む。"""
+        """両端の法人 ID、有効日、記録日時、種別および確認状態で絞り込む。"""
         with self._engine.connect() as connection:
             return SqlAlchemyCorporateRelationRepository(connection).list_relations(
-                corporation_id, as_of, recorded_as_of
+                corporation_id,
+                as_of,
+                recorded_as_of,
+                relation_type,
+                confirmation_status,
             )

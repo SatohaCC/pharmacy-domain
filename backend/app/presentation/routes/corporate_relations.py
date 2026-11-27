@@ -19,12 +19,14 @@ from app.presentation.dependencies import (
     verify_csrf_origin,
 )
 from app.presentation.dto.corporate_relations import (
+    ConfirmationStatus,
     CorporateRelationCorrectionRequest,
     CorporateRelationCreateRequest,
     CorporateRelationEndRequest,
     CorporateRelationListResponse,
     CorporateRelationResponse,
     CorporateRelationRevisionResponse,
+    RelationKind,
 )
 from app.presentation.dto.error import ErrorResponse
 from app.presentation.mappers.corporate_relations import (
@@ -72,10 +74,18 @@ def list_relations(
     corporation_id: str | None = None,
     as_of: date | None = None,
     recorded_as_of: AwareDatetime | None = None,
+    relation_type: RelationKind | None = None,
+    confirmation_status: ConfirmationStatus | None = None,
 ) -> CorporateRelationListResponse:
-    """法人、有効日、記録時点で法人間関係を絞り込む。"""
+    """法人、有効日、記録時点、種別、確認状態で法人間関係を絞り込む。"""
     records = queries.list_relations(
-        ListCorporateRelationsQuery(corporation_id, as_of, recorded_as_of)
+        ListCorporateRelationsQuery(
+            corporation_id=corporation_id,
+            as_of=as_of,
+            recorded_as_of=recorded_as_of,
+            relation_type=relation_type,
+            confirmation_status=confirmation_status,
+        )
     )
     return CorporateRelationListResponse(
         items=[to_relation_response(record) for record in records], total=len(records)

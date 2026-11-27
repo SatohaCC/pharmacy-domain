@@ -186,6 +186,8 @@ class ListCorporateRelationsQuery:
     corporation_id: str | None = None
     as_of: date | None = None
     recorded_as_of: datetime | None = None
+    relation_type: str | None = None
+    confirmation_status: str | None = None
 
 
 @dataclass(frozen=True, slots=True)

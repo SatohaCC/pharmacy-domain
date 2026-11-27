@@ -116,6 +116,8 @@ class SqlAlchemyCorporateRelationRepository:
         corporation_id: CorporationId | None,
         as_of: date | None,
         recorded_as_of: AwareDatetime | None,
+        relation_type: CorporateRelationType | None = None,
+        confirmation_status: RelationConfirmationStatus | None = None,
     ) -> tuple[CorporateRelation, ...]:
         """指定の記録時点から見た有効な関係を取得する。"""
         statement = _latest_revisions(recorded_as_of)
@@ -130,6 +132,12 @@ class SqlAlchemyCorporateRelationRepository:
             statement = statement.where(
                 revisions.c.valid_from <= as_of,
                 or_(revisions.c.valid_to.is_(None), revisions.c.valid_to > as_of),
+            )
+        if relation_type is not None:
+            statement = statement.where(relations.c.relation_type == relation_type.value)
+        if confirmation_status is not None:
+            statement = statement.where(
+                revisions.c.confirmation_status == confirmation_status.value
             )
         return self._list(statement)
 
