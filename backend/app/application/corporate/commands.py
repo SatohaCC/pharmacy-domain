@@ -24,6 +24,7 @@ from app.domain.corporate.entities import Corporation
 from app.domain.corporate.exceptions import (
     CorporationNotFoundError,
     DuplicateCorporateNumberError,
+    InvalidCorporationTransitionError,
     InvalidCorporationUpdateError,
 )
 from app.domain.corporate.history import (
@@ -319,8 +320,20 @@ class CorporationCommandService:
                     surviving_corporation_id=surviving_id,
                     recorded_by=data.recorded_by,
                 )
-                if surviving_id is not None and uow.corporations.get(surviving_id) is None:
-                    raise CorporationNotFoundError()
+                if surviving_id is not None:
+                    surviving = uow.corporations.get(surviving_id)
+                    if surviving is None:
+                        raise CorporationNotFoundError()
+                    surviving_history = CorporationHistory(uow.corporations.history(surviving_id))
+                    surviving_snapshot = surviving_history.at(effective_date)
+                    if surviving.status != CorporationStatus.ACTIVE or (
+                        surviving_snapshot is not None
+                        and surviving_snapshot.corporation.status != CorporationStatus.ACTIVE
+                    ):
+                        raise InvalidCorporationTransitionError(
+                            "合併先の存続法人は存続（active）状態である必要があります。",
+                            details={"surviving_corporation_id": surviving_id.value},
+                        )
                 updated = replace(current, status=next_status, updated_at=resolved_now)
                 uow.corporations.save(updated)
                 uow.corporations.append_history(record)
