@@ -239,6 +239,42 @@ export function CorporationFormPage({
   const [usageStatus, setUsageStatus] = useState<CorporationUsageStatus>("not_started");
   const [isDetailsOpen, setIsDetailsOpen] = useState(false);
   const [isUsageDialogOpen, setIsUsageDialogOpen] = useState(false);
+  const [baselineCorp, setBaselineCorp] = useState<Corporation | undefined>(initialCorporation);
+
+  if (
+    isEdit &&
+    initialCorporation &&
+    (!baselineCorp ||
+      baselineCorp.id !== initialCorporation.id ||
+      baselineCorp.updated_at !== initialCorporation.updated_at ||
+      baselineCorp.name !== initialCorporation.name ||
+      baselineCorp.representative_name !== initialCorporation.representative_name ||
+      (baselineCorp.corporate_number ?? "") !== (initialCorporation.corporate_number ?? "") ||
+      baselineCorp.address !== initialCorporation.address ||
+      (baselineCorp.valid_to ?? "") !== (initialCorporation.valid_to ?? ""))
+  ) {
+    if (!baselineCorp || baselineCorp.id !== initialCorporation.id) {
+      setCategory(initialCorporation.category);
+      setName(initialCorporation.name);
+      setRepresentativeName(initialCorporation.representative_name);
+      setCorporateNumber(initialCorporation.corporate_number ?? "");
+      setAddress(initialCorporation.address);
+      setValidTo(initialCorporation.valid_to ?? "");
+    } else {
+      if (name === baselineCorp.name) setName(initialCorporation.name);
+      if (representativeName === baselineCorp.representative_name) {
+        setRepresentativeName(initialCorporation.representative_name);
+      }
+      if (corporateNumber === (baselineCorp.corporate_number ?? "")) {
+        setCorporateNumber(initialCorporation.corporate_number ?? "");
+      }
+      if (address === baselineCorp.address) setAddress(initialCorporation.address);
+      if (validTo === (baselineCorp.valid_to ?? "")) {
+        setValidTo(initialCorporation.valid_to ?? "");
+      }
+    }
+    setBaselineCorp(initialCorporation);
+  }
 
   const [nameError, setNameError] = useState<string | undefined>(undefined);
   const [representativeNameError, setRepresentativeNameError] = useState<string | undefined>(
