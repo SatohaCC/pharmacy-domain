@@ -2,7 +2,7 @@
 
 import * as stylex from "@stylexjs/stylex";
 import { Field, FieldDescription, FieldError, FieldLabel } from "@ui-sdk/react/field";
-import { Input, type InputOptions } from "@ui-sdk/react/input";
+import { Input, InputGroup, type InputOptions } from "@ui-sdk/react/input";
 import type { ComponentProps, ReactNode, Ref } from "react";
 import { hasRenderableNode } from "../internal/hasRenderableNode";
 import { textFieldStyles as s } from "./TextField.styles";
@@ -84,7 +84,7 @@ export function TextField({
           </span>
         ) : null}
       </FieldLabel>
-      <div
+      <InputGroup
         {...stylex.props(
           s.controlBox,
           variant === "outlined" ? s.outlined : s.filled,
@@ -118,7 +118,7 @@ export function TextField({
         {hasRenderableNode(trailing) ? (
           <span {...stylex.props(s.affix, disabled && s.affixDisabled)}>{trailing}</span>
         ) : null}
-      </div>
+      </InputGroup>
       {hasRenderableNode(description) ? (
         <FieldDescription
           className={(state) =>
