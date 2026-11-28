@@ -338,6 +338,9 @@ export const corporationsWorkspaceStyles = stylex.create({
     display: "grid",
     gap: "14px",
   },
+  formDetailsSummary: {
+    inlineSize: "fit-content",
+  },
   dangerBox: {
     display: "grid",
     gap: "14px",
