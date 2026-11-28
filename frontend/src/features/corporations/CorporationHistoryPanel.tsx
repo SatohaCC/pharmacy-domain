@@ -73,24 +73,9 @@ export interface CorporationHistoryPanelProps {
       evidence?: string | null;
     },
   ) => Promise<boolean>;
-  isCorrectingHistory: boolean;
-  correctionErrorMessage: string | null;
-  onCorrectHistory: (
-    corporationId: string,
-    input: {
-      as_of: string;
-      name?: string | null;
-      representative_name?: string | null;
-      corporate_number?: string | null;
-      address?: string | null;
-      valid_from?: string | null;
-      valid_to?: string | null;
-      evidence: string;
-    },
-  ) => Promise<boolean>;
 }
 
-/** 法人の変更履歴タイムライン・時点参照・解散/合併・過去履歴訂正パネル。 */
+/** 法人の変更履歴タイムライン・時点参照・解散/合併パネル。 */
 export function CorporationHistoryPanel({
   section = "all",
   corporation,
@@ -106,9 +91,6 @@ export function CorporationHistoryPanel({
   isChangingStatus,
   statusErrorMessage,
   onChangeStatus,
-  isCorrectingHistory,
-  correctionErrorMessage,
-  onCorrectHistory,
 }: CorporationHistoryPanelProps) {
   const [nextStatus, setNextStatus] = useState<"dissolved" | "merged_out">("dissolved");
   const [effectiveDate, setEffectiveDate] = useState("");
@@ -120,19 +102,7 @@ export function CorporationHistoryPanel({
   const [lookupRecordedAsOf, setLookupRecordedAsOf] = useState(
     snapshotParams?.recorded_as_of ?? "",
   );
-
-  const [correctAsOf, setCorrectAsOf] = useState("");
-  const [correctName, setCorrectName] = useState("");
-  const [correctRepresentativeName, setCorrectRepresentativeName] = useState("");
-  const [correctCorpNumber, setCorrectCorpNumber] = useState("");
-  const [correctAddress, setCorrectAddress] = useState("");
-  const [correctValidFrom, setCorrectValidFrom] = useState("");
-  const [correctValidTo, setCorrectValidTo] = useState("");
-  const [correctEvidence, setCorrectEvidence] = useState("");
-  const [correctFormError, setCorrectFormError] = useState<string | undefined>(undefined);
-  const [baselineRecord, setBaselineRecord] = useState<CorporationHistoryRecord | null>(null);
   const [isLookupOpen, setIsLookupOpen] = useState(false);
-  const [isCorrectionOpen, setIsCorrectionOpen] = useState(false);
 
   const survivingOptions: readonly SelectOption[] = [
     { value: "", label: "存続法人を選択してください" },
@@ -178,88 +148,6 @@ export function CorporationHistoryPanel({
       return;
     }
     onLookupSnapshot({ as_of: asOf, recorded_as_of: recordedAsOf });
-  }
-
-  async function handleCorrectSubmit(event: React.FormEvent<HTMLFormElement>) {
-    event.preventDefault();
-    if (!correctAsOf.trim()) {
-      setCorrectFormError("訂正対象の基準日 (as_of) を入力してください。");
-      return;
-    }
-    if (!correctEvidence.trim()) {
-      setCorrectFormError("履歴訂正の根拠 (evidence) を入力してください。");
-      return;
-    }
-    setCorrectFormError(undefined);
-    const payload: {
-      as_of: string;
-      name?: string | null;
-      representative_name?: string | null;
-      corporate_number?: string | null;
-      address?: string | null;
-      valid_from?: string | null;
-      valid_to?: string | null;
-      evidence: string;
-    } = {
-      as_of: correctAsOf.trim(),
-      evidence: correctEvidence.trim(),
-    };
-    const trimmedName = correctName.trim();
-    const trimmedRepresentativeName = correctRepresentativeName.trim();
-    const trimmedNumber = correctCorpNumber.trim();
-    const trimmedAddress = correctAddress.trim();
-    const trimmedValidFrom = correctValidFrom.trim();
-    const trimmedValidTo = correctValidTo.trim();
-
-    if (baselineRecord) {
-      if (trimmedName && trimmedName !== baselineRecord.corporation.name) {
-        payload.name = trimmedName;
-      }
-      if (
-        trimmedRepresentativeName &&
-        trimmedRepresentativeName !== baselineRecord.corporation.representative_name
-      ) {
-        payload.representative_name = trimmedRepresentativeName;
-      }
-      if (trimmedNumber !== (baselineRecord.corporation.corporate_number ?? "")) {
-        payload.corporate_number = trimmedNumber || null;
-      }
-      if (trimmedAddress !== baselineRecord.corporation.address) {
-        payload.address = trimmedAddress;
-      }
-      if (trimmedValidFrom && trimmedValidFrom !== baselineRecord.valid_from) {
-        payload.valid_from = trimmedValidFrom;
-      }
-      if (trimmedValidTo !== (baselineRecord.valid_to ?? "")) {
-        payload.valid_to = trimmedValidTo || null;
-      }
-    } else {
-      if (trimmedName) payload.name = trimmedName;
-      if (trimmedRepresentativeName) payload.representative_name = trimmedRepresentativeName;
-      if (trimmedNumber) payload.corporate_number = trimmedNumber;
-      if (trimmedAddress) payload.address = trimmedAddress;
-      if (trimmedValidFrom) payload.valid_from = trimmedValidFrom;
-      if (trimmedValidTo) payload.valid_to = trimmedValidTo;
-    }
-
-    const ok = await onCorrectHistory(corporation.id, payload);
-    if (ok) {
-      setCorrectEvidence("");
-      setBaselineRecord(null);
-    }
-  }
-
-  function prefillCorrection(record: CorporationHistoryRecord) {
-    setBaselineRecord(record);
-    setCorrectAsOf(record.valid_from);
-    setCorrectName(record.corporation.name);
-    setCorrectRepresentativeName(record.corporation.representative_name);
-    setCorrectCorpNumber(record.corporation.corporate_number ?? "");
-    setCorrectAddress(record.corporation.address);
-    setCorrectValidFrom(record.valid_from);
-    setCorrectValidTo(record.valid_to ?? "");
-    setCorrectFormError(undefined);
-    setIsCorrectionOpen(true);
   }
 
   const showStatusSection =
@@ -372,14 +260,6 @@ export function CorporationHistoryPanel({
                           <span>根拠: {record.evidence || "未記録"}</span>
                         </p>
                       </div>
-                      <Button
-                        type="button"
-                        variant="text"
-                        size="sm"
-                        onClick={() => prefillCorrection(record)}
-                      >
-                        この記録を訂正
-                      </Button>
                     </div>
                   </li>
                 ))}
@@ -451,98 +331,6 @@ export function CorporationHistoryPanel({
                   </p>
                 </div>
               ) : null}
-            </form>
-          </details>
-
-          <details
-            open={isCorrectionOpen}
-            onToggle={(e) => setIsCorrectionOpen(e.currentTarget.open)}
-            {...stylex.props(s.detailsBox)}
-          >
-            <summary {...stylex.props(s.detailsSummary)}>過去履歴の訂正</summary>
-            <form
-              onSubmit={(e) => void handleCorrectSubmit(e)}
-              noValidate
-              {...stylex.props(s.detailsBody)}
-            >
-              {correctFormError || correctionErrorMessage ? (
-                <Alert tone="error" title="履歴訂正に失敗しました" role="alert">
-                  <p>{correctFormError ?? correctionErrorMessage}</p>
-                </Alert>
-              ) : null}
-              <div {...stylex.props(s.formGrid)}>
-                <TextField
-                  label="訂正対象日"
-                  name={`correct_as_of_${corporation.id}`}
-                  type="date"
-                  value={correctAsOf}
-                  onValueChange={setCorrectAsOf}
-                  required
-                  disabled={isCorrectingHistory}
-                />
-                <TextField
-                  label="訂正後の法人名"
-                  name={`correct_name_${corporation.id}`}
-                  value={correctName}
-                  onValueChange={setCorrectName}
-                  disabled={isCorrectingHistory}
-                />
-                <TextField
-                  label={
-                    corporation.category === "individual"
-                      ? "訂正後の開設者氏名"
-                      : "訂正後の代表者名"
-                  }
-                  name={`correct_representative_name_${corporation.id}`}
-                  value={correctRepresentativeName}
-                  onValueChange={setCorrectRepresentativeName}
-                  disabled={isCorrectingHistory}
-                />
-                <TextField
-                  label="訂正後の法人番号"
-                  name={`correct_number_${corporation.id}`}
-                  value={correctCorpNumber}
-                  onValueChange={setCorrectCorpNumber}
-                  disabled={isCorrectingHistory}
-                />
-                <TextField
-                  label="訂正後の所在地"
-                  name={`correct_address_${corporation.id}`}
-                  value={correctAddress}
-                  onValueChange={setCorrectAddress}
-                  disabled={isCorrectingHistory}
-                />
-                <TextField
-                  label="有効開始日"
-                  name={`correct_valid_from_${corporation.id}`}
-                  type="date"
-                  value={correctValidFrom}
-                  onValueChange={setCorrectValidFrom}
-                  disabled={isCorrectingHistory}
-                />
-                <TextField
-                  label="有効終了日"
-                  name={`correct_valid_to_${corporation.id}`}
-                  type="date"
-                  value={correctValidTo}
-                  onValueChange={setCorrectValidTo}
-                  disabled={isCorrectingHistory}
-                />
-                <TextField
-                  label="訂正の根拠"
-                  name={`correct_evidence_${corporation.id}`}
-                  value={correctEvidence}
-                  onValueChange={setCorrectEvidence}
-                  placeholder="例: 登記簿記載の修正"
-                  required
-                  disabled={isCorrectingHistory}
-                />
-              </div>
-              <div {...stylex.props(s.submitRow)}>
-                <Button type="submit" variant="outlined" size="sm" disabled={isCorrectingHistory}>
-                  {isCorrectingHistory ? "訂正中…" : "履歴を訂正"}
-                </Button>
-              </div>
             </form>
           </details>
         </>

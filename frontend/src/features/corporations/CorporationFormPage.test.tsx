@@ -268,7 +268,7 @@ describe("CorporationFormPage", () => {
     expect(onChangeUsageStatus).toHaveBeenCalledWith("corp-1", "suspended");
   });
 
-  it("編集モードの履歴・状態管理パネルで合併・時点照会・履歴訂正を実行できる", async () => {
+  it("編集モードの履歴・状態管理パネルで合併と時点照会を実行でき、過去履歴の訂正UIは表示されない", async () => {
     const user = userEvent.setup();
     const survivingCorporation: Corporation = {
       ...sampleCorporation,
@@ -279,7 +279,6 @@ describe("CorporationFormPage", () => {
     };
     const onLookupSnapshot = vi.fn();
     const onChangeStatus = vi.fn().mockResolvedValue(true);
-    const onCorrectHistory = vi.fn().mockResolvedValue(true);
 
     render(
       <CorporationFormPage
@@ -305,7 +304,6 @@ describe("CorporationFormPage", () => {
         ]}
         onLookupSnapshot={onLookupSnapshot}
         onChangeStatus={onChangeStatus}
-        onCorrectHistory={onCorrectHistory}
         isLoggingOut={false}
         onLogout={vi.fn()}
       />,
@@ -325,26 +323,16 @@ describe("CorporationFormPage", () => {
       evidence: undefined,
     });
 
-    await user.click(screen.getByRole("tab", { name: "変更履歴・訂正" }));
+    await user.click(screen.getByRole("tab", { name: "変更履歴" }));
     expect(screen.getByText(/変更者: vendor-admin-1/)).toBeInTheDocument();
+    expect(screen.queryByText("過去履歴の訂正")).not.toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "この記録を訂正" })).not.toBeInTheDocument();
     await user.click(screen.getByText("過去時点の状態を照会"));
     await user.type(screen.getByLabelText("基準日"), "2026-06-01");
     await user.click(screen.getByRole("button", { name: "時点照会" }));
     expect(onLookupSnapshot).toHaveBeenCalledWith({
       as_of: "2026-06-01",
       recorded_as_of: undefined,
-    });
-
-    await user.click(screen.getByRole("button", { name: "この記録を訂正" }));
-    await user.clear(screen.getByLabelText("訂正後の法人番号"));
-    await user.clear(screen.getByLabelText("訂正後の所在地"));
-    await user.type(screen.getByLabelText(/訂正の根拠/), "登記簿修正");
-    await user.click(screen.getByRole("button", { name: "履歴を訂正" }));
-    expect(onCorrectHistory).toHaveBeenCalledWith("corp-1", {
-      as_of: "2026-01-01",
-      corporate_number: null,
-      address: "",
-      evidence: "登記簿修正",
     });
   });
 
@@ -375,7 +363,6 @@ describe("CorporationFormPage", () => {
         ]}
         onLookupSnapshot={vi.fn()}
         onChangeStatus={vi.fn().mockResolvedValue(true)}
-        onCorrectHistory={vi.fn().mockResolvedValue(true)}
         isLoggingOut={false}
         onLogout={vi.fn()}
       />,
@@ -383,7 +370,7 @@ describe("CorporationFormPage", () => {
 
     expect(screen.getByText("基本情報は編集できません")).toBeInTheDocument();
     expect(screen.queryByRole("button", { name: "基本情報を保存" })).not.toBeInTheDocument();
-    await user.click(screen.getByRole("tab", { name: "変更履歴・訂正" }));
+    await user.click(screen.getByRole("tab", { name: "変更履歴" }));
     expect(screen.getByText("変更履歴タイムライン")).toBeInTheDocument();
   });
 });

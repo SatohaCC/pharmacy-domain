@@ -19,7 +19,6 @@ import {
   useCorporationAt,
   useCorporationHistory,
   useCorporations,
-  useCorrectCorporationHistory,
   useCreateCorporation,
   useUpdateCorporation,
 } from "./useCorporations";
@@ -64,7 +63,6 @@ export function CorporationFormContainer(props: CorporationFormContainerProps) {
   const updateMutation = useUpdateCorporation();
   const changeStatusMutation = useChangeCorporationStatus();
   const changeUsageStatusMutation = useChangeCorporationUsageStatus();
-  const correctHistoryMutation = useCorrectCorporationHistory();
   const logoutMutation = useAuthLogout(() => {
     router.replace("/login");
   });
@@ -78,8 +76,7 @@ export function CorporationFormContainer(props: CorporationFormContainerProps) {
     isAuthenticationError(createMutation.error) ||
     isAuthenticationError(updateMutation.error) ||
     isAuthenticationError(changeStatusMutation.error) ||
-    isAuthenticationError(changeUsageStatusMutation.error) ||
-    isAuthenticationError(correctHistoryMutation.error);
+    isAuthenticationError(changeUsageStatusMutation.error);
 
   useEffect(() => {
     if (hasSessionAuthError) {
@@ -186,16 +183,6 @@ export function CorporationFormContainer(props: CorporationFormContainerProps) {
         onChangeStatus={async (corporationId, payload) => {
           try {
             await changeStatusMutation.mutateAsync({ corporationId, payload });
-            return true;
-          } catch {
-            return false;
-          }
-        }}
-        isCorrectingHistory={correctHistoryMutation.isPending}
-        correctionErrorMessage={correctHistoryMutation.errorMessage}
-        onCorrectHistory={async (corporationId, payload) => {
-          try {
-            await correctHistoryMutation.mutateAsync({ corporationId, payload });
             return true;
           } catch {
             return false;
