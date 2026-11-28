@@ -8,12 +8,20 @@ import { VendorConsoleHeader } from "@/features/auth/VendorConsoleHeader";
 import { vendorConsoleLayoutStyles as layout } from "@/features/auth/VendorConsoleLayout.styles";
 import type { ApiUserFacingError } from "@/shared/lib/api/apiClient";
 import { Alert } from "@/shared/ui/alert/Alert";
+import { Badge } from "@/shared/ui/badge/Badge";
 import { Button } from "@/shared/ui/button/Button";
+import { Dialog, DialogCloseButton } from "@/shared/ui/dialog/Dialog";
 import { RadioGroup, type RadioOption } from "@/shared/ui/radio-group/RadioGroup";
 import { Select, type SelectOption } from "@/shared/ui/select/Select";
 import { TextField } from "@/shared/ui/text-field/TextField";
+import { CorporationHistoryPanel } from "./CorporationHistoryPanel";
 import { corporationsWorkspaceStyles as s } from "./CorporationsWorkspace.styles";
-import type { Corporation, CorporationCategory, CorporationUsageStatus } from "./schemas";
+import type {
+  Corporation,
+  CorporationCategory,
+  CorporationHistoryRecord,
+  CorporationUsageStatus,
+} from "./schemas";
 
 const CATEGORY_RADIO_ITEMS: readonly RadioOption[] = [
   { value: "corporation", label: "法人（株式会社・有限会社等）" },
@@ -25,6 +33,28 @@ const USAGE_STATUS_OPTIONS: readonly SelectOption[] = [
   { value: "active", label: "利用中" },
   { value: "suspended", label: "利用停止" },
 ];
+
+function usageStatusLabel(status: CorporationUsageStatus): string {
+  switch (status) {
+    case "not_started":
+      return "未利用";
+    case "active":
+      return "利用中";
+    case "suspended":
+      return "利用停止";
+  }
+}
+
+function usageStatusTone(status: CorporationUsageStatus): "success" | "neutral" | "danger" {
+  switch (status) {
+    case "active":
+      return "success";
+    case "not_started":
+      return "neutral";
+    case "suspended":
+      return "danger";
+  }
+}
 
 function validateCorporateNumber(
   category: CorporationCategory,
@@ -85,12 +115,53 @@ export interface CorporationFormPageProps {
       evidence?: string | null;
     },
   ) => Promise<boolean>;
+  isChangingUsageStatus?: boolean;
+  usageStatusErrorMessage?: string | null;
+  onChangeUsageStatus?: (
+    corporationId: string,
+    usageStatus: CorporationUsageStatus,
+  ) => Promise<boolean>;
+  activeCorporations?: readonly Corporation[];
+  historyRecords?: readonly CorporationHistoryRecord[];
+  isLoadingHistory?: boolean;
+  historyErrorMessage?: string | null;
+  snapshotParams?: { as_of?: string; recorded_as_of?: string } | null;
+  onLookupSnapshot?: (params: { as_of?: string; recorded_as_of?: string } | null) => void;
+  snapshotCorporation?: Corporation | null;
+  isLoadingSnapshot?: boolean;
+  snapshotErrorMessage?: string | null;
+  isChangingStatus?: boolean;
+  statusErrorMessage?: string | null;
+  onChangeStatus?: (
+    corporationId: string,
+    input: {
+      status: "dissolved" | "merged_out";
+      effective_date?: string | null;
+      surviving_corporation_id?: string | null;
+      evidence?: string | null;
+    },
+  ) => Promise<boolean>;
+  isCorrectingHistory?: boolean;
+  correctionErrorMessage?: string | null;
+  onCorrectHistory?: (
+    corporationId: string,
+    input: {
+      as_of: string;
+      name?: string | null;
+      representative_name?: string | null;
+      corporate_number?: string | null;
+      address?: string | null;
+      valid_from?: string | null;
+      valid_to?: string | null;
+      evidence: string;
+    },
+  ) => Promise<boolean>;
   isLoggingOut: boolean;
   onLogout: () => void;
   backHref?: string;
 }
 
-/** 企業の登録・基本情報編集を共通で扱うフォーム画面。 */
+/** 企業の登録・基本情報編集・利用状態管理・履歴管理を共通で扱う画面。 */
 export function CorporationFormPage({
   mode,
   currentUser,
@@ -100,6 +171,24 @@ export function CorporationFormPage({
   submitUserFacingError,
   onCreateCorporation,
   onUpdateCorporation,
+  isChangingUsageStatus = false,
+  usageStatusErrorMessage = null,
+  onChangeUsageStatus,
+  activeCorporations = [],
+  historyRecords = [],
+  isLoadingHistory = false,
+  historyErrorMessage = null,
+  snapshotParams = null,
+  onLookupSnapshot,
+  snapshotCorporation = null,
+  isLoadingSnapshot = false,
+  snapshotErrorMessage = null,
+  isChangingStatus = false,
+  statusErrorMessage = null,
+  onChangeStatus,
+  isCorrectingHistory = false,
+  correctionErrorMessage = null,
+  onCorrectHistory,
   isLoggingOut,
   onLogout,
   backHref = "/vendor/corporations",
@@ -120,6 +209,7 @@ export function CorporationFormPage({
   const [validTo, setValidTo] = useState(initialCorporation?.valid_to ?? "");
   const [evidence, setEvidence] = useState("");
   const [usageStatus, setUsageStatus] = useState<CorporationUsageStatus>("not_started");
+  const [isUsageDialogOpen, setIsUsageDialogOpen] = useState(false);
 
   const [nameError, setNameError] = useState<string | undefined>(undefined);
   const [representativeNameError, setRepresentativeNameError] = useState<string | undefined>(
@@ -233,7 +323,7 @@ export function CorporationFormPage({
   }
 
   const pageTitle = isEdit
-    ? "導入企業（法人・個人開設者）の基本情報編集"
+    ? "導入企業（法人・個人開設者）の編集・管理"
     : "新規企業（法人・個人開設者）の登録";
   const panelHeading = isEdit
     ? `基本情報の編集: ${initialCorporation?.name ?? ""}`
@@ -241,6 +331,10 @@ export function CorporationFormPage({
   const panelDescription = isEdit
     ? "変更された項目のみを保存します。変更の有効開始日や根拠を記録できます。"
     : "薬局を開設する法人または個人開設者を登録します。1法人（または1個人開設者）＝1テナントとして管理されます。";
+
+  const currentUsage = initialCorporation?.usage_status ?? "not_started";
+  const nextUsage: CorporationUsageStatus = currentUsage === "active" ? "suspended" : "active";
+  const isStoppingUsage = currentUsage === "active";
 
   return (
     <div data-vendor-console="" {...stylex.props(layout.page)}>
@@ -266,194 +360,322 @@ export function CorporationFormPage({
             </Link>
           </div>
 
-          {formError ? (
-            <Alert tone="error" title="変更内容を確認してください" role="alert">
-              <p>{formError}</p>
+          {isEdit && initialCorporation && initialCorporation.status !== "active" ? (
+            <Alert tone="warning" title="基本情報は編集できません">
+              <p>
+                解散または合併消滅した法人の基本情報は変更できません。変更履歴の参照および過去履歴の訂正は下のセクションから行えます。
+              </p>
             </Alert>
-          ) : null}
+          ) : (
+            <>
+              {formError ? (
+                <Alert tone="error" title="変更内容を確認してください" role="alert">
+                  <p>{formError}</p>
+                </Alert>
+              ) : null}
 
-          {submitErrorMessage ? (
-            <Alert
-              tone="error"
-              title={
-                submitUserFacingError?.title ??
-                (isEdit ? "基本情報を更新できませんでした" : "企業を登録できませんでした")
-              }
-              role="alert"
-            >
-              <p>{submitUserFacingError?.reason ?? submitErrorMessage}</p>
-              {submitUserFacingError?.how_to_fix ? <p>{submitUserFacingError.how_to_fix}</p> : null}
-            </Alert>
-          ) : null}
-
-          <form
-            aria-labelledby="corporation-form-heading"
-            onSubmit={(e) => void handleSubmit(e)}
-            noValidate
-            {...stylex.props(s.formStack)}
-          >
-            <RadioGroup
-              label="開設主体区分"
-              name="category"
-              orientation="horizontal"
-              items={CATEGORY_RADIO_ITEMS}
-              value={category}
-              onValueChange={(value) => {
-                if (isEdit) return;
-                if (value === "corporation" || value === "individual") {
-                  setCategory(value);
-                  if (value === "individual") {
-                    setCorporateNumber("");
-                    setCorporateNumberError(undefined);
+              {submitErrorMessage ? (
+                <Alert
+                  tone="error"
+                  title={
+                    submitUserFacingError?.title ??
+                    (isEdit ? "基本情報を更新できませんでした" : "企業を登録できませんでした")
                   }
-                }
-              }}
-              disabled={isEdit || isSubmitting}
-            />
+                  role="alert"
+                >
+                  <p>{submitUserFacingError?.reason ?? submitErrorMessage}</p>
+                  {submitUserFacingError?.how_to_fix ? (
+                    <p>{submitUserFacingError.how_to_fix}</p>
+                  ) : null}
+                </Alert>
+              ) : null}
 
-            <div {...stylex.props(s.formGrid)}>
-              <TextField
-                label="法人名（個人の場合は氏名・屋号）"
-                name="name"
-                placeholder="株式会社さくら薬局"
-                value={name}
-                onValueChange={(value) => {
-                  setName(value);
-                  if (nameError) setNameError(undefined);
-                  if (formError) setFormError(undefined);
-                }}
-                errorMessage={nameError}
-                required
-                disabled={isSubmitting}
-              />
-
-              <TextField
-                label={category === "individual" ? "開設者氏名" : "代表者名"}
-                name="representative_name"
-                placeholder="山田 太郎"
-                value={representativeName}
-                onValueChange={(value) => {
-                  setRepresentativeName(value);
-                  if (representativeNameError) setRepresentativeNameError(undefined);
-                  if (formError) setFormError(undefined);
-                }}
-                errorMessage={representativeNameError}
-                required
-                disabled={isSubmitting}
-              />
-
-              <TextField
-                label="法人番号（13桁）"
-                name="corporate_number"
-                inputMode="numeric"
-                autoCorrect="off"
-                autoCapitalize="none"
-                spellCheck={false}
-                maxLength={13}
-                placeholder="1234567890123"
-                description={
-                  category === "individual"
-                    ? "個人開設者は法人番号を入力できません"
-                    : "半角数字13桁（任意・確認前の場合は空欄可）"
-                }
-                value={corporateNumber}
-                onValueChange={(value) => {
-                  setCorporateNumber(value);
-                  if (corporateNumberError) setCorporateNumberError(undefined);
-                  if (formError) setFormError(undefined);
-                }}
-                errorMessage={corporateNumberError}
-                disabled={category === "individual" || isSubmitting}
-              />
-            </div>
-
-            <div {...stylex.props(s.formGrid)}>
-              <TextField
-                label="本店または主たる事務所の所在地"
-                name="address"
-                autoComplete="street-address"
-                placeholder="東京都新宿区1-2-3"
-                value={address}
-                onValueChange={(value) => {
-                  setAddress(value);
-                  if (formError) setFormError(undefined);
-                }}
-                disabled={isSubmitting}
-              />
-
-              <TextField
-                label={isEdit ? "変更の有効開始日（任意）" : "有効開始日（任意）"}
-                name="valid_from"
-                type="date"
-                description={isEdit ? undefined : "設立日または確認できた基準日"}
-                value={validFrom}
-                onValueChange={(value) => {
-                  setValidFrom(value);
-                  if (validToError) setValidToError(undefined);
-                }}
-                disabled={isSubmitting}
-              />
-
-              <TextField
-                label={isEdit ? "変更後の有効終了日（任意）" : "有効終了日（任意）"}
-                name="valid_to"
-                type="date"
-                description={
-                  isEdit
-                    ? "空欄にすると終了未定になります"
-                    : "終了日が未定の場合は空欄のままにしてください"
-                }
-                value={validTo}
-                onValueChange={(value) => {
-                  setValidTo(value);
-                  if (validToError) setValidToError(undefined);
-                  if (formError) setFormError(undefined);
-                }}
-                errorMessage={validToError}
-                disabled={isSubmitting}
-              />
-
-              <TextField
-                label={isEdit ? "変更の確認根拠（任意）" : "確認根拠（任意）"}
-                name="evidence"
-                placeholder={isEdit ? "変更登記簿を確認" : "履歴事項全部証明書・開設許可証を確認"}
-                value={evidence}
-                onValueChange={setEvidence}
-                disabled={isSubmitting}
-              />
-
-              {!isEdit ? (
-                <Select
-                  label="初期システム利用状態"
-                  name="usage_status"
-                  items={USAGE_STATUS_OPTIONS}
-                  value={usageStatus}
+              <form
+                aria-labelledby="corporation-form-heading"
+                onSubmit={(e) => void handleSubmit(e)}
+                noValidate
+                {...stylex.props(s.formStack)}
+              >
+                <RadioGroup
+                  label="開設主体区分"
+                  name="category"
+                  orientation="horizontal"
+                  items={CATEGORY_RADIO_ITEMS}
+                  value={category}
                   onValueChange={(value) => {
-                    if (value === "not_started" || value === "active" || value === "suspended") {
-                      setUsageStatus(value);
+                    if (isEdit) return;
+                    if (value === "corporation" || value === "individual") {
+                      setCategory(value);
+                      if (value === "individual") {
+                        setCorporateNumber("");
+                        setCorporateNumberError(undefined);
+                      }
                     }
                   }}
-                  disabled={isSubmitting}
+                  disabled={isEdit || isSubmitting}
                 />
-              ) : null}
-            </div>
 
-            <div {...stylex.props(s.submitRow)}>
-              <Link href={backHref} {...stylex.props(s.textLinkButton)}>
-                キャンセル
-              </Link>
-              <Button type="submit" variant="filled" disabled={isSubmitting}>
-                {isEdit
-                  ? isSubmitting
-                    ? "保存中…"
-                    : "基本情報を保存"
-                  : isSubmitting
-                    ? "登録中…"
-                    : "企業（法人・個人）を登録"}
+                <div {...stylex.props(s.formGrid)}>
+                  <TextField
+                    label="法人名（個人の場合は氏名・屋号）"
+                    name="name"
+                    placeholder="株式会社さくら薬局"
+                    value={name}
+                    onValueChange={(value) => {
+                      setName(value);
+                      if (nameError) setNameError(undefined);
+                      if (formError) setFormError(undefined);
+                    }}
+                    errorMessage={nameError}
+                    required
+                    disabled={isSubmitting}
+                  />
+
+                  <TextField
+                    label={category === "individual" ? "開設者氏名" : "代表者名"}
+                    name="representative_name"
+                    placeholder="山田 太郎"
+                    value={representativeName}
+                    onValueChange={(value) => {
+                      setRepresentativeName(value);
+                      if (representativeNameError) setRepresentativeNameError(undefined);
+                      if (formError) setFormError(undefined);
+                    }}
+                    errorMessage={representativeNameError}
+                    required
+                    disabled={isSubmitting}
+                  />
+
+                  <TextField
+                    label="法人番号（13桁）"
+                    name="corporate_number"
+                    inputMode="numeric"
+                    autoCorrect="off"
+                    autoCapitalize="none"
+                    spellCheck={false}
+                    maxLength={13}
+                    placeholder="1234567890123"
+                    description={
+                      category === "individual"
+                        ? "個人開設者は法人番号を入力できません"
+                        : "半角数字13桁（任意・確認前の場合は空欄可）"
+                    }
+                    value={corporateNumber}
+                    onValueChange={(value) => {
+                      setCorporateNumber(value);
+                      if (corporateNumberError) setCorporateNumberError(undefined);
+                      if (formError) setFormError(undefined);
+                    }}
+                    errorMessage={corporateNumberError}
+                    disabled={category === "individual" || isSubmitting}
+                  />
+                </div>
+
+                <div {...stylex.props(s.formGrid)}>
+                  <TextField
+                    label="本店または主たる事務所の所在地"
+                    name="address"
+                    autoComplete="street-address"
+                    placeholder="東京都新宿区1-2-3"
+                    value={address}
+                    onValueChange={(value) => {
+                      setAddress(value);
+                      if (formError) setFormError(undefined);
+                    }}
+                    disabled={isSubmitting}
+                  />
+
+                  <TextField
+                    label={isEdit ? "変更の有効開始日（任意）" : "有効開始日（任意）"}
+                    name="valid_from"
+                    type="date"
+                    description={isEdit ? undefined : "設立日または確認できた基準日"}
+                    value={validFrom}
+                    onValueChange={(value) => {
+                      setValidFrom(value);
+                      if (validToError) setValidToError(undefined);
+                    }}
+                    disabled={isSubmitting}
+                  />
+
+                  <TextField
+                    label={isEdit ? "変更後の有効終了日（任意）" : "有効終了日（任意）"}
+                    name="valid_to"
+                    type="date"
+                    description={
+                      isEdit
+                        ? "空欄にすると終了未定になります"
+                        : "終了日が未定の場合は空欄のままにしてください"
+                    }
+                    value={validTo}
+                    onValueChange={(value) => {
+                      setValidTo(value);
+                      if (validToError) setValidToError(undefined);
+                      if (formError) setFormError(undefined);
+                    }}
+                    errorMessage={validToError}
+                    disabled={isSubmitting}
+                  />
+
+                  <TextField
+                    label={isEdit ? "変更の確認根拠（任意）" : "確認根拠（任意）"}
+                    name="evidence"
+                    placeholder={
+                      isEdit ? "変更登記簿を確認" : "履歴事項全部証明書・開設許可証を確認"
+                    }
+                    value={evidence}
+                    onValueChange={setEvidence}
+                    disabled={isSubmitting}
+                  />
+
+                  {!isEdit ? (
+                    <Select
+                      label="初期システム利用状態"
+                      name="usage_status"
+                      items={USAGE_STATUS_OPTIONS}
+                      value={usageStatus}
+                      onValueChange={(value) => {
+                        if (
+                          value === "not_started" ||
+                          value === "active" ||
+                          value === "suspended"
+                        ) {
+                          setUsageStatus(value);
+                        }
+                      }}
+                      disabled={isSubmitting}
+                    />
+                  ) : null}
+                </div>
+
+                <div {...stylex.props(s.submitRow)}>
+                  <Link href={backHref} {...stylex.props(s.textLinkButton)}>
+                    キャンセル
+                  </Link>
+                  <Button type="submit" variant="filled" disabled={isSubmitting}>
+                    {isEdit
+                      ? isSubmitting
+                        ? "保存中…"
+                        : "基本情報を保存"
+                      : isSubmitting
+                        ? "登録中…"
+                        : "企業（法人・個人）を登録"}
+                  </Button>
+                </div>
+              </form>
+            </>
+          )}
+        </section>
+
+        {isEdit &&
+        initialCorporation &&
+        initialCorporation.status === "active" &&
+        onChangeUsageStatus ? (
+          <section aria-labelledby="corporation-usage-heading" {...stylex.props(layout.panel)}>
+            <div {...stylex.props(s.listHeaderRow)}>
+              <div {...stylex.props(s.sectionHeader)}>
+                <div {...stylex.props(s.corpTitleRow)}>
+                  <h2 id="corporation-usage-heading" {...stylex.props(layout.panelHeading)}>
+                    システム利用状態
+                  </h2>
+                  <Badge tone={usageStatusTone(currentUsage)}>
+                    利用: {usageStatusLabel(currentUsage)}
+                  </Badge>
+                </div>
+                <p {...stylex.props(s.sectionDescription)}>
+                  {isStoppingUsage
+                    ? "現在システムを利用中です。利用を停止するとテナントとしての新規稼働を停止します。"
+                    : "現在は参照専用（または利用停止）です。利用を開始すると本システムをテナントとして稼働できます。"}
+                </p>
+              </div>
+              <Button
+                variant="outlined"
+                disabled={isChangingUsageStatus}
+                onClick={() => setIsUsageDialogOpen(true)}
+              >
+                {isStoppingUsage ? "利用停止" : "利用開始"}
               </Button>
             </div>
-          </form>
-        </section>
+
+            <Dialog
+              open={isUsageDialogOpen}
+              onOpenChange={(open) => {
+                if (!isChangingUsageStatus) {
+                  setIsUsageDialogOpen(open);
+                }
+              }}
+              title={
+                isStoppingUsage ? "システム利用を停止しますか？" : "システム利用を開始しますか？"
+              }
+              description={
+                isStoppingUsage
+                  ? `「${initialCorporation.name}」のシステム利用状態を「利用停止」に変更します。`
+                  : `「${initialCorporation.name}」のシステム利用状態を「利用中」に変更します。`
+              }
+              closeLabel="閉じる"
+              actions={
+                <>
+                  <DialogCloseButton variant="text" disabled={isChangingUsageStatus}>
+                    キャンセル
+                  </DialogCloseButton>
+                  <Button
+                    variant="filled"
+                    disabled={isChangingUsageStatus}
+                    onClick={async () => {
+                      const ok = await onChangeUsageStatus(initialCorporation.id, nextUsage);
+                      if (ok) {
+                        setIsUsageDialogOpen(false);
+                      }
+                    }}
+                  >
+                    {isChangingUsageStatus
+                      ? "処理中…"
+                      : isStoppingUsage
+                        ? "利用を停止する"
+                        : "利用を開始する"}
+                  </Button>
+                </>
+              }
+            >
+              <p>
+                {isStoppingUsage
+                  ? "利用停止へ切り替えると、この法人のシステム利用状態が「利用停止」になります。実行してもよろしいですか？"
+                  : "利用開始へ切り替えると、この法人のシステム利用状態が「利用中」になります。実行してもよろしいですか？"}
+              </p>
+              {usageStatusErrorMessage ? (
+                <Alert tone="error" title="利用状態を変更できませんでした" role="alert">
+                  <p>{usageStatusErrorMessage}</p>
+                </Alert>
+              ) : null}
+            </Dialog>
+          </section>
+        ) : null}
+
+        {isEdit && initialCorporation && onLookupSnapshot && onChangeStatus && onCorrectHistory ? (
+          <section aria-labelledby="corporation-history-heading" {...stylex.props(layout.panel)}>
+            <h2 id="corporation-history-heading" {...stylex.props(layout.panelHeading)}>
+              履歴・状態管理
+            </h2>
+            <CorporationHistoryPanel
+              corporation={initialCorporation}
+              activeCorporations={activeCorporations}
+              historyRecords={historyRecords}
+              isLoadingHistory={isLoadingHistory}
+              historyErrorMessage={historyErrorMessage}
+              snapshotParams={snapshotParams}
+              onLookupSnapshot={onLookupSnapshot}
+              snapshotCorporation={snapshotCorporation}
+              isLoadingSnapshot={isLoadingSnapshot}
+              snapshotErrorMessage={snapshotErrorMessage}
+              isChangingStatus={isChangingStatus}
+              statusErrorMessage={statusErrorMessage}
+              onChangeStatus={onChangeStatus}
+              isCorrectingHistory={isCorrectingHistory}
+              correctionErrorMessage={correctionErrorMessage}
+              onCorrectHistory={onCorrectHistory}
+            />
+          </section>
+        ) : null}
       </div>
     </div>
   );
