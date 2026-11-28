@@ -46,11 +46,12 @@ function statusLabel(status: CorporationStatus): string {
 }
 
 const STATUS_TRANSITION_OPTIONS: readonly SelectOption[] = [
-  { value: "dissolved", label: "解散 (dissolved)" },
-  { value: "merged_out", label: "吸収合併で消滅 (merged_out)" },
+  { value: "dissolved", label: "解散" },
+  { value: "merged_out", label: "吸収合併（消滅）" },
 ];
 
 export interface CorporationHistoryPanelProps {
+  section?: "all" | "history" | "status";
   corporation: Corporation;
   activeCorporations: readonly Corporation[];
   historyRecords: readonly CorporationHistoryRecord[];
@@ -91,6 +92,7 @@ export interface CorporationHistoryPanelProps {
 
 /** 法人の変更履歴タイムライン・時点参照・解散/合併・過去履歴訂正パネル。 */
 export function CorporationHistoryPanel({
+  section = "all",
   corporation,
   activeCorporations,
   historyRecords,
@@ -129,6 +131,8 @@ export function CorporationHistoryPanel({
   const [correctEvidence, setCorrectEvidence] = useState("");
   const [correctFormError, setCorrectFormError] = useState<string | undefined>(undefined);
   const [baselineRecord, setBaselineRecord] = useState<CorporationHistoryRecord | null>(null);
+  const [isLookupOpen, setIsLookupOpen] = useState(false);
+  const [isCorrectionOpen, setIsCorrectionOpen] = useState(false);
 
   const survivingOptions: readonly SelectOption[] = [
     { value: "", label: "存続法人を選択してください" },
@@ -255,19 +259,22 @@ export function CorporationHistoryPanel({
     setCorrectValidFrom(record.valid_from);
     setCorrectValidTo(record.valid_to ?? "");
     setCorrectFormError(undefined);
+    setIsCorrectionOpen(true);
   }
 
-  return (
-    <div {...stylex.props(s.editPanel)}>
-      <h3 {...stylex.props(s.editTitle)}>履歴・状態管理: {corporation.name}</h3>
+  const showStatusSection =
+    (section === "all" || section === "status") && corporation.status === "active";
+  const showHistorySection = section === "all" || section === "history";
 
-      {corporation.status === "active" ? (
+  return (
+    <div {...stylex.props(s.formStack)}>
+      {showStatusSection ? (
         <form
           onSubmit={(e) => void handleStatusSubmit(e)}
           noValidate
-          {...stylex.props(s.formStack)}
+          {...stylex.props(s.dangerBox)}
         >
-          <h4 {...stylex.props(s.subSectionTitle)}>解散・吸収合併（ステータス変更）</h4>
+          <h3 {...stylex.props(s.subSectionTitle)}>解散・吸収合併（存続状態の変更）</h3>
           {statusFormError || statusErrorMessage ? (
             <Alert tone="error" title="状態変更を実行できませんでした" role="alert">
               <p>{statusFormError ?? statusErrorMessage}</p>
@@ -323,201 +330,223 @@ export function CorporationHistoryPanel({
         </form>
       ) : null}
 
-      <form onSubmit={handleLookupSubmit} noValidate {...stylex.props(s.formStack)}>
-        <h4 {...stylex.props(s.subSectionTitle)}>時点参照（Bitemporal 照会）</h4>
-        <div {...stylex.props(s.formGrid)}>
-          <TextField
-            label="業務時点日 (as_of)"
-            name={`lookup_as_of_${corporation.id}`}
-            type="date"
-            value={lookupAsOf}
-            onValueChange={setLookupAsOf}
-          />
-          <TextField
-            label="記録時点日時 (recorded_as_of)"
-            name={`lookup_recorded_${corporation.id}`}
-            type="datetime-local"
-            value={lookupRecordedAsOf}
-            onValueChange={setLookupRecordedAsOf}
-          />
-        </div>
-        <div {...stylex.props(s.submitRow)}>
-          <Button
-            type="button"
-            variant="text"
-            size="sm"
-            onClick={() => {
-              setLookupAsOf("");
-              setLookupRecordedAsOf("");
-              onLookupSnapshot(null);
-            }}
-          >
-            条件をクリア
-          </Button>
-          <Button type="submit" variant="outlined" size="sm">
-            時点照会
-          </Button>
-        </div>
-        {isLoadingSnapshot ? (
-          <Spinner label="指定時点の法人情報を照会中…" showLabel />
-        ) : snapshotErrorMessage ? (
-          <Alert tone="warning" title="指定時点の履歴が見つかりませんでした">
-            {snapshotErrorMessage}
-          </Alert>
-        ) : snapshotCorporation ? (
-          <div {...stylex.props(s.snapshotBox)}>
-            <p {...stylex.props(s.metaGrid)}>
-              <strong>{snapshotCorporation.name}</strong>
-              <span>状態: {statusLabel(snapshotCorporation.status)}</span>
-              <span>
-                {snapshotCorporation.category === "individual" ? "開設者" : "代表者"}:{" "}
-                {snapshotCorporation.representative_name || "未設定"}
-              </span>
-              <span>法人番号: {snapshotCorporation.corporate_number ?? "未設定"}</span>
-              <span>所在地: {snapshotCorporation.address || "未設定"}</span>
-              <span>
-                有効期間: {snapshotCorporation.valid_from ?? "未設定"} 〜{" "}
-                {snapshotCorporation.valid_to ?? "終了未定"}
-              </span>
-            </p>
-          </div>
-        ) : null}
-      </form>
-
-      <div {...stylex.props(s.formStack)}>
-        <h4 {...stylex.props(s.subSectionTitle)}>変更履歴タイムライン</h4>
-        {isLoadingHistory ? (
-          <Spinner label="変更履歴を読み込み中…" showLabel />
-        ) : historyErrorMessage ? (
-          <Alert tone="error" title="変更履歴を取得できませんでした" role="alert">
-            {historyErrorMessage}
-          </Alert>
-        ) : historyRecords.length === 0 ? (
-          <p {...stylex.props(s.sectionDescription)}>履歴レコードはありません。</p>
-        ) : (
-          <ul {...stylex.props(s.corpList)}>
-            {historyRecords.map((record) => (
-              <li
-                key={`${record.recorded_at}-${record.kind}-${record.valid_from}`}
-                {...stylex.props(s.historyItem)}
-              >
-                <div {...stylex.props(s.corpItemHeader)}>
-                  <div {...stylex.props(s.corpMainInfo)}>
-                    <div {...stylex.props(s.corpTitleRow)}>
-                      <Badge tone="neutral">{changeKindLabel(record.kind)}</Badge>
-                      <strong>{record.corporation.name}</strong>
-                      <Badge tone="neutral">{statusLabel(record.corporation.status)}</Badge>
-                    </div>
-                    <p {...stylex.props(s.metaGrid)}>
-                      <span>
-                        {record.corporation.category === "individual" ? "開設者" : "代表者"}:{" "}
-                        {record.corporation.representative_name || "未設定"}
-                      </span>
-                      <span>
-                        有効期間: {record.valid_from} 〜 {record.valid_to ?? "終了未定"}
-                      </span>
-                      <span>記録日時: {record.recorded_at}</span>
-                      <span>変更者: {record.recorded_by ?? "不明"}</span>
-                      {record.surviving_corporation_id ? (
-                        <span>合併先ID: {record.surviving_corporation_id}</span>
-                      ) : null}
-                      <span>根拠: {record.evidence || "未記録"}</span>
-                    </p>
-                  </div>
-                  <Button
-                    type="button"
-                    variant="text"
-                    size="sm"
-                    onClick={() => prefillCorrection(record)}
+      {showHistorySection ? (
+        <>
+          <div {...stylex.props(s.formStack)}>
+            <h3 {...stylex.props(s.subSectionTitle)}>変更履歴タイムライン</h3>
+            {isLoadingHistory ? (
+              <Spinner label="変更履歴を読み込み中…" showLabel />
+            ) : historyErrorMessage ? (
+              <Alert tone="error" title="変更履歴を取得できませんでした" role="alert">
+                {historyErrorMessage}
+              </Alert>
+            ) : historyRecords.length === 0 ? (
+              <p {...stylex.props(s.sectionDescription)}>履歴レコードはありません。</p>
+            ) : (
+              <ul {...stylex.props(s.corpList)}>
+                {historyRecords.map((record) => (
+                  <li
+                    key={`${record.recorded_at}-${record.kind}-${record.valid_from}`}
+                    {...stylex.props(s.historyItem)}
                   >
-                    この記録を訂正
-                  </Button>
-                </div>
-              </li>
-            ))}
-          </ul>
-        )}
-      </div>
+                    <div {...stylex.props(s.corpItemHeader)}>
+                      <div {...stylex.props(s.corpMainInfo)}>
+                        <div {...stylex.props(s.corpTitleRow)}>
+                          <Badge tone="neutral">{changeKindLabel(record.kind)}</Badge>
+                          <strong>{record.corporation.name}</strong>
+                          <Badge tone="neutral">{statusLabel(record.corporation.status)}</Badge>
+                        </div>
+                        <p {...stylex.props(s.metaGrid)}>
+                          <span>
+                            {record.corporation.category === "individual" ? "開設者" : "代表者"}:{" "}
+                            {record.corporation.representative_name || "未設定"}
+                          </span>
+                          <span>
+                            有効期間: {record.valid_from} 〜 {record.valid_to ?? "終了未定"}
+                          </span>
+                          <span>記録日時: {record.recorded_at}</span>
+                          <span>変更者: {record.recorded_by ?? "不明"}</span>
+                          {record.surviving_corporation_id ? (
+                            <span>合併先ID: {record.surviving_corporation_id}</span>
+                          ) : null}
+                          <span>根拠: {record.evidence || "未記録"}</span>
+                        </p>
+                      </div>
+                      <Button
+                        type="button"
+                        variant="text"
+                        size="sm"
+                        onClick={() => prefillCorrection(record)}
+                      >
+                        この記録を訂正
+                      </Button>
+                    </div>
+                  </li>
+                ))}
+              </ul>
+            )}
+          </div>
 
-      <form onSubmit={(e) => void handleCorrectSubmit(e)} noValidate {...stylex.props(s.formStack)}>
-        <h4 {...stylex.props(s.subSectionTitle)}>過去履歴の訂正</h4>
-        {correctFormError || correctionErrorMessage ? (
-          <Alert tone="error" title="履歴訂正に失敗しました" role="alert">
-            <p>{correctFormError ?? correctionErrorMessage}</p>
-          </Alert>
-        ) : null}
-        <div {...stylex.props(s.formGrid)}>
-          <TextField
-            label="訂正対象日 (as_of)"
-            name={`correct_as_of_${corporation.id}`}
-            type="date"
-            value={correctAsOf}
-            onValueChange={setCorrectAsOf}
-            required
-            disabled={isCorrectingHistory}
-          />
-          <TextField
-            label="訂正後の法人名"
-            name={`correct_name_${corporation.id}`}
-            value={correctName}
-            onValueChange={setCorrectName}
-            disabled={isCorrectingHistory}
-          />
-          <TextField
-            label={
-              corporation.category === "individual" ? "訂正後の開設者氏名" : "訂正後の代表者名"
-            }
-            name={`correct_representative_name_${corporation.id}`}
-            value={correctRepresentativeName}
-            onValueChange={setCorrectRepresentativeName}
-            disabled={isCorrectingHistory}
-          />
-          <TextField
-            label="訂正後の法人番号"
-            name={`correct_number_${corporation.id}`}
-            value={correctCorpNumber}
-            onValueChange={setCorrectCorpNumber}
-            disabled={isCorrectingHistory}
-          />
-          <TextField
-            label="訂正後の所在地"
-            name={`correct_address_${corporation.id}`}
-            value={correctAddress}
-            onValueChange={setCorrectAddress}
-            disabled={isCorrectingHistory}
-          />
-          <TextField
-            label="有効開始日"
-            name={`correct_valid_from_${corporation.id}`}
-            type="date"
-            value={correctValidFrom}
-            onValueChange={setCorrectValidFrom}
-            disabled={isCorrectingHistory}
-          />
-          <TextField
-            label="有効終了日"
-            name={`correct_valid_to_${corporation.id}`}
-            type="date"
-            value={correctValidTo}
-            onValueChange={setCorrectValidTo}
-            disabled={isCorrectingHistory}
-          />
-          <TextField
-            label="訂正の根拠"
-            name={`correct_evidence_${corporation.id}`}
-            value={correctEvidence}
-            onValueChange={setCorrectEvidence}
-            placeholder="例: 登記簿記載の修正"
-            required
-            disabled={isCorrectingHistory}
-          />
-        </div>
-        <div {...stylex.props(s.submitRow)}>
-          <Button type="submit" variant="outlined" size="sm" disabled={isCorrectingHistory}>
-            {isCorrectingHistory ? "訂正中…" : "履歴を訂正"}
-          </Button>
-        </div>
-      </form>
+          <details
+            open={isLookupOpen}
+            onToggle={(e) => setIsLookupOpen(e.currentTarget.open)}
+            {...stylex.props(s.detailsBox)}
+          >
+            <summary {...stylex.props(s.detailsSummary)}>過去時点の状態を照会</summary>
+            <form onSubmit={handleLookupSubmit} noValidate {...stylex.props(s.detailsBody)}>
+              <div {...stylex.props(s.formGrid)}>
+                <TextField
+                  label="基準日"
+                  name={`lookup_as_of_${corporation.id}`}
+                  type="date"
+                  value={lookupAsOf}
+                  onValueChange={setLookupAsOf}
+                />
+                <TextField
+                  label="記録日時（任意）"
+                  name={`lookup_recorded_${corporation.id}`}
+                  type="datetime-local"
+                  value={lookupRecordedAsOf}
+                  onValueChange={setLookupRecordedAsOf}
+                />
+              </div>
+              <div {...stylex.props(s.submitRow)}>
+                <Button
+                  type="button"
+                  variant="text"
+                  size="sm"
+                  onClick={() => {
+                    setLookupAsOf("");
+                    setLookupRecordedAsOf("");
+                    onLookupSnapshot(null);
+                  }}
+                >
+                  条件をクリア
+                </Button>
+                <Button type="submit" variant="outlined" size="sm">
+                  時点照会
+                </Button>
+              </div>
+              {isLoadingSnapshot ? (
+                <Spinner label="指定時点の法人情報を照会中…" showLabel />
+              ) : snapshotErrorMessage ? (
+                <Alert tone="warning" title="指定時点の履歴が見つかりませんでした">
+                  {snapshotErrorMessage}
+                </Alert>
+              ) : snapshotCorporation ? (
+                <div {...stylex.props(s.snapshotBox)}>
+                  <p {...stylex.props(s.metaGrid)}>
+                    <strong>{snapshotCorporation.name}</strong>
+                    <span>状態: {statusLabel(snapshotCorporation.status)}</span>
+                    <span>
+                      {snapshotCorporation.category === "individual" ? "開設者" : "代表者"}:{" "}
+                      {snapshotCorporation.representative_name || "未設定"}
+                    </span>
+                    <span>法人番号: {snapshotCorporation.corporate_number ?? "未設定"}</span>
+                    <span>所在地: {snapshotCorporation.address || "未設定"}</span>
+                    <span>
+                      有効期間: {snapshotCorporation.valid_from ?? "未設定"} 〜{" "}
+                      {snapshotCorporation.valid_to ?? "終了未定"}
+                    </span>
+                  </p>
+                </div>
+              ) : null}
+            </form>
+          </details>
+
+          <details
+            open={isCorrectionOpen}
+            onToggle={(e) => setIsCorrectionOpen(e.currentTarget.open)}
+            {...stylex.props(s.detailsBox)}
+          >
+            <summary {...stylex.props(s.detailsSummary)}>過去履歴の訂正</summary>
+            <form
+              onSubmit={(e) => void handleCorrectSubmit(e)}
+              noValidate
+              {...stylex.props(s.detailsBody)}
+            >
+              {correctFormError || correctionErrorMessage ? (
+                <Alert tone="error" title="履歴訂正に失敗しました" role="alert">
+                  <p>{correctFormError ?? correctionErrorMessage}</p>
+                </Alert>
+              ) : null}
+              <div {...stylex.props(s.formGrid)}>
+                <TextField
+                  label="訂正対象日"
+                  name={`correct_as_of_${corporation.id}`}
+                  type="date"
+                  value={correctAsOf}
+                  onValueChange={setCorrectAsOf}
+                  required
+                  disabled={isCorrectingHistory}
+                />
+                <TextField
+                  label="訂正後の法人名"
+                  name={`correct_name_${corporation.id}`}
+                  value={correctName}
+                  onValueChange={setCorrectName}
+                  disabled={isCorrectingHistory}
+                />
+                <TextField
+                  label={
+                    corporation.category === "individual"
+                      ? "訂正後の開設者氏名"
+                      : "訂正後の代表者名"
+                  }
+                  name={`correct_representative_name_${corporation.id}`}
+                  value={correctRepresentativeName}
+                  onValueChange={setCorrectRepresentativeName}
+                  disabled={isCorrectingHistory}
+                />
+                <TextField
+                  label="訂正後の法人番号"
+                  name={`correct_number_${corporation.id}`}
+                  value={correctCorpNumber}
+                  onValueChange={setCorrectCorpNumber}
+                  disabled={isCorrectingHistory}
+                />
+                <TextField
+                  label="訂正後の所在地"
+                  name={`correct_address_${corporation.id}`}
+                  value={correctAddress}
+                  onValueChange={setCorrectAddress}
+                  disabled={isCorrectingHistory}
+                />
+                <TextField
+                  label="有効開始日"
+                  name={`correct_valid_from_${corporation.id}`}
+                  type="date"
+                  value={correctValidFrom}
+                  onValueChange={setCorrectValidFrom}
+                  disabled={isCorrectingHistory}
+                />
+                <TextField
+                  label="有効終了日"
+                  name={`correct_valid_to_${corporation.id}`}
+                  type="date"
+                  value={correctValidTo}
+                  onValueChange={setCorrectValidTo}
+                  disabled={isCorrectingHistory}
+                />
+                <TextField
+                  label="訂正の根拠"
+                  name={`correct_evidence_${corporation.id}`}
+                  value={correctEvidence}
+                  onValueChange={setCorrectEvidence}
+                  placeholder="例: 登記簿記載の修正"
+                  required
+                  disabled={isCorrectingHistory}
+                />
+              </div>
+              <div {...stylex.props(s.submitRow)}>
+                <Button type="submit" variant="outlined" size="sm" disabled={isCorrectingHistory}>
+                  {isCorrectingHistory ? "訂正中…" : "履歴を訂正"}
+                </Button>
+              </div>
+            </form>
+          </details>
+        </>
+      ) : null}
     </div>
   );
 }
