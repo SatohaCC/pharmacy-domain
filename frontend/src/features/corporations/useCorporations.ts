@@ -47,6 +47,7 @@ export function useCreateCorporation() {
     mutationFn: (input: {
       category: CorporationCategory;
       name: string;
+      representative_name: string;
       corporate_number?: string | null;
       address?: string;
       valid_from?: string | null;
@@ -65,6 +66,7 @@ export function useUpdateCorporation() {
       corporationId: string;
       payload: {
         name?: string | null;
+        representative_name?: string | null;
         corporate_number?: string | null;
         address?: string | null;
         valid_from?: string | null;
@@ -124,6 +126,7 @@ export function useCorrectCorporationHistory() {
       payload: {
         as_of: string;
         name?: string | null;
+        representative_name?: string | null;
         corporate_number?: string | null;
         address?: string | null;
         valid_from?: string | null;

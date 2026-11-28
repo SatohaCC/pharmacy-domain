@@ -6,6 +6,7 @@ test("存続状態の初回変更で一覧の再取得中も画面のスクロ�
     id: `test-corporation-${index}`,
     category: "corporation",
     name: `検証用企業 ${index + 1}`,
+    representative_name: `代表者 ${index + 1}`,
     corporate_number: null,
     address: "",
     status: "active",

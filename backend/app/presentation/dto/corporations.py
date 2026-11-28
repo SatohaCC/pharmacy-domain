@@ -11,6 +11,7 @@ class CorporationCreateRequest(BaseModel):
 
     category: Literal["corporation", "individual"]
     name: str
+    representative_name: str
     corporate_number: str | None = None
     address: str = ""
     valid_from: date | None = None
@@ -23,6 +24,7 @@ class CorporationUpdateRequest(BaseModel):
     """法人基本情報部分更新リクエスト DTO。"""
 
     name: str | None = None
+    representative_name: str | None = None
     address: str | None = None
     corporate_number: str | None = None
     valid_from: date | None = None
@@ -52,6 +54,7 @@ class CorporationHistoryCorrectionRequest(BaseModel):
     as_of: date
     evidence: str
     name: str | None = None
+    representative_name: str | None = None
     address: str | None = None
     corporate_number: str | None = None
     valid_from: date | None = None
@@ -82,6 +85,7 @@ class CorporationResponse(BaseModel):
     valid_from: date | None = None
     valid_to: date | None = None
     usage_status: Literal["not_started", "active", "suspended"] = "not_started"
+    representative_name: str
 
 
 class CorporationListResponse(BaseModel):

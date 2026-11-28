@@ -5,6 +5,7 @@ import { useState } from "react";
 import type { AuthUser } from "@/features/auth/schemas";
 import { VendorConsoleHeader } from "@/features/auth/VendorConsoleHeader";
 import { vendorConsoleLayoutStyles as layout } from "@/features/auth/VendorConsoleLayout.styles";
+import { formatCorporationOptionLabel } from "@/features/corporations/formatCorporationLabel";
 import type { Corporation } from "@/features/corporations/schemas";
 import { Alert } from "@/shared/ui/alert/Alert";
 import { Badge } from "@/shared/ui/badge/Badge";
@@ -131,14 +132,14 @@ export function CorporateRelationsWorkspace({
     { value: "", label: "法人を選択してください" },
     ...corporations.map((corp) => ({
       value: corp.id,
-      label: `${corp.name} (${corp.id})`,
+      label: formatCorporationOptionLabel(corp),
     })),
   ];
   const corpFilterOptions: readonly SelectOption[] = [
     { value: "all", label: "すべての法人" },
     ...corporations.map((corp) => ({
       value: corp.id,
-      label: corp.name,
+      label: formatCorporationOptionLabel(corp),
     })),
   ];
 

@@ -17,6 +17,7 @@ from app.domain.corporate import (
     EmptyCorporationUpdateError,
     InvalidCorporationTransitionError,
     InvalidCorporationUpdateError,
+    RepresentativeName,
 )
 from app.domain.foundation import (
     AwareDatetime,
@@ -75,6 +76,33 @@ def test_corporation_name_validates_invariants() -> None:
         CorporationName("株式会社\x00テスト薬局")
     with pytest.raises(DomainValidationError, match="200 文字以内"):
         CorporationName("あ" * 201)
+
+
+def test_representative_name_validates_invariants() -> None:
+    assert RepresentativeName.parse("  山田 太郎  ") == RepresentativeName("山田 太郎")
+    assert RepresentativeName("").value == ""
+    assert RepresentativeName("あ" * 200).value == "あ" * 200
+
+    with pytest.raises(DomainValidationError, match="代表者名"):
+        RepresentativeName.parse("   ")
+    with pytest.raises(DomainValidationError, match="前後"):
+        RepresentativeName("  山田太郎  ")
+    with pytest.raises(DomainValidationError, match="制御文字"):
+        RepresentativeName("山田\n太郎")
+    with pytest.raises(DomainValidationError, match="200 文字以内"):
+        RepresentativeName("あ" * 201)
+
+    corp = _make_corporation()
+    later = AwareDatetime(corp.created_at.value + timedelta(minutes=1))
+    updated = corp.update_profile(
+        representative_name=RepresentativeName("佐藤 花子"), updated_at=later
+    )
+    assert updated.representative_name == RepresentativeName("佐藤 花子")
+    dissolved = updated.change_status(
+        CorporationStatus.DISSOLVED,
+        updated_at=AwareDatetime(later.value + timedelta(minutes=1)),
+    )
+    assert dissolved.representative_name == RepresentativeName("佐藤 花子")
 
 
 def test_corporate_number_validates_13_ascii_digits() -> None:

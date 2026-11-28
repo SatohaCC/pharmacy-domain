@@ -47,6 +47,7 @@ def _row_to_item(
         valid_from=valid_from,
         valid_to=valid_to,
         usage_status=str(row["usage_status"]),
+        representative_name=str(row["representative_name"]),
     )
 
 
@@ -116,6 +117,9 @@ class SqlAlchemyCorporationQueryPort:
                 stmt = stmt.where(
                     or_(
                         func.unicode_contains(corporations_table.c.name, query.query),
+                        func.unicode_contains(
+                            corporations_table.c.representative_name, query.query
+                        ),
                         func.unicode_contains(corporations_table.c.address, query.query),
                         func.unicode_contains(corporations_table.c.corporate_number, query.query),
                     )
@@ -126,6 +130,7 @@ class SqlAlchemyCorporationQueryPort:
                 stmt = stmt.where(
                     or_(
                         corporations_table.c.name.ilike(pattern, escape="\\"),
+                        corporations_table.c.representative_name.ilike(pattern, escape="\\"),
                         corporations_table.c.address.ilike(pattern, escape="\\"),
                         corporations_table.c.corporate_number.ilike(pattern, escape="\\"),
                     )

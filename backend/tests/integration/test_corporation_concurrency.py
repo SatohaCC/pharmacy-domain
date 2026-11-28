@@ -90,7 +90,12 @@ def test_concurrent_registration_reports_duplicate_corporate_number(
     corporation_api: tuple[TestClient, Engine], monkeypatch: pytest.MonkeyPatch
 ) -> None:
     client, engine = corporation_api
-    payload = {"category": "corporation", "name": "法人", "corporate_number": "1234567890123"}
+    payload = {
+        "category": "corporation",
+        "name": "法人",
+        "representative_name": "法人代表",
+        "corporate_number": "1234567890123",
+    }
 
     first, second = _overlap_corporation_writes(
         engine,
@@ -109,7 +114,10 @@ def test_concurrent_profile_update_checks_committed_status(
     corporation_api: tuple[TestClient, Engine], monkeypatch: pytest.MonkeyPatch
 ) -> None:
     client, engine = corporation_api
-    created = client.post("/api/corporations", json={"category": "corporation", "name": "法人"})
+    created = client.post(
+        "/api/corporations",
+        json={"category": "corporation", "name": "法人", "representative_name": "法人代表"},
+    )
     assert created.status_code == 201
     corporation_path = f"/api/corporations/{created.json()['id']}"
 
@@ -134,7 +142,10 @@ def test_status_change_reports_conflict_when_write_lock_wait_expires(
     corporation_api: tuple[TestClient, Engine],
 ) -> None:
     client, engine = corporation_api
-    created = client.post("/api/corporations", json={"category": "corporation", "name": "法人"})
+    created = client.post(
+        "/api/corporations",
+        json={"category": "corporation", "name": "法人", "representative_name": "法人代表"},
+    )
     assert created.status_code == 201
     corporation_id = created.json()["id"]
     corporation_path = f"/api/corporations/{corporation_id}"
@@ -160,7 +171,10 @@ def test_memory_database_preserves_pending_write_during_concurrent_update(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     with _initialized_corporation_api(":memory:") as (client, engine):
-        created = client.post("/api/corporations", json={"category": "corporation", "name": "法人"})
+        created = client.post(
+            "/api/corporations",
+            json={"category": "corporation", "name": "法人", "representative_name": "法人代表"},
+        )
         assert created.status_code == 201
         corporation_id = created.json()["id"]
         corporation_path = f"/api/corporations/{corporation_id}"

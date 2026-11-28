@@ -22,6 +22,7 @@ const parentCorp: Corporation = {
   id: "corp-parent",
   category: "corporation",
   name: "株式会社親薬局",
+  representative_name: "親代表 太郎",
   corporate_number: "1111111111111",
   address: "東京都千代田区",
   status: "active",
@@ -32,8 +33,10 @@ const parentCorp: Corporation = {
 const childCorp: Corporation = {
   ...parentCorp,
   id: "corp-child",
-  name: "株式会社子薬局",
-  corporate_number: "2222222222222",
+  category: "individual",
+  name: "子薬局",
+  representative_name: "山田 花子",
+  corporate_number: null,
 };
 
 const sampleRelation: CorporateRelation = {
@@ -84,13 +87,15 @@ describe("CorporateRelationsWorkspace", () => {
       />,
     );
 
-    expect(screen.getByText("株式会社親薬局 → 株式会社子薬局")).toBeInTheDocument();
+    expect(screen.getByText("株式会社親薬局 → 子薬局")).toBeInTheDocument();
 
-    // 登録フォーム送信
+    // 登録フォーム送信（セレクトボックスにUUIDを含めず代表者/開設者を表示する）
     await user.click(screen.getByRole("combobox", { name: "関係元法人（親・本部等）" }));
-    await user.click(screen.getByRole("option", { name: "株式会社親薬局 (corp-parent)" }));
+    expect(screen.queryByRole("option", { name: /corp-parent/ })).not.toBeInTheDocument();
+    await user.click(screen.getByRole("option", { name: "株式会社親薬局（代表: 親代表 太郎）" }));
     await user.click(screen.getByRole("combobox", { name: "関係先法人（子・加盟店等）" }));
-    await user.click(screen.getByRole("option", { name: "株式会社子薬局 (corp-child)" }));
+    expect(screen.queryByRole("option", { name: /corp-child/ })).not.toBeInTheDocument();
+    await user.click(screen.getByRole("option", { name: "子薬局（開設者: 山田 花子）" }));
     await user.type(screen.getByLabelText(/有効開始日/), "2026-04-01");
     await user.type(screen.getByLabelText(/根拠・契約メモ/), "株式取得契約");
     await user.click(screen.getByRole("button", { name: "法人間関係を登録" }));

@@ -246,7 +246,12 @@ def test_tenant_login_issues_unified_auth_cookies(vendor_auth_db: Path) -> None:
         corporation = client.post(
             "/api/corporations",
             headers={"X-Requested-With": "XMLHttpRequest"},
-            json={"category": "corporation", "name": "さくら薬局", "address": "東京都新宿区"},
+            json={
+                "category": "corporation",
+                "name": "さくら薬局",
+                "representative_name": "さくら代表",
+                "address": "東京都新宿区",
+            },
         )
         assert corporation.status_code == 201
         tenant_id = corporation.json()["id"]

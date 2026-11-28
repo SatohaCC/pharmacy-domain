@@ -14,6 +14,7 @@ from app.domain.corporate.primitives import (
     CorporateAddress,
     CorporateNumber,
     CorporationName,
+    RepresentativeName,
 )
 from app.domain.corporate.value_objects import (
     CorporateRelationRevision,
@@ -39,6 +40,7 @@ class Corporation:
     created_at: AwareDatetime
     updated_at: AwareDatetime
     usage_status: CorporationUsageStatus = CorporationUsageStatus.NOT_STARTED
+    representative_name: RepresentativeName = RepresentativeName("")
 
     def __post_init__(self) -> None:
         if self.category == CorporationCategory.INDIVIDUAL and self.corporate_number is not None:
@@ -76,12 +78,13 @@ class Corporation:
         self,
         *,
         name: CorporationName | None = None,
+        representative_name: RepresentativeName | None = None,
         address: CorporateAddress | None = None,
         corporate_number: CorporateNumber | None = None,
         clear_corporate_number: bool = False,
         updated_at: AwareDatetime,
     ) -> Corporation:
-        """基本情報（名称・所在地・法人番号）を検証して新しい Corporation を返す。"""
+        """基本情報（名称・代表者名・所在地・法人番号）を検証して新しい Corporation を返す。"""
         if self.status != CorporationStatus.ACTIVE:
             raise InvalidCorporationUpdateError(
                 "解散または合併消滅した法人の基本情報は変更できません。",
@@ -89,6 +92,7 @@ class Corporation:
             )
         return self.correct_profile(
             name=name,
+            representative_name=representative_name,
             address=address,
             corporate_number=corporate_number,
             clear_corporate_number=clear_corporate_number,
@@ -99,6 +103,7 @@ class Corporation:
         self,
         *,
         name: CorporationName | None = None,
+        representative_name: RepresentativeName | None = None,
         address: CorporateAddress | None = None,
         corporate_number: CorporateNumber | None = None,
         clear_corporate_number: bool = False,
@@ -107,6 +112,7 @@ class Corporation:
         """既に確認済みの基本情報を、当時の存続状態を保って訂正する。"""
         if (
             name is None
+            and representative_name is None
             and address is None
             and corporate_number is None
             and not clear_corporate_number
@@ -145,6 +151,9 @@ class Corporation:
             created_at=self.created_at,
             updated_at=updated_at,
             usage_status=self.usage_status,
+            representative_name=(
+                representative_name if representative_name is not None else self.representative_name
+            ),
         )
 
     def change_status(
@@ -191,6 +200,7 @@ class Corporation:
             created_at=self.created_at,
             updated_at=updated_at,
             usage_status=next_usage_status,
+            representative_name=self.representative_name,
         )
 
 

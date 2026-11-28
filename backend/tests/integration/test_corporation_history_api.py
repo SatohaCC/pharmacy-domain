@@ -47,6 +47,7 @@ def _register(client: TestClient, name: str) -> str:
         json={
             "category": "corporation",
             "name": name,
+            "representative_name": f"{name}代表",
             "address": "東京都",
             "valid_from": "2025-01-01",
             "evidence": "登記を確認",
@@ -238,6 +239,7 @@ def test_corporation_valid_to_registration_update_clear_and_correction(
         json={
             "category": "corporation",
             "name": "不正期間法人",
+            "representative_name": "不正期間代表",
             "valid_from": "2025-05-01",
             "valid_to": "2025-05-01",
         },
@@ -249,6 +251,7 @@ def test_corporation_valid_to_registration_update_clear_and_correction(
         json={
             "category": "corporation",
             "name": "期間限定薬局",
+            "representative_name": "期間限定代表",
             "valid_from": "2025-01-01",
             "valid_to": "2026-12-31",
             "evidence": "契約期間を確認",
@@ -315,6 +318,7 @@ def test_backdated_update_returns_current_state_period(client: TestClient) -> No
         json={
             "category": "corporation",
             "name": "当初法人",
+            "representative_name": "当初代表",
             "valid_from": "2025-01-01",
         },
     )
@@ -368,7 +372,7 @@ def test_usage_status_lifecycle_and_dissolution_sync(client: TestClient) -> None
     # 1. デフォルトは not_started。参照専用法人として登録でき、active に切り替えられる。
     ref_corp = client.post(
         "/api/corporations",
-        json={"category": "corporation", "name": "持株会社"},
+        json={"category": "corporation", "name": "持株会社", "representative_name": "持株代表"},
     )
     assert ref_corp.status_code == 201
     assert ref_corp.json()["usage_status"] == "not_started"
@@ -378,6 +382,7 @@ def test_usage_status_lifecycle_and_dissolution_sync(client: TestClient) -> None
         json={
             "category": "corporation",
             "name": "利用中薬局",
+            "representative_name": "利用中代表",
             "valid_from": "2025-01-01",
             "usage_status": "active",
         },

@@ -11,6 +11,7 @@ class RegisterCorporationInput:
 
     category: str
     name: str
+    representative_name: str
     corporate_number: str | None = None
     address: str = ""
     valid_from: date | None = None
@@ -25,6 +26,7 @@ class UpdateCorporationInput:
     """法人基本情報更新コマンドの入力。"""
 
     name: str | None = None
+    representative_name: str | None = None
     address: str | None = None
     corporate_number: str | None = None
     provided_fields: frozenset[str] | None = None
@@ -78,6 +80,7 @@ class CorporationItem:
     valid_from: date | None = None
     valid_to: date | None = None
     usage_status: str = "not_started"
+    representative_name: str = ""
 
 
 @dataclass(frozen=True, slots=True)

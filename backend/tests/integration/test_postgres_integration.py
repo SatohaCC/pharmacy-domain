@@ -140,12 +140,20 @@ def test_postgres_migrations_and_api_end_to_end(monkeypatch: pytest.MonkeyPatch)
             ind1 = client.post(
                 "/api/corporations",
                 headers={"X-Requested-With": "XMLHttpRequest"},
-                json={"category": "individual", "name": "個人薬局A"},
+                json={
+                    "category": "individual",
+                    "name": "個人薬局A",
+                    "representative_name": "個人A",
+                },
             )
             ind2 = client.post(
                 "/api/corporations",
                 headers={"X-Requested-With": "XMLHttpRequest"},
-                json={"category": "individual", "name": "個人薬局B"},
+                json={
+                    "category": "individual",
+                    "name": "個人薬局B",
+                    "representative_name": "個人B",
+                },
             )
             assert ind1.status_code == 201
             assert ind2.status_code == 201
@@ -156,6 +164,7 @@ def test_postgres_migrations_and_api_end_to_end(monkeypatch: pytest.MonkeyPatch)
                 json={
                     "category": "corporation",
                     "name": "株式会社Sakura薬局",
+                    "representative_name": "Sakura代表",
                     "corporate_number": "1234567890123",
                     "address": "東京都新宿区1-2-3",
                 },
@@ -169,6 +178,7 @@ def test_postgres_migrations_and_api_end_to_end(monkeypatch: pytest.MonkeyPatch)
                 json={
                     "category": "corporation",
                     "name": "重複テスト薬局",
+                    "representative_name": "重複代表",
                     "corporate_number": "1234567890123",
                 },
             )
@@ -315,7 +325,7 @@ def test_postgres_concurrent_writes_preserve_serialization_and_report_lock_timeo
             # 1. 解散と同時実行された基本情報 PATCH は解散後の状態を見て 400 で拒否される。
             created = client.post(
                 "/api/corporations",
-                json={"category": "corporation", "name": "法人"},
+                json={"category": "corporation", "name": "法人", "representative_name": "法人代表"},
             )
             assert created.status_code == 201
             corp_id = created.json()["id"]
@@ -338,13 +348,24 @@ def test_postgres_concurrent_writes_preserve_serialization_and_report_lock_timeo
 
             # 2. 同一子法人への異なる親法人の同時親子登録は 201 + 409 に直列化される。
             parent_a = client.post(
-                "/api/corporations", json={"category": "corporation", "name": "親法人A"}
+                "/api/corporations",
+                json={
+                    "category": "corporation",
+                    "name": "親法人A",
+                    "representative_name": "親A代表",
+                },
             ).json()["id"]
             parent_b = client.post(
-                "/api/corporations", json={"category": "corporation", "name": "親法人B"}
+                "/api/corporations",
+                json={
+                    "category": "corporation",
+                    "name": "親法人B",
+                    "representative_name": "親B代表",
+                },
             ).json()["id"]
             child = client.post(
-                "/api/corporations", json={"category": "corporation", "name": "子法人"}
+                "/api/corporations",
+                json={"category": "corporation", "name": "子法人", "representative_name": "子代表"},
             ).json()["id"]
 
             rel1, rel2 = _overlap_postgres_corporation_writes(

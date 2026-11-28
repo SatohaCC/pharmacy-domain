@@ -32,6 +32,44 @@ class CorporationName(NonEmptyString):
 
 
 @dataclass(frozen=True, slots=True)
+class RepresentativeName(StringPrimitive):
+    """代表者名（個人区分の場合は開設者氏名）を表す Domain Primitive。
+
+    既存DBレコードのマイグレーション互換のためコンストラクタでは空文字を許容し、
+    API からの登録・更新時は ``parse()`` で必須・空白禁止を検証する。
+    """
+
+    def validate(self) -> None:
+        super().validate()
+        if self.value != self.value.strip():
+            raise DomainValidationError(
+                "代表者名（開設者氏名）の前後に空白は指定できません。",
+                details={"field": "representative_name"},
+            )
+        if _CONTROL_CHAR_PATTERN.search(self.value):
+            raise DomainValidationError(
+                "代表者名（開設者氏名）に制御文字は使用できません。",
+                details={"field": "representative_name"},
+            )
+        if len(self.value) > _MAX_NAME_LENGTH:
+            raise DomainValidationError(
+                f"代表者名（開設者氏名）は {_MAX_NAME_LENGTH} 文字以内で指定してください。",
+                details={"field": "representative_name"},
+            )
+
+    @classmethod
+    def parse(cls, raw: str) -> RepresentativeName:
+        """入力値を正規化し、必須・空白禁止を検証して RepresentativeName を生成する。"""
+        stripped = raw.strip()
+        if not stripped:
+            raise DomainValidationError(
+                "代表者名（開設者氏名）を入力してください。",
+                details={"field": "representative_name"},
+            )
+        return cls(stripped)
+
+
+@dataclass(frozen=True, slots=True)
 class CorporateNumber(NonEmptyString):
     """13 桁の法人番号を表す Domain Primitive。"""
 

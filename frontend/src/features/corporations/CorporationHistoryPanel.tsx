@@ -9,6 +9,7 @@ import { Select, type SelectOption } from "@/shared/ui/select/Select";
 import { Spinner } from "@/shared/ui/spinner/Spinner";
 import { TextField } from "@/shared/ui/text-field/TextField";
 import { corporationsWorkspaceStyles as s } from "./CorporationsWorkspace.styles";
+import { formatCorporationOptionLabel } from "./formatCorporationLabel";
 import type {
   Corporation,
   CorporationChangeKind,
@@ -78,6 +79,7 @@ export interface CorporationHistoryPanelProps {
     input: {
       as_of: string;
       name?: string | null;
+      representative_name?: string | null;
       corporate_number?: string | null;
       address?: string | null;
       valid_from?: string | null;
@@ -119,6 +121,7 @@ export function CorporationHistoryPanel({
 
   const [correctAsOf, setCorrectAsOf] = useState("");
   const [correctName, setCorrectName] = useState("");
+  const [correctRepresentativeName, setCorrectRepresentativeName] = useState("");
   const [correctCorpNumber, setCorrectCorpNumber] = useState("");
   const [correctAddress, setCorrectAddress] = useState("");
   const [correctValidFrom, setCorrectValidFrom] = useState("");
@@ -133,7 +136,7 @@ export function CorporationHistoryPanel({
       .filter((candidate) => candidate.id !== corporation.id)
       .map((candidate) => ({
         value: candidate.id,
-        label: `${candidate.name} (${candidate.id})`,
+        label: formatCorporationOptionLabel(candidate),
       })),
   ];
 
@@ -187,6 +190,7 @@ export function CorporationHistoryPanel({
     const payload: {
       as_of: string;
       name?: string | null;
+      representative_name?: string | null;
       corporate_number?: string | null;
       address?: string | null;
       valid_from?: string | null;
@@ -197,6 +201,7 @@ export function CorporationHistoryPanel({
       evidence: correctEvidence.trim(),
     };
     const trimmedName = correctName.trim();
+    const trimmedRepresentativeName = correctRepresentativeName.trim();
     const trimmedNumber = correctCorpNumber.trim();
     const trimmedAddress = correctAddress.trim();
     const trimmedValidFrom = correctValidFrom.trim();
@@ -205,6 +210,12 @@ export function CorporationHistoryPanel({
     if (baselineRecord) {
       if (trimmedName && trimmedName !== baselineRecord.corporation.name) {
         payload.name = trimmedName;
+      }
+      if (
+        trimmedRepresentativeName &&
+        trimmedRepresentativeName !== baselineRecord.corporation.representative_name
+      ) {
+        payload.representative_name = trimmedRepresentativeName;
       }
       if (trimmedNumber !== (baselineRecord.corporation.corporate_number ?? "")) {
         payload.corporate_number = trimmedNumber || null;
@@ -220,6 +231,7 @@ export function CorporationHistoryPanel({
       }
     } else {
       if (trimmedName) payload.name = trimmedName;
+      if (trimmedRepresentativeName) payload.representative_name = trimmedRepresentativeName;
       if (trimmedNumber) payload.corporate_number = trimmedNumber;
       if (trimmedAddress) payload.address = trimmedAddress;
       if (trimmedValidFrom) payload.valid_from = trimmedValidFrom;
@@ -237,6 +249,7 @@ export function CorporationHistoryPanel({
     setBaselineRecord(record);
     setCorrectAsOf(record.valid_from);
     setCorrectName(record.corporation.name);
+    setCorrectRepresentativeName(record.corporation.representative_name);
     setCorrectCorpNumber(record.corporation.corporate_number ?? "");
     setCorrectAddress(record.corporation.address);
     setCorrectValidFrom(record.valid_from);
@@ -356,6 +369,10 @@ export function CorporationHistoryPanel({
             <p {...stylex.props(s.metaGrid)}>
               <strong>{snapshotCorporation.name}</strong>
               <span>状態: {statusLabel(snapshotCorporation.status)}</span>
+              <span>
+                {snapshotCorporation.category === "individual" ? "開設者" : "代表者"}:{" "}
+                {snapshotCorporation.representative_name || "未設定"}
+              </span>
               <span>法人番号: {snapshotCorporation.corporate_number ?? "未設定"}</span>
               <span>所在地: {snapshotCorporation.address || "未設定"}</span>
               <span>
@@ -392,6 +409,10 @@ export function CorporationHistoryPanel({
                       <Badge tone="neutral">{statusLabel(record.corporation.status)}</Badge>
                     </div>
                     <p {...stylex.props(s.metaGrid)}>
+                      <span>
+                        {record.corporation.category === "individual" ? "開設者" : "代表者"}:{" "}
+                        {record.corporation.representative_name || "未設定"}
+                      </span>
                       <span>
                         有効期間: {record.valid_from} 〜 {record.valid_to ?? "終了未定"}
                       </span>
@@ -440,6 +461,15 @@ export function CorporationHistoryPanel({
             name={`correct_name_${corporation.id}`}
             value={correctName}
             onValueChange={setCorrectName}
+            disabled={isCorrectingHistory}
+          />
+          <TextField
+            label={
+              corporation.category === "individual" ? "訂正後の開設者氏名" : "訂正後の代表者名"
+            }
+            name={`correct_representative_name_${corporation.id}`}
+            value={correctRepresentativeName}
+            onValueChange={setCorrectRepresentativeName}
             disabled={isCorrectingHistory}
           />
           <TextField

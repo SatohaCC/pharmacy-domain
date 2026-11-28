@@ -184,6 +184,7 @@ test.describe
 
       // 2. 法人管理画面で新しい薬局法人を登録し、基本情報を編集する。
       await page.locator('input[name="name"]').fill("株式会社さくら薬局");
+      await page.locator('input[name="representative_name"]').fill("佐藤 一郎");
       await page.locator('input[name="corporate_number"]').fill("1234567890123");
       await page.locator('input[name="address"]').fill("東京都新宿区1-2-3");
       await page.getByRole("button", { name: "企業（法人・個人）を登録" }).click();
@@ -248,6 +249,7 @@ test.describe
       await expect(page.getByText("株式会社さくら薬局").first()).toBeVisible();
 
       await page.locator('input[name="name"]').fill("株式会社あおぞら薬局");
+      await page.locator('input[name="representative_name"]').fill("鈴木 花子");
       await page.locator('input[name="corporate_number"]').fill("9876543210123");
       await page.getByRole("button", { name: "企業（法人・個人）を登録" }).click();
       await expect(page.getByText("株式会社あおぞら薬局").first()).toBeVisible();
