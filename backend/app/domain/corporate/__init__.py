@@ -17,8 +17,8 @@ from app.domain.corporate.identifiers import CorporateRelationId, CorporationId
 from app.domain.corporate.primitives import (
     CorporateAddress,
     CorporateNumber,
+    CorporationEvidence,
     CorporationName,
-    RelationEvidence,
     RepresentativeName,
 )
 from app.domain.corporate.repositories import CorporateRelationRepository, CorporationRepository
@@ -42,6 +42,7 @@ __all__ = [
     "CorporateRelationType",
     "Corporation",
     "CorporationCategory",
+    "CorporationEvidence",
     "CorporationId",
     "CorporationName",
     "CorporationNotFoundError",
@@ -53,7 +54,6 @@ __all__ = [
     "InvalidCorporationTransitionError",
     "InvalidCorporationUpdateError",
     "MultipleCorporateParentsError",
-    "RelationEvidence",
     "RepresentativeName",
     "SelfCorporateRelationError",
     "validate_corporate_relation",

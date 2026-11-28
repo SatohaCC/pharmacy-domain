@@ -11,8 +11,8 @@ from app.domain.corporate import (
     CorporateRelationId,
     CorporateRelationRevision,
     CorporateRelationType,
+    CorporationEvidence,
     CorporationId,
-    RelationEvidence,
 )
 from app.domain.foundation import AwareDatetime, EffectiveDateRange
 from app.infrastructure.persistence.corporate_relation_query import (
@@ -37,7 +37,7 @@ def test_revisions_are_read_from_a_new_engine_after_commit(tmp_path: Path) -> No
         (
             CorporateRelationRevision(
                 EffectiveDateRange(start),
-                RelationEvidence("契約書"),
+                CorporationEvidence("契約書"),
                 AwareDatetime(timestamp),
             ),
         ),

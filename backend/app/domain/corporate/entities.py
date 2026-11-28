@@ -40,7 +40,7 @@ class Corporation:
     created_at: AwareDatetime
     updated_at: AwareDatetime
     usage_status: CorporationUsageStatus = CorporationUsageStatus.NOT_STARTED
-    representative_name: RepresentativeName = RepresentativeName("")
+    representative_name: RepresentativeName | None = None
 
     def __post_init__(self) -> None:
         if self.category == CorporationCategory.INDIVIDUAL and self.corporate_number is not None:
