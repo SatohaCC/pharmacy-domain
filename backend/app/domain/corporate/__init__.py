@@ -27,7 +27,6 @@ from app.domain.corporate.value_objects import (
     CorporateRelationType,
     CorporationCategory,
     CorporationStatus,
-    RelationConfirmationStatus,
 )
 
 __all__ = [
@@ -53,7 +52,6 @@ __all__ = [
     "InvalidCorporationTransitionError",
     "InvalidCorporationUpdateError",
     "MultipleCorporateParentsError",
-    "RelationConfirmationStatus",
     "RelationEvidence",
     "SelfCorporateRelationError",
     "validate_corporate_relation",

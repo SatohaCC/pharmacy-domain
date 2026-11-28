@@ -9,7 +9,7 @@ import {
   fetchCorporateRelations,
   registerCorporateRelation,
 } from "./api";
-import type { ConfirmationStatus, CorporateRelationListFilter, RelationType } from "./schemas";
+import type { CorporateRelationListFilter, RelationType } from "./schemas";
 
 export const corporateRelationKeys = {
   all: ["corporate-relations"] as const,
@@ -20,7 +20,6 @@ export const corporateRelationKeys = {
       filter.corporation_id ?? "",
       filter.as_of ?? "",
       filter.relation_type ?? "all",
-      filter.confirmation_status ?? "all",
     ] as const,
   history: (relationId: string) => ["corporate-relations", "history", relationId] as const,
 };
@@ -56,7 +55,6 @@ export function useRegisterCorporateRelation() {
       valid_from: string;
       valid_to?: string | null;
       evidence: string;
-      confirmation_status?: ConfirmationStatus;
     }) => registerCorporateRelation(input),
     invalidateKeys: [corporateRelationKeys.all],
   });
@@ -71,7 +69,6 @@ export function useCorrectCorporateRelation() {
         valid_from?: string;
         valid_to?: string | null;
         evidence?: string;
-        confirmation_status?: ConfirmationStatus;
       };
     }) => correctCorporateRelation(input.relationId, input.payload),
     invalidateKeys: [corporateRelationKeys.all],

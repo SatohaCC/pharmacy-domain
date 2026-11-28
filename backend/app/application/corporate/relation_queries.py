@@ -16,7 +16,6 @@ from app.domain.corporate import (
     CorporateRelationNotFoundError,
     CorporateRelationType,
     CorporationId,
-    RelationConfirmationStatus,
 )
 from app.domain.foundation import AwareDatetime, DomainError, DomainValidationError
 
@@ -55,17 +54,11 @@ class CorporateRelationQueryService:
                 if query.relation_type is not None
                 else None
             )
-            confirmation_status = (
-                RelationConfirmationStatus(query.confirmation_status)
-                if query.confirmation_status is not None
-                else None
-            )
             relations = self._query_gateway.list_relations(
                 corporation_id,
                 query.as_of,
                 recorded,
                 relation_type,
-                confirmation_status,
             )
         except DomainError as exc:
             raise from_domain_error(exc) from exc

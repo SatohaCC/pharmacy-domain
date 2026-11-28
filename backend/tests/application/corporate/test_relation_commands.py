@@ -11,7 +11,6 @@ from app.domain.corporate import (
     CorporateRelationRevision,
     CorporateRelationType,
     CorporationId,
-    RelationConfirmationStatus,
     RelationEvidence,
 )
 from app.domain.foundation import AwareDatetime, EffectiveDateRange
@@ -30,7 +29,6 @@ def test_evidence_correction_gets_a_later_timestamp_even_with_a_fixed_clock() ->
             CorporateRelationRevision(
                 period,
                 RelationEvidence("初回"),
-                RelationConfirmationStatus.UNVERIFIED,
                 AwareDatetime(now),
             ),
         ),

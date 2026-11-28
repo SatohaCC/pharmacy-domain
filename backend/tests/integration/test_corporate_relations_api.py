@@ -89,7 +89,6 @@ def test_revision_history_and_business_date_filters_survive_migration(
         path,
         json={
             "evidence": "原契約を確認",
-            "confirmation_status": "verified",
             "valid_from": "2026-01-02",
         },
     )
@@ -116,7 +115,6 @@ def test_revision_history_and_business_date_filters_survive_migration(
         "2026-01-02",
         "2026-01-02",
     ]
-    assert history.json()[-1]["confirmation_status"] == "verified"
     assert [record["recorded_by"] for record in history.json()] == [
         "vendor-admin-1",
         "vendor-admin-1",
@@ -243,7 +241,7 @@ def test_concurrent_registration_validates_committed_relation_before_writing(
     assert client.get(_RELATIONS).json()["total"] == 1
 
 
-def test_list_relations_filters_by_relation_type_and_confirmation_status(
+def test_list_relations_filters_by_relation_type(
     relations_api: tuple[TestClient, Engine, str],
 ) -> None:
     client, _engine, parent = relations_api
@@ -259,18 +257,12 @@ def test_list_relations_filters_by_relation_type_and_confirmation_status(
             "relation_type": "affiliate",
             "valid_from": "2026-01-01",
             "evidence": "提携契約書",
-            "confirmation_status": "verified",
         },
     )
     assert parent_rel.status_code == affiliate_rel.status_code == 201
 
     only_affiliate = client.get(_RELATIONS, params={"relation_type": "affiliate"})
-    only_verified = client.get(_RELATIONS, params={"confirmation_status": "verified"})
-    both_mismatch = client.get(
-        _RELATIONS,
-        params={"relation_type": "parent_child", "confirmation_status": "verified"},
-    )
+    only_fc_vc = client.get(_RELATIONS, params={"relation_type": "fc_vc"})
 
     assert [item["id"] for item in only_affiliate.json()["items"]] == [affiliate_rel.json()["id"]]
-    assert [item["id"] for item in only_verified.json()["items"]] == [affiliate_rel.json()["id"]]
-    assert both_mismatch.json() == {"items": [], "total": 0}
+    assert only_fc_vc.json() == {"items": [], "total": 0}

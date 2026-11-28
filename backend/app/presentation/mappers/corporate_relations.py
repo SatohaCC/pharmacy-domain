@@ -27,7 +27,6 @@ def to_register_relation_input(
         valid_from=data.valid_from,
         valid_to=data.valid_to,
         evidence=data.evidence,
-        confirmation_status=data.confirmation_status,
         recorded_by=recorded_by,
     )
 
@@ -42,7 +41,6 @@ def to_correct_relation_input(
         valid_from=data.valid_from,
         valid_to=data.valid_to,
         evidence=data.evidence,
-        confirmation_status=data.confirmation_status,
         provided_fields=frozenset(data.model_fields_set),
         recorded_by=recorded_by,
     )

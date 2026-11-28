@@ -19,7 +19,6 @@ from app.domain.corporate import (
     CorporationStatus,
     DuplicateCorporateRelationError,
     MultipleCorporateParentsError,
-    RelationConfirmationStatus,
     RelationEvidence,
     SelfCorporateRelationError,
     validate_corporate_relation,
@@ -50,7 +49,6 @@ def _relation(
             CorporateRelationRevision(
                 EffectiveDateRange(start, end),
                 RelationEvidence("契約書を確認"),
-                RelationConfirmationStatus.UNVERIFIED,
                 _RECORDED,
             ),
         ),
@@ -154,7 +152,6 @@ def test_ending_and_correcting_preserves_preceding_revisions() -> None:
         replace(
             ended.current,
             evidence=RelationEvidence("原契約を再確認"),
-            confirmation_status=RelationConfirmationStatus.VERIFIED,
             recorded_at=recorded_at,
         )
     )
@@ -165,7 +162,7 @@ def test_ending_and_correcting_preserves_preceding_revisions() -> None:
     assert corrected.revision_at(_CORRECTED) == ended.current
     assert original.current.period.contains(_SWITCH)
     assert not corrected.current.period.contains(_SWITCH)
-    assert corrected.current.confirmation_status == RelationConfirmationStatus.VERIFIED
+    assert corrected.current.evidence == RelationEvidence("原契約を再確認")
 
 
 def test_rejects_a_revision_with_the_same_recorded_time() -> None:

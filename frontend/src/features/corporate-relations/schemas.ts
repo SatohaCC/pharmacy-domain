@@ -3,14 +3,10 @@ import { z } from "zod";
 export const relationTypeSchema = z.enum(["parent_child", "affiliate", "fc_vc"]);
 export type RelationType = z.infer<typeof relationTypeSchema>;
 
-export const confirmationStatusSchema = z.enum(["unverified", "verified"]);
-export type ConfirmationStatus = z.infer<typeof confirmationStatusSchema>;
-
 export const corporateRelationRevisionSchema = z.object({
   valid_from: z.string(),
   valid_to: z.string().nullable(),
   evidence: z.string(),
-  confirmation_status: confirmationStatusSchema,
   recorded_at: z.string(),
   recorded_by: z.string().nullable().optional(),
 });
@@ -26,7 +22,6 @@ export const corporateRelationSchema = z.object({
   valid_from: z.string(),
   valid_to: z.string().nullable(),
   evidence: z.string(),
-  confirmation_status: confirmationStatusSchema,
   recorded_at: z.string(),
   recorded_by: z.string().nullable().optional(),
 });
@@ -42,5 +37,4 @@ export interface CorporateRelationListFilter {
   corporation_id?: string;
   as_of?: string;
   relation_type?: RelationType;
-  confirmation_status?: ConfirmationStatus;
 }

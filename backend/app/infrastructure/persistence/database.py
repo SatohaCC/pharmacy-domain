@@ -81,10 +81,8 @@ corporate_relation_revisions_table = Table(
     Column("valid_from", Date, nullable=False),
     Column("valid_to", Date),
     Column("evidence", Text, nullable=False),
-    Column("confirmation_status", Text, nullable=False),
     Column("recorded_by", Text, nullable=True),
     CheckConstraint("valid_to IS NULL OR valid_from < valid_to"),
-    CheckConstraint("confirmation_status IN ('unverified', 'verified')"),
 )
 
 corporation_history_table = Table(
