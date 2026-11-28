@@ -17,6 +17,18 @@ function InputRefTestCase() {
 }
 
 describe("TextField", () => {
+  it("入力枠の余白をクリックすると入力欄にフォーカスする", async () => {
+    const user = userEvent.setup();
+    render(<TextField label="代表者名" />);
+    const input = screen.getByRole("textbox", { name: "代表者名" });
+    const controlBox = input.parentElement;
+    if (!controlBox) throw new Error("入力枠が見つかりません。");
+
+    await user.click(controlBox);
+
+    expect(input).toHaveFocus();
+  });
+
   it("ラベル・説明文と入力欄を関連付け、入力変更を通知する", async () => {
     const user = userEvent.setup();
     const onValueChange = vi.fn();
