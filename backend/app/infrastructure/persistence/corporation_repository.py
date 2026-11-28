@@ -12,13 +12,13 @@ from app.domain.corporate.exceptions import (
 )
 from app.domain.corporate.history import (
     CorporationChangeKind,
-    CorporationEvidence,
     CorporationHistoryRecord,
 )
 from app.domain.corporate.identifiers import CorporationId
 from app.domain.corporate.primitives import (
     CorporateAddress,
     CorporateNumber,
+    CorporationEvidence,
     CorporationName,
     RepresentativeName,
 )
@@ -42,11 +42,14 @@ def _parse_iso_utc(raw: str) -> AwareDatetime:
 
 def _row_to_corporation(row: RowMapping) -> Corporation:
     raw_number = row["corporate_number"]
+    raw_representative_name = str(row["representative_name"])
     return Corporation(
         id=CorporationId(str(row["id"])),
         category=CorporationCategory(str(row["category"])),
         name=CorporationName(str(row["name"])),
-        representative_name=RepresentativeName(str(row["representative_name"])),
+        representative_name=(
+            RepresentativeName(raw_representative_name) if raw_representative_name else None
+        ),
         corporate_number=CorporateNumber(str(raw_number)) if raw_number is not None else None,
         address=CorporateAddress(str(row["address"])),
         status=CorporationStatus(str(row["status"])),
@@ -58,6 +61,7 @@ def _row_to_corporation(row: RowMapping) -> Corporation:
 
 def _row_to_history_record(row: RowMapping) -> CorporationHistoryRecord:
     value = row["corporate_number"]
+    raw_representative_name = str(row["representative_name"])
     evidence = row["evidence"]
     survivor = row["surviving_corporation_id"]
     recorded_by = row["recorded_by"]
@@ -66,7 +70,9 @@ def _row_to_history_record(row: RowMapping) -> CorporationHistoryRecord:
             id=CorporationId(row["corporation_id"]),
             category=CorporationCategory(row["category"]),
             name=CorporationName(row["name"]),
-            representative_name=RepresentativeName(str(row["representative_name"])),
+            representative_name=(
+                RepresentativeName(raw_representative_name) if raw_representative_name else None
+            ),
             corporate_number=CorporateNumber(value) if value is not None else None,
             address=CorporateAddress(row["address"]),
             status=CorporationStatus(row["status"]),
@@ -94,7 +100,11 @@ class SqlAlchemyCorporationRepository:
             id=corporation.id.value,
             category=corporation.category.value,
             name=corporation.name.value,
-            representative_name=corporation.representative_name.value,
+            representative_name=(
+                corporation.representative_name.value
+                if corporation.representative_name is not None
+                else ""
+            ),
             corporate_number=(
                 corporation.corporate_number.value
                 if corporation.corporate_number is not None
@@ -146,7 +156,11 @@ class SqlAlchemyCorporationRepository:
             .where(corporations_table.c.id == corporation.id.value)
             .values(
                 name=corporation.name.value,
-                representative_name=corporation.representative_name.value,
+                representative_name=(
+                    corporation.representative_name.value
+                    if corporation.representative_name is not None
+                    else ""
+                ),
                 corporate_number=(
                     corporation.corporate_number.value
                     if corporation.corporate_number is not None
@@ -194,7 +208,9 @@ class SqlAlchemyCorporationRepository:
                 valid_from=record.period.valid_from,
                 valid_to=record.period.valid_to,
                 name=state.name.value,
-                representative_name=state.representative_name.value,
+                representative_name=(
+                    state.representative_name.value if state.representative_name is not None else ""
+                ),
                 corporate_number=number.value if number is not None else None,
                 address=state.address.value,
                 status=state.status.value,

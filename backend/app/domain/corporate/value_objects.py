@@ -3,7 +3,7 @@
 from dataclasses import dataclass
 from enum import StrEnum
 
-from app.domain.corporate.primitives import RelationEvidence
+from app.domain.corporate.primitives import CorporationEvidence
 from app.domain.foundation.primitives import AwareDatetime
 from app.domain.foundation.value_objects import EffectiveDateRange
 
@@ -44,6 +44,6 @@ class CorporateRelationRevision:
     """関係の適用期間・根拠を、システム記録日時ごとに保持する。"""
 
     period: EffectiveDateRange
-    evidence: RelationEvidence
+    evidence: CorporationEvidence
     recorded_at: AwareDatetime
     recorded_by: str | None = None

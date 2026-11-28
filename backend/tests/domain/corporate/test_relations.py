@@ -14,12 +14,12 @@ from app.domain.corporate import (
     CorporateRelationType,
     Corporation,
     CorporationCategory,
+    CorporationEvidence,
     CorporationId,
     CorporationName,
     CorporationStatus,
     DuplicateCorporateRelationError,
     MultipleCorporateParentsError,
-    RelationEvidence,
     SelfCorporateRelationError,
     validate_corporate_relation,
 )
@@ -48,7 +48,7 @@ def _relation(
         revisions=(
             CorporateRelationRevision(
                 EffectiveDateRange(start, end),
-                RelationEvidence("契約書を確認"),
+                CorporationEvidence("契約書を確認"),
                 _RECORDED,
             ),
         ),
@@ -151,7 +151,7 @@ def test_ending_and_correcting_preserves_preceding_revisions() -> None:
     corrected = ended.correct(
         replace(
             ended.current,
-            evidence=RelationEvidence("原契約を再確認"),
+            evidence=CorporationEvidence("原契約を再確認"),
             recorded_at=recorded_at,
         )
     )
@@ -162,14 +162,14 @@ def test_ending_and_correcting_preserves_preceding_revisions() -> None:
     assert corrected.revision_at(_CORRECTED) == ended.current
     assert original.current.period.contains(_SWITCH)
     assert not corrected.current.period.contains(_SWITCH)
-    assert corrected.current.evidence == RelationEvidence("原契約を再確認")
+    assert corrected.current.evidence == CorporationEvidence("原契約を再確認")
 
 
 def test_rejects_a_revision_with_the_same_recorded_time() -> None:
     relation = _relation("parent", "child")
 
     with pytest.raises(DomainValidationError, match="記録日時"):
-        relation.correct(replace(relation.current, evidence=RelationEvidence("追加資料を確認")))
+        relation.correct(replace(relation.current, evidence=CorporationEvidence("追加資料を確認")))
 
     assert len(relation.revisions) == 1
 

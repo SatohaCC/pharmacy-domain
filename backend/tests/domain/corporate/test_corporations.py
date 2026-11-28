@@ -1,6 +1,7 @@
 """法人コンテキストのドメイン単体テスト。"""
 
 from datetime import UTC, datetime, timedelta
+from typing import Any, cast
 
 import pytest
 
@@ -9,6 +10,7 @@ from app.domain.corporate import (
     CorporateNumber,
     Corporation,
     CorporationCategory,
+    CorporationEvidence,
     CorporationId,
     CorporationName,
     CorporationNotFoundError,
@@ -66,10 +68,18 @@ def test_corporation_name_validates_invariants() -> None:
     assert CorporationName.parse("  株式会社テスト薬局  ") == CorporationName("株式会社テスト薬局")
     assert CorporationName("あ" * 200).value == "あ" * 200
 
-    with pytest.raises(DomainValidationError, match="空文字"):
+    with pytest.raises(DomainValidationError, match="空文字") as empty_exc:
         CorporationName.parse("   ")
-    with pytest.raises(DomainValidationError, match="空文字"):
+    assert empty_exc.value.details == {"field": "name"}
+
+    with pytest.raises(DomainValidationError, match="空文字") as spaced_exc:
         CorporationName("  株式会社テスト薬局  ")
+    assert spaced_exc.value.details == {"field": "name"}
+
+    with pytest.raises(DomainValidationError, match="文字列") as type_exc:
+        CorporationName.parse(cast(Any, 123))
+    assert type_exc.value.details == {"field": "name"}
+
     with pytest.raises(DomainValidationError, match="制御文字"):
         CorporationName("株式会社\nテスト薬局")
     with pytest.raises(DomainValidationError, match="制御文字"):
@@ -80,11 +90,20 @@ def test_corporation_name_validates_invariants() -> None:
 
 def test_representative_name_validates_invariants() -> None:
     assert RepresentativeName.parse("  山田 太郎  ") == RepresentativeName("山田 太郎")
-    assert RepresentativeName("").value == ""
     assert RepresentativeName("あ" * 200).value == "あ" * 200
 
-    with pytest.raises(DomainValidationError, match="代表者名"):
+    with pytest.raises(DomainValidationError, match="代表者名") as empty_exc:
+        RepresentativeName("")
+    assert empty_exc.value.details == {"field": "representative_name"}
+
+    with pytest.raises(DomainValidationError, match="代表者名") as parsed_empty_exc:
         RepresentativeName.parse("   ")
+    assert parsed_empty_exc.value.details == {"field": "representative_name"}
+
+    with pytest.raises(DomainValidationError, match="文字列") as type_exc:
+        RepresentativeName.parse(cast(Any, 123))
+    assert type_exc.value.details == {"field": "representative_name"}
+
     with pytest.raises(DomainValidationError, match="前後"):
         RepresentativeName("  山田太郎  ")
     with pytest.raises(DomainValidationError, match="制御文字"):
@@ -93,6 +112,7 @@ def test_representative_name_validates_invariants() -> None:
         RepresentativeName("あ" * 201)
 
     corp = _make_corporation()
+    assert corp.representative_name is None
     later = AwareDatetime(corp.created_at.value + timedelta(minutes=1))
     updated = corp.update_profile(
         representative_name=RepresentativeName("佐藤 花子"), updated_at=later
@@ -115,8 +135,36 @@ def test_corporate_number_validates_13_ascii_digits() -> None:
         "123456789012a",
         "１２３４５６７８９０１２３",
     ):
-        with pytest.raises(DomainValidationError):
+        with pytest.raises(DomainValidationError) as exc:
             CorporateNumber.parse(invalid)
+        assert exc.value.details == {"field": "corporate_number"}
+
+    with pytest.raises(DomainValidationError, match="文字列") as type_exc:
+        CorporateNumber.parse(cast(Any, 1234567890123))
+    assert type_exc.value.details == {"field": "corporate_number"}
+
+
+def test_corporation_evidence_validates_invariants() -> None:
+    assert CorporationEvidence.parse("  契約書を確認\n別紙参照  ") == CorporationEvidence(
+        "契約書を確認\n別紙参照"
+    )
+    assert CorporationEvidence("あ" * 1000).value == "あ" * 1000
+
+    with pytest.raises(DomainValidationError, match="空文字") as empty_exc:
+        CorporationEvidence.parse("   ")
+    assert empty_exc.value.details == {"field": "evidence"}
+
+    with pytest.raises(DomainValidationError, match="文字列") as type_exc:
+        CorporationEvidence.parse(cast(Any, 123))
+    assert type_exc.value.details == {"field": "evidence"}
+
+    with pytest.raises(DomainValidationError, match="制御文字") as ctrl_exc:
+        CorporationEvidence("契約書\x00確認")
+    assert ctrl_exc.value.details == {"field": "evidence"}
+
+    with pytest.raises(DomainValidationError, match="1000 文字以内") as len_exc:
+        CorporationEvidence("あ" * 1001)
+    assert len_exc.value.details == {"field": "evidence"}
 
 
 def test_corporate_address_validates_invariants() -> None:

@@ -11,8 +11,8 @@ from app.domain.corporate import (
     CorporateRelationId,
     CorporateRelationRevision,
     CorporateRelationType,
+    CorporationEvidence,
     CorporationId,
-    RelationEvidence,
 )
 from app.domain.foundation import AwareDatetime, DomainConflictError, EffectiveDateRange
 from app.infrastructure.persistence.database import (
@@ -29,7 +29,7 @@ def _revision(row: RowMapping) -> CorporateRelationRevision:
     recorded_by = row["recorded_by"]
     return CorporateRelationRevision(
         EffectiveDateRange(row["valid_from"], row["valid_to"]),
-        RelationEvidence(row["evidence"]),
+        CorporationEvidence(row["evidence"]),
         AwareDatetime.parse(row["recorded_at"]),
         recorded_by=str(recorded_by) if recorded_by is not None else None,
     )

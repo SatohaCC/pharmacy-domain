@@ -31,7 +31,6 @@ from app.domain.corporate.exceptions import (
 )
 from app.domain.corporate.history import (
     CorporationChangeKind,
-    CorporationEvidence,
     CorporationHistory,
     CorporationHistoryRecord,
 )
@@ -39,6 +38,7 @@ from app.domain.corporate.identifiers import CorporationId
 from app.domain.corporate.primitives import (
     CorporateAddress,
     CorporateNumber,
+    CorporationEvidence,
     CorporationName,
     RepresentativeName,
 )

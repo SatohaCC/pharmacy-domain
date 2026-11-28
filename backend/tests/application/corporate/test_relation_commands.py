@@ -10,8 +10,8 @@ from app.domain.corporate import (
     CorporateRelationId,
     CorporateRelationRevision,
     CorporateRelationType,
+    CorporationEvidence,
     CorporationId,
-    RelationEvidence,
 )
 from app.domain.foundation import AwareDatetime, EffectiveDateRange
 from tests.application.corporate.test_use_cases import _FixedClock, _SequentialIdGenerator
@@ -28,7 +28,7 @@ def test_evidence_correction_gets_a_later_timestamp_even_with_a_fixed_clock() ->
         (
             CorporateRelationRevision(
                 period,
-                RelationEvidence("初回"),
+                CorporationEvidence("初回"),
                 AwareDatetime(now),
             ),
         ),

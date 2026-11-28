@@ -18,9 +18,9 @@ from app.domain.corporate import (
     CorporateRelationNotFoundError,
     CorporateRelationRevision,
     CorporateRelationType,
+    CorporationEvidence,
     CorporationId,
     CorporationNotFoundError,
-    RelationEvidence,
     validate_corporate_relation,
 )
 from app.domain.foundation import (
@@ -61,7 +61,7 @@ class CorporateRelationCommandService:
             target = CorporationId.parse(data.target_corporation_id)
             period = EffectiveDateRange(data.valid_from, data.valid_to)
             kind = _parse_relation_type(data.relation_type)
-            evidence = RelationEvidence.parse(data.evidence)
+            evidence = CorporationEvidence.parse(data.evidence)
             with self._uow_factory() as uow:
                 relation = CorporateRelation(
                     CorporateRelationId(self._id_generator.new_id()),
@@ -117,7 +117,7 @@ class CorporateRelationCommandService:
                 data.valid_to if "valid_to" in fields else old.period.valid_to,
             )
             evidence = (
-                RelationEvidence.parse(data.evidence)
+                CorporationEvidence.parse(data.evidence)
                 if "evidence" in fields and data.evidence is not None
                 else old.evidence
             )

@@ -6,12 +6,12 @@ from enum import StrEnum
 
 from app.domain.corporate.entities import Corporation
 from app.domain.corporate.identifiers import CorporationId
+from app.domain.corporate.primitives import CorporationEvidence
 from app.domain.corporate.value_objects import CorporationStatus
 from app.domain.foundation import (
     AwareDatetime,
     DomainValidationError,
     EffectiveDateRange,
-    NonEmptyString,
 )
 
 
@@ -24,16 +24,6 @@ class CorporationChangeKind(StrEnum):
     CORRECTION = "correction"
     DISSOLUTION = "dissolution"
     MERGER = "merger"
-
-
-@dataclass(frozen=True, slots=True)
-class CorporationEvidence(NonEmptyString):
-    """法人の確認や変更を支える資料・理由のメモ。"""
-
-    def validate(self) -> None:
-        super().validate()
-        if len(self.value) > 1000:
-            raise DomainValidationError("変更根拠は 1000 文字以内で指定してください。")
 
 
 @dataclass(frozen=True, slots=True)

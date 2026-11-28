@@ -176,3 +176,35 @@ def test_sqlalchemy_repository_translates_constraints_and_rolls_back(tmp_path: P
             )
     finally:
         engine.dispose()
+
+
+def test_sqlalchemy_repository_maps_empty_representative_name_to_none(tmp_path: Path) -> None:
+    db_path = tmp_path / "legacy_rep_name.db"
+    now = AwareDatetime(datetime(2026, 11, 21, 9, 0, tzinfo=UTC))
+
+    engine = create_app_engine(str(db_path))
+    metadata.create_all(engine)
+    uow_factory = SqlAlchemyCorporationUnitOfWorkFactory(engine)
+
+    try:
+        with uow_factory() as uow:
+            uow.corporations.add(
+                Corporation(
+                    id=CorporationId("legacy-corp"),
+                    category=CorporationCategory.CORPORATION,
+                    name=CorporationName("既存法人"),
+                    corporate_number=None,
+                    address=CorporateAddress(""),
+                    status=CorporationStatus.ACTIVE,
+                    created_at=now,
+                    updated_at=now,
+                )
+            )
+            uow.commit()
+
+        with uow_factory() as uow:
+            restored = uow.corporations.get(CorporationId("legacy-corp"))
+            assert restored is not None
+            assert restored.representative_name is None
+    finally:
+        engine.dispose()
