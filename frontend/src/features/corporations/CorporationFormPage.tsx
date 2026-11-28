@@ -525,7 +525,7 @@ export function CorporationFormPage({
             onToggle={(e) => setIsDetailsOpen(e.currentTarget.open)}
             {...stylex.props(s.detailsBox)}
           >
-            <summary {...stylex.props(s.detailsSummary)}>
+            <summary {...stylex.props(s.detailsSummary, s.formDetailsSummary)}>
               {isEdit
                 ? "有効期間・確認根拠・識別情報（任意）"
                 : "詳細設定（有効期間・確認根拠・初期利用状態）"}
