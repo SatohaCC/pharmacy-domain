@@ -33,7 +33,10 @@ def _vendor_principal() -> AuthPrincipal:
 
 
 def _create_corporation(client: TestClient, name: str, category: str = "corporation") -> str:
-    response = client.post("/api/corporations", json={"category": category, "name": name})
+    response = client.post(
+        "/api/corporations",
+        json={"category": category, "name": name, "representative_name": f"{name}代表"},
+    )
     assert response.status_code == 201, response.text
     return str(response.json()["id"])
 

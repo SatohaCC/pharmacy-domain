@@ -194,12 +194,14 @@ def test_corporation_use_cases_register_duplicate_check_and_status_transition() 
         RegisterCorporationInput(
             category="corporation",
             name="  株式会社テスト薬局  ",
+            representative_name="  山田 太郎  ",
             corporate_number="1234567890123",
             address="  東京都千代田区1-1  ",
         )
     )
     assert created.id == "corp-1"
     assert created.name == "株式会社テスト薬局"
+    assert created.representative_name == "山田 太郎"
     assert created.corporate_number == "1234567890123"
     assert created.status == "active"
     assert events == ["enter", "commit", "exit"]
@@ -211,6 +213,7 @@ def test_corporation_use_cases_register_duplicate_check_and_status_transition() 
             RegisterCorporationInput(
                 category="corporation",
                 name="別法人",
+                representative_name="代表者B",
                 corporate_number="1234567890123",
             )
         )
@@ -220,7 +223,9 @@ def test_corporation_use_cases_register_duplicate_check_and_status_transition() 
     # 個人区分は法人番号を持たず複数登録できる。
     events.clear()
     ind = commands.register_corporation(
-        RegisterCorporationInput(category="individual", name="山田薬局")
+        RegisterCorporationInput(
+            category="individual", name="山田薬局", representative_name="山田太郎"
+        )
     )
     assert ind.category == "individual"
     assert ind.corporate_number is None
@@ -270,6 +275,7 @@ def test_corporation_use_cases_register_duplicate_check_and_status_transition() 
         RegisterCorporationInput(
             category="corporation",
             name="別法人テスト",
+            representative_name="代表者C",
             corporate_number="9876543210987",
         )
     )

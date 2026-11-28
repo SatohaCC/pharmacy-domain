@@ -147,6 +147,7 @@ export interface CorporationsWorkspaceProps {
   onCreateCorporation: (input: {
     category: CorporationCategory;
     name: string;
+    representative_name: string;
     corporate_number?: string | null;
     address?: string;
     valid_from?: string | null;
@@ -163,6 +164,7 @@ export interface CorporationsWorkspaceProps {
     corporationId: string,
     input: {
       name?: string | null;
+      representative_name?: string | null;
       corporate_number?: string | null;
       address?: string | null;
       valid_from?: string | null;
@@ -206,6 +208,7 @@ export interface CorporationsWorkspaceProps {
     input: {
       as_of: string;
       name?: string | null;
+      representative_name?: string | null;
       corporate_number?: string | null;
       address?: string | null;
       valid_from?: string | null;
@@ -261,6 +264,7 @@ export function CorporationsWorkspace({
 }: CorporationsWorkspaceProps) {
   const [category, setCategory] = useState<CorporationCategory>("corporation");
   const [name, setName] = useState("");
+  const [representativeName, setRepresentativeName] = useState("");
   const [corporateNumber, setCorporateNumber] = useState("");
   const [address, setAddress] = useState("");
   const [validFrom, setValidFrom] = useState("");
@@ -269,17 +273,24 @@ export function CorporationsWorkspace({
   const [usageStatus, setUsageStatus] = useState<CorporationUsageStatus>("not_started");
 
   const [nameError, setNameError] = useState<string | undefined>(undefined);
+  const [representativeNameError, setRepresentativeNameError] = useState<string | undefined>(
+    undefined,
+  );
   const [corporateNumberError, setCorporateNumberError] = useState<string | undefined>(undefined);
   const [validToError, setValidToError] = useState<string | undefined>(undefined);
 
   const [editingCorpId, setEditingCorpId] = useState<string | null>(null);
   const [editName, setEditName] = useState("");
+  const [editRepresentativeName, setEditRepresentativeName] = useState("");
   const [editCorporateNumber, setEditCorporateNumber] = useState("");
   const [editAddress, setEditAddress] = useState("");
   const [editValidFrom, setEditValidFrom] = useState("");
   const [editValidTo, setEditValidTo] = useState("");
   const [editEvidence, setEditEvidence] = useState("");
   const [editNameError, setEditNameError] = useState<string | undefined>(undefined);
+  const [editRepresentativeNameError, setEditRepresentativeNameError] = useState<
+    string | undefined
+  >(undefined);
   const [editCorporateNumberError, setEditCorporateNumberError] = useState<string | undefined>(
     undefined,
   );
@@ -289,6 +300,7 @@ export function CorporationsWorkspace({
   async function handleCreateSubmit(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
     const trimmedName = name.trim();
+    const trimmedRepresentativeName = representativeName.trim();
     const trimmedNumber = corporateNumber.trim();
     const trimmedAddress = address.trim();
     const trimmedValidFrom = validFrom.trim();
@@ -298,20 +310,27 @@ export function CorporationsWorkspace({
     const nextNameError = trimmedName
       ? undefined
       : "法人名（または個人開設者の氏名・屋号）を入力してください。";
+    const nextRepresentativeNameError = trimmedRepresentativeName
+      ? undefined
+      : category === "individual"
+        ? "開設者氏名を入力してください。"
+        : "代表者名を入力してください。";
     const nextNumberError = validateCorporateNumber(category, trimmedNumber);
     const nextValidToError = validateValidTo(trimmedValidFrom, trimmedValidTo);
 
     setNameError(nextNameError);
+    setRepresentativeNameError(nextRepresentativeNameError);
     setCorporateNumberError(nextNumberError);
     setValidToError(nextValidToError);
 
-    if (nextNameError || nextNumberError || nextValidToError) {
+    if (nextNameError || nextRepresentativeNameError || nextNumberError || nextValidToError) {
       return;
     }
 
     const created = await onCreateCorporation({
       category,
       name: trimmedName,
+      representative_name: trimmedRepresentativeName,
       corporate_number: category === "corporation" && trimmedNumber ? trimmedNumber : null,
       address: trimmedAddress,
       valid_from: trimmedValidFrom || null,
@@ -321,6 +340,7 @@ export function CorporationsWorkspace({
     });
     if (created) {
       setName("");
+      setRepresentativeName("");
       setCorporateNumber("");
       setAddress("");
       setValidFrom("");
@@ -333,12 +353,14 @@ export function CorporationsWorkspace({
   function startEditing(item: Corporation) {
     setEditingCorpId(item.id);
     setEditName(item.name);
+    setEditRepresentativeName(item.representative_name);
     setEditCorporateNumber(item.corporate_number ?? "");
     setEditAddress(item.address);
     setEditValidFrom("");
     setEditValidTo(item.valid_to ?? "");
     setEditEvidence("");
     setEditNameError(undefined);
+    setEditRepresentativeNameError(undefined);
     setEditCorporateNumberError(undefined);
     setEditValidToError(undefined);
     setEditFormError(undefined);
@@ -348,6 +370,7 @@ export function CorporationsWorkspace({
     event.preventDefault();
     if (isFetchingCorporations || isUpdatingCorporation) return;
     const trimmedName = editName.trim();
+    const trimmedRepresentativeName = editRepresentativeName.trim();
     const trimmedNumber = editCorporateNumber.trim();
     const trimmedAddress = editAddress.trim();
     const trimmedValidFrom = editValidFrom.trim();
@@ -355,19 +378,26 @@ export function CorporationsWorkspace({
     const trimmedEvidence = editEvidence.trim();
 
     const nextNameError = trimmedName ? undefined : "変更後の名称を入力してください。";
+    const nextRepresentativeNameError = trimmedRepresentativeName
+      ? undefined
+      : item.category === "individual"
+        ? "変更後の開設者氏名を入力してください。"
+        : "変更後の代表者名を入力してください。";
     const nextNumberError = validateCorporateNumber(item.category, trimmedNumber);
     const nextValidToError = validateValidTo(trimmedValidFrom, trimmedValidTo);
 
     setEditNameError(nextNameError);
+    setEditRepresentativeNameError(nextRepresentativeNameError);
     setEditCorporateNumberError(nextNumberError);
     setEditValidToError(nextValidToError);
 
-    if (nextNameError || nextNumberError || nextValidToError) {
+    if (nextNameError || nextRepresentativeNameError || nextNumberError || nextValidToError) {
       return;
     }
 
     const payload: {
       name?: string | null;
+      representative_name?: string | null;
       corporate_number?: string | null;
       address?: string | null;
       valid_from?: string | null;
@@ -377,6 +407,9 @@ export function CorporationsWorkspace({
 
     if (trimmedName !== item.name) {
       payload.name = trimmedName;
+    }
+    if (trimmedRepresentativeName !== item.representative_name) {
+      payload.representative_name = trimmedRepresentativeName;
     }
     if (item.category === "corporation" && trimmedNumber !== (item.corporate_number ?? "")) {
       payload.corporate_number = trimmedNumber || null;
@@ -390,7 +423,7 @@ export function CorporationsWorkspace({
 
     if (Object.keys(payload).length === 0) {
       setEditFormError(
-        "変更された項目がありません。名称・法人番号・所在地・有効終了日のいずれかを変更してください。",
+        "変更された項目がありません。名称・代表者名・法人番号・所在地・有効終了日のいずれかを変更してください。",
       );
       return;
     }
@@ -495,6 +528,20 @@ export function CorporationsWorkspace({
                     if (nameError) setNameError(undefined);
                   }}
                   errorMessage={nameError}
+                  required
+                  disabled={isCreatingCorporation}
+                />
+
+                <TextField
+                  label={category === "individual" ? "開設者氏名" : "代表者名"}
+                  name="representative_name"
+                  placeholder="山田 太郎"
+                  value={representativeName}
+                  onValueChange={(value) => {
+                    setRepresentativeName(value);
+                    if (representativeNameError) setRepresentativeNameError(undefined);
+                  }}
+                  errorMessage={representativeNameError}
                   required
                   disabled={isCreatingCorporation}
                 />
@@ -636,7 +683,7 @@ export function CorporationsWorkspace({
                 type="search"
                 autoCorrect="off"
                 spellCheck={false}
-                placeholder="法人名・所在地・法人番号で検索"
+                placeholder="法人名・代表者名・所在地・法人番号で検索"
                 value={filter.q ?? ""}
                 onValueChange={(value) => {
                   onFilterChange({ ...filter, q: value });
@@ -715,6 +762,10 @@ export function CorporationsWorkspace({
                             </Badge>
                           </div>
                           <p {...stylex.props(s.metaGrid)}>
+                            <span>
+                              {item.category === "individual" ? "開設者" : "代表者"}:{" "}
+                              {item.representative_name || "未設定"}
+                            </span>
                             <span>
                               法人番号:{" "}
                               <code {...stylex.props(s.metaCode)}>
@@ -839,6 +890,25 @@ export function CorporationsWorkspace({
                                 if (editFormError) setEditFormError(undefined);
                               }}
                               errorMessage={editNameError}
+                              required
+                              disabled={isUpdatingCorporation}
+                            />
+
+                            <TextField
+                              label={
+                                item.category === "individual"
+                                  ? "変更後の開設者氏名"
+                                  : "変更後の代表者名"
+                              }
+                              name="edit_representative_name"
+                              value={editRepresentativeName}
+                              onValueChange={(value) => {
+                                setEditRepresentativeName(value);
+                                if (editRepresentativeNameError)
+                                  setEditRepresentativeNameError(undefined);
+                                if (editFormError) setEditFormError(undefined);
+                              }}
+                              errorMessage={editRepresentativeNameError}
                               required
                               disabled={isUpdatingCorporation}
                             />

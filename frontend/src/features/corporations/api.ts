@@ -36,6 +36,7 @@ export function fetchCorporations(
 export function createCorporation(input: {
   category: CorporationCategory;
   name: string;
+  representative_name: string;
   corporate_number?: string | null;
   address?: string;
   valid_from?: string | null;
@@ -55,6 +56,7 @@ export function updateCorporation(
   corporationId: string,
   input: {
     name?: string | null;
+    representative_name?: string | null;
     corporate_number?: string | null;
     address?: string | null;
     valid_from?: string | null;
@@ -154,6 +156,7 @@ export function correctCorporationHistory(
   input: {
     as_of: string;
     name?: string | null;
+    representative_name?: string | null;
     corporate_number?: string | null;
     address?: string | null;
     valid_from?: string | null;

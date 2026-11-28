@@ -61,6 +61,7 @@ def to_corporation_item(
         valid_from=period.valid_from if period is not None else None,
         valid_to=period.valid_to if period is not None else None,
         usage_status=corporation.usage_status.value,
+        representative_name=corporation.representative_name.value,
     )
 
 

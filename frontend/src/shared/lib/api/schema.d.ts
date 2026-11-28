@@ -848,6 +848,7 @@ export interface components {
       corporate_number?: string | null;
       evidence?: string | null;
       name: string;
+      representative_name: string;
       usage_status?: "not_started" | "active" | "suspended";
       valid_from?: string | null;
       valid_to?: string | null;
@@ -858,6 +859,7 @@ export interface components {
       corporate_number?: string | null;
       evidence: string;
       name?: string | null;
+      representative_name?: string | null;
       valid_from?: string | null;
       valid_to?: string | null;
     };
@@ -887,6 +889,7 @@ export interface components {
       created_at: string;
       id: string;
       name: string;
+      representative_name: string;
       status: "active" | "dissolved" | "merged_out";
       updated_at: string;
       usage_status?: "not_started" | "active" | "suspended";
@@ -903,6 +906,7 @@ export interface components {
       corporate_number?: string | null;
       evidence?: string | null;
       name?: string | null;
+      representative_name?: string | null;
       valid_from?: string | null;
       valid_to?: string | null;
     };

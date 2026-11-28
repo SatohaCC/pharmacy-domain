@@ -40,6 +40,7 @@ from app.domain.corporate.primitives import (
     CorporateAddress,
     CorporateNumber,
     CorporationName,
+    RepresentativeName,
 )
 from app.domain.corporate.value_objects import CorporationStatus, CorporationUsageStatus
 from app.domain.foundation.exceptions import DomainError, DomainValidationError
@@ -47,8 +48,10 @@ from app.domain.foundation.primitives import AwareDatetime
 from app.domain.foundation.value_objects import EffectiveDateRange
 
 _JAPAN_TIME = timezone(timedelta(hours=9))
-_PROFILE_FIELDS = frozenset({"name", "address", "corporate_number"})
-_UPDATE_FIELDS = frozenset({"name", "address", "corporate_number", "valid_to"})
+_PROFILE_FIELDS = frozenset({"name", "representative_name", "address", "corporate_number"})
+_UPDATE_FIELDS = frozenset(
+    {"name", "representative_name", "address", "corporate_number", "valid_to"}
+)
 
 
 def _effective_date(requested: date | None, today: date) -> date:
@@ -112,6 +115,7 @@ class CorporationCommandService:
                 id=CorporationId.parse(resolved_id),
                 category=category,
                 name=CorporationName.parse(data.name),
+                representative_name=RepresentativeName.parse(data.representative_name),
                 corporate_number=corporate_number,
                 address=CorporateAddress.parse(data.address),
                 status=CorporationStatus.ACTIVE,
@@ -200,6 +204,11 @@ class CorporationCommandService:
             if correction and evidence is None:
                 raise DomainValidationError("履歴の訂正には根拠を指定してください。")
             next_name = CorporationName.parse(data.name) if data.name is not None else None
+            next_representative_name = (
+                RepresentativeName.parse(data.representative_name)
+                if data.representative_name is not None
+                else None
+            )
             next_address = (
                 CorporateAddress.parse(data.address) if data.address is not None else None
             )
@@ -230,6 +239,7 @@ class CorporationCommandService:
                 baseline = current if effective == today and not correction else old.corporation
                 has_profile_change = (
                     next_name is not None
+                    or next_representative_name is not None
                     or next_address is not None
                     or next_corporate_number is not None
                     or clear_corporate_number
@@ -240,6 +250,7 @@ class CorporationCommandService:
                     )
                     revised = change_profile(
                         name=next_name,
+                        representative_name=next_representative_name,
                         address=next_address,
                         corporate_number=next_corporate_number,
                         clear_corporate_number=clear_corporate_number,

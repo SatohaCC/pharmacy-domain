@@ -34,6 +34,7 @@ def to_register_corporation_input(
     return RegisterCorporationInput(
         category=dto.category,
         name=dto.name,
+        representative_name=dto.representative_name,
         corporate_number=dto.corporate_number,
         address=dto.address,
         valid_from=dto.valid_from,
@@ -52,6 +53,7 @@ def to_update_corporation_input(
     """法人部分更新リクエスト DTO をアプリケーション入力へ変換する。"""
     return UpdateCorporationInput(
         name=dto.name,
+        representative_name=dto.representative_name,
         address=dto.address,
         corporate_number=dto.corporate_number,
         provided_fields=frozenset(dto.model_fields_set),
@@ -99,6 +101,7 @@ def to_correction_input(
     """法人履歴訂正に指定された項目を保持して変換する。"""
     return UpdateCorporationInput(
         name=dto.name,
+        representative_name=dto.representative_name,
         address=dto.address,
         corporate_number=dto.corporate_number,
         valid_from=dto.valid_from,
@@ -151,6 +154,7 @@ def to_corporation_response(item: CorporationItem) -> CorporationResponse:
         valid_from=item.valid_from,
         valid_to=item.valid_to,
         usage_status=cast(Literal["not_started", "active", "suspended"], item.usage_status),
+        representative_name=item.representative_name,
     )
 
 

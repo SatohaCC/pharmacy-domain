@@ -13,6 +13,7 @@ export const corporationSchema = z.object({
   id: z.string().min(1),
   category: corporationCategorySchema,
   name: z.string().min(1),
+  representative_name: z.string().default(""),
   corporate_number: z.string().nullable(),
   address: z.string(),
   status: corporationStatusSchema,

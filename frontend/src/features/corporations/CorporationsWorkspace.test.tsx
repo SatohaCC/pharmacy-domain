@@ -21,6 +21,7 @@ const sampleCorporation: Corporation = {
   id: "corp-1",
   category: "corporation",
   name: "株式会社さくら薬局",
+  representative_name: "佐藤 一郎",
   corporate_number: "1234567890123",
   address: "東京都新宿区1-2-3",
   status: "active",
@@ -63,12 +64,14 @@ describe("CorporationsWorkspace", () => {
     const nameInput = screen.getByLabelText(/法人名（個人の場合は氏名・屋号）/, {
       selector: "input",
     });
+    const repInput = screen.getByLabelText(/代表者名/, { selector: "input" });
     const numberInput = screen.getByLabelText(/法人番号（13桁）/, { selector: "input" });
     const addressInput = screen.getByLabelText(/本店または主たる事務所の所在地/, {
       selector: "input",
     });
 
     await user.type(nameInput, "株式会社ひまわり薬局");
+    await user.type(repInput, "山田 太郎");
     await user.type(numberInput, "12345");
     await user.click(screen.getByRole("button", { name: "企業（法人・個人）を登録" }));
 
@@ -83,6 +86,7 @@ describe("CorporationsWorkspace", () => {
     expect(onCreateCorporation).toHaveBeenCalledWith({
       category: "corporation",
       name: "株式会社ひまわり薬局",
+      representative_name: "山田 太郎",
       corporate_number: "9876543210123",
       address: "大阪府大阪市北区1-1",
       valid_from: null,
@@ -91,6 +95,7 @@ describe("CorporationsWorkspace", () => {
       usage_status: "not_started",
     });
     expect(nameInput).toHaveValue("");
+    expect(repInput).toHaveValue("");
     expect(numberInput).toHaveValue("");
     expect(addressInput).toHaveValue("");
   });
@@ -132,7 +137,7 @@ describe("CorporationsWorkspace", () => {
     await user.click(screen.getByRole("button", { name: "基本情報を保存" }));
     expect(
       screen.getByText(
-        "変更された項目がありません。名称・法人番号・所在地・有効終了日のいずれかを変更してください。",
+        "変更された項目がありません。名称・代表者名・法人番号・所在地・有効終了日のいずれかを変更してください。",
       ),
     ).toBeInTheDocument();
     expect(onUpdateCorporation).not.toHaveBeenCalled();
@@ -192,6 +197,7 @@ describe("CorporationsWorkspace", () => {
       screen.getByLabelText(/法人名（個人の場合は氏名・屋号）/, { selector: "input" }),
       "期間不正法人",
     );
+    await user.type(screen.getByLabelText(/代表者名/, { selector: "input" }), "代表太郎");
     await user.type(
       screen.getByLabelText(/有効開始日（任意）/, { selector: "input" }),
       "2026-05-01",
@@ -214,6 +220,7 @@ describe("CorporationsWorkspace", () => {
       ...sampleCorporation,
       id: "corp-2",
       name: "株式会社わかば薬局",
+      representative_name: "鈴木 花子",
       corporate_number: "9999999999999",
     };
     const onSelectHistoryCorp = vi.fn();
@@ -271,7 +278,7 @@ describe("CorporationsWorkspace", () => {
     await user.click(screen.getByRole("combobox", { name: "変更後の状態" }));
     await user.click(screen.getByRole("option", { name: "吸収合併で消滅 (merged_out)" }));
     await user.click(screen.getByRole("combobox", { name: "合併先の存続法人" }));
-    await user.click(screen.getByRole("option", { name: "株式会社わかば薬局 (corp-2)" }));
+    await user.click(screen.getByRole("option", { name: "株式会社わかば薬局（代表: 鈴木 花子）" }));
     await user.type(screen.getByLabelText("効力日"), "2026-12-01");
     await user.click(screen.getByRole("button", { name: "ステータスを変更" }));
     expect(onChangeStatus).toHaveBeenCalledWith("corp-1", {
