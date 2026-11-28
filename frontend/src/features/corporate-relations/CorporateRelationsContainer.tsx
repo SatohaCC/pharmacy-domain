@@ -1,7 +1,7 @@
 "use client";
 
 import * as stylex from "@stylexjs/stylex";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import { useEffect, useState } from "react";
 import { isAuthenticationError } from "@/features/auth/api";
 import { useAuthLogout, useClearAuthCache, useCurrentAuthUser } from "@/features/auth/useAuth";
@@ -15,12 +15,12 @@ import {
   useCorporateRelations,
   useCorrectCorporateRelation,
   useEndCorporateRelation,
-  useRegisterCorporateRelation,
 } from "./useCorporateRelations";
 
 /** 法人間関係管理画面のコンテナ。 */
 export function CorporateRelationsContainer() {
   const router = useRouter();
+  const searchParams = useSearchParams();
   const clearAuthCache = useClearAuthCache();
   const currentUserQuery = useCurrentAuthUser();
   const [filter, setFilter] = useState<CorporateRelationListFilter>({});
@@ -33,19 +33,19 @@ export function CorporateRelationsContainer() {
     selectedHistoryRelationId ?? "",
     Boolean(isVendorUser && selectedHistoryRelationId),
   );
-  const registerMutation = useRegisterCorporateRelation();
   const correctMutation = useCorrectCorporateRelation();
   const endMutation = useEndCorporateRelation();
   const logoutMutation = useAuthLogout(() => {
     router.replace("/login");
   });
 
+  const notice = searchParams.get("notice") === "created" ? "created" : null;
+
   const hasSessionAuthError =
     currentUserQuery.isAuthError ||
     isAuthenticationError(corporationsQuery.error) ||
     isAuthenticationError(relationsQuery.error) ||
     isAuthenticationError(historyQuery.error) ||
-    isAuthenticationError(registerMutation.error) ||
     isAuthenticationError(correctMutation.error) ||
     isAuthenticationError(endMutation.error);
 
@@ -84,16 +84,8 @@ export function CorporateRelationsContainer() {
       onFilterChange={setFilter}
       isLoadingRelations={relationsQuery.isLoading}
       relationsErrorMessage={relationsQuery.errorMessage}
-      isRegistering={registerMutation.isPending}
-      registerErrorMessage={registerMutation.errorMessage}
-      onRegisterRelation={async (input) => {
-        try {
-          await registerMutation.mutateAsync(input);
-          return true;
-        } catch {
-          return false;
-        }
-      }}
+      notice={notice}
+      onDismissNotice={() => router.replace("/vendor/corporations/relations", { scroll: false })}
       isCorrecting={correctMutation.isPending}
       correctErrorMessage={correctMutation.errorMessage}
       onCorrectRelation={async (relationId, payload) => {
