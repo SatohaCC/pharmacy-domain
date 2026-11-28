@@ -27,7 +27,6 @@ from app.domain.corporate.exceptions import (
     CorporationNotFoundError,
     DuplicateCorporateNumberError,
     InvalidCorporationTransitionError,
-    InvalidCorporationUpdateError,
 )
 from app.domain.corporate.history import (
     CorporationChangeKind,
@@ -42,7 +41,7 @@ from app.domain.corporate.primitives import (
     CorporationName,
     RepresentativeName,
 )
-from app.domain.corporate.value_objects import CorporationStatus, CorporationUsageStatus
+from app.domain.corporate.value_objects import CorporationStatus
 from app.domain.foundation.exceptions import DomainError, DomainValidationError
 from app.domain.foundation.primitives import AwareDatetime
 from app.domain.foundation.value_objects import EffectiveDateRange
@@ -226,11 +225,8 @@ class CorporationCommandService:
                 today = clock_time.value.astimezone(_JAPAN_TIME).date()
                 resolved_now = _next_recorded_time(clock_time, current)
                 effective = _effective_date(effective_date, today)
-                if not correction and current.status != CorporationStatus.ACTIVE:
-                    raise InvalidCorporationUpdateError(
-                        "解散または合併消滅した法人の基本情報は変更できません。",
-                        details={"current_status": current.status.value},
-                    )
+                if not correction:
+                    current.ensure_profile_updatable()
                 history = CorporationHistory(uow.corporations.history(parsed_id))
                 old = history.at(effective)
                 if old is None:
@@ -330,7 +326,7 @@ class CorporationCommandService:
                 resolved_now = _next_recorded_time(clock_time, current)
                 effective_date = _effective_date(data.effective_date, today)
                 history = CorporationHistory(uow.corporations.history(parsed_id))
-                record = history.record_status(
+                transition = history.record_status(
                     current,
                     next_status,
                     effective_date=effective_date,
@@ -353,24 +349,13 @@ class CorporationCommandService:
                             "合併先の存続法人は存続（active）状態である必要があります。",
                             details={"surviving_corporation_id": surviving_id.value},
                         )
-                next_usage_status = (
-                    CorporationUsageStatus.SUSPENDED
-                    if next_status in (CorporationStatus.DISSOLVED, CorporationStatus.MERGED_OUT)
-                    else current.usage_status
-                )
-                updated = replace(
-                    current,
-                    status=next_status,
-                    usage_status=next_usage_status,
-                    updated_at=resolved_now,
-                )
-                uow.corporations.save(updated)
-                uow.corporations.append_history(record)
+                uow.corporations.save(transition.corporation)
+                uow.corporations.append_history(transition.record)
                 uow.commit()
         except DomainError as exc:
             raise to_application_error(exc) from exc
 
-        return to_corporation_item(updated)
+        return to_corporation_item(transition.corporation)
 
     def change_usage_status(
         self,
