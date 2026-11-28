@@ -3,7 +3,7 @@ import { render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { Field, FieldDescription, FieldError, FieldLabel } from "@ui-sdk/react/field";
 import { useState } from "react";
-import { afterAll, beforeAll, describe, expect, it, vi } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 import { RadioGroup } from "./RadioGroup";
 
 const items = [
@@ -13,15 +13,6 @@ const items = [
 ];
 
 describe("RadioGroup", () => {
-  const getAnimations = Element.prototype.getAnimations;
-  beforeAll(() => {
-    // jsdomにないWeb Animations APIを、アニメーションなしのブラウザとして補う。
-    Element.prototype.getAnimations = () => [];
-  });
-  afterAll(() => {
-    Element.prototype.getAnimations = getAnimations;
-  });
-
   it("クリックと矢印キーで選択を切り替え、無効項目をスキップする", async () => {
     const user = userEvent.setup();
     const onValueChange = vi.fn();

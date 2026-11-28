@@ -1,7 +1,7 @@
 import * as stylex from "@stylexjs/stylex";
 import { render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
-import { afterAll, beforeAll, describe, expect, it, vi } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 import { Menu, type MenuEntry } from "./Menu";
 
 const overrides = stylex.create({ width: (width: number) => ({ width }) });
@@ -14,25 +14,6 @@ const items: readonly MenuEntry[] = [
 ];
 
 describe("Menu", () => {
-  const getAnimations = Element.prototype.getAnimations;
-  const scrollIntoView = Element.prototype.scrollIntoView;
-  let popoverStyle: HTMLStyleElement | null = null;
-
-  beforeAll(() => {
-    // jsdom にない Web Animations API・scrollIntoView・Popover 表示スタイルを補う。
-    Element.prototype.getAnimations = () => [];
-    Element.prototype.scrollIntoView = () => {};
-    popoverStyle = document.createElement("style");
-    popoverStyle.textContent = "[popover][data-open] { display: block !important; }";
-    document.head.append(popoverStyle);
-  });
-
-  afterAll(() => {
-    Element.prototype.getAnimations = getAnimations;
-    Element.prototype.scrollIntoView = scrollIntoView;
-    popoverStyle?.remove();
-  });
-
   it("クリックで開き、矢印キー移動・無効項目の実行抑止・Enter 選択で onAction を呼ぶ", async () => {
     const user = userEvent.setup();
     const onAction = vi.fn();

@@ -1,5 +1,6 @@
 import { authApiRequest } from "@/features/auth/api";
 import { parseZodResponse } from "@/shared/lib/api/zodResponse";
+import { formatBusinessDateInTokyo } from "@/shared/lib/date/businessDate";
 import {
   type Corporation,
   type CorporationCategory,
@@ -100,10 +101,6 @@ export function fetchCorporationHistory(
   });
 }
 
-function todayInTokyo(): string {
-  return new Intl.DateTimeFormat("sv-SE", { timeZone: "Asia/Tokyo" }).format(new Date());
-}
-
 /** 指定 ID の企業の存続状態を変更（解散・吸収合併）する。 */
 export function changeCorporationStatus(
   corporationId: string,
@@ -120,7 +117,7 @@ export function changeCorporationStatus(
       params: { corporation_id: corporationId },
       body: {
         surviving_corporation_id: input.surviving_corporation_id ?? "",
-        effective_date: input.effective_date || todayInTokyo(),
+        effective_date: input.effective_date || formatBusinessDateInTokyo(),
         evidence: input.evidence ?? "",
       },
       parse: (data) => parseZodResponse(corporationSchema, data),

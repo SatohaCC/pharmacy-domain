@@ -3,7 +3,7 @@ import { render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { Field, FieldDescription, FieldError, FieldLabel } from "@ui-sdk/react/field";
 import { useState } from "react";
-import { afterAll, beforeAll, describe, expect, it, vi } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 import { Switch } from "./Switch";
 
 describe("Switch", () => {
@@ -82,14 +82,6 @@ function ControlledSwitchCase({ description }: { description?: string }) {
 }
 
 describe("Switch 再マウント防止と外部Field連携", () => {
-  const getAnimations = Element.prototype.getAnimations;
-  beforeAll(() => {
-    Element.prototype.getAnimations = () => [];
-  });
-  afterAll(() => {
-    Element.prototype.getAnimations = getAnimations;
-  });
-
   it("descriptionの追加・削除でも非制御・制御の値とフォーカスと外部説明を保持する", async () => {
     const user = userEvent.setup();
 

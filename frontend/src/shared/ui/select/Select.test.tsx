@@ -1,6 +1,6 @@
 import { render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
-import { afterAll, beforeAll, describe, expect, it, vi } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 import { Select } from "./Select";
 
 const items = [
@@ -10,22 +10,6 @@ const items = [
 ];
 
 describe("Select", () => {
-  const getAnimations = Element.prototype.getAnimations;
-  const scrollIntoView = Element.prototype.scrollIntoView;
-  let popoverStyle: HTMLStyleElement | null = null;
-  beforeAll(() => {
-    // jsdomにないWeb Animations API・scrollIntoView・Popover表示スタイルを補う。
-    Element.prototype.getAnimations = () => [];
-    Element.prototype.scrollIntoView = () => {};
-    popoverStyle = document.createElement("style");
-    popoverStyle.textContent = "[popover][data-open] { display: block !important; }";
-    document.head.append(popoverStyle);
-  });
-  afterAll(() => {
-    Element.prototype.getAnimations = getAnimations;
-    Element.prototype.scrollIntoView = scrollIntoView;
-    popoverStyle?.remove();
-  });
   it("トリガーを開いて選択肢を選び、onValueChangeを呼び出す", async () => {
     const user = userEvent.setup();
     const onValueChange = vi.fn();

@@ -37,6 +37,25 @@ test("不足した直接依存を表示し、インストール後に成功す�
     const installed = spawnSync(process.execPath, [script], { encoding: "utf8" });
 
     assert.equal(installed.status, 0, installed.stderr);
+
+    writeFileSync(
+      path.join(root, "frontend/biome.json"),
+      JSON.stringify({ $schema: "https://biomejs.dev/schemas/2.6.7/schema.json" }),
+    );
+    const biomePkgDir = path.join(root, "frontend/node_modules/@biomejs/biome");
+    mkdirSync(biomePkgDir, { recursive: true });
+    writeFileSync(path.join(biomePkgDir, "package.json"), JSON.stringify({ version: "2.6.8" }));
+
+    const mismatched = spawnSync(process.execPath, [script], { encoding: "utf8" });
+    assert.equal(mismatched.status, 1);
+    assert.match(mismatched.stderr, /frontend\/biome\.json の \$schema \(2\.6\.7\)/);
+
+    writeFileSync(
+      path.join(root, "frontend/biome.json"),
+      JSON.stringify({ $schema: "https://biomejs.dev/schemas/2.6.8/schema.json" }),
+    );
+    const aligned = spawnSync(process.execPath, [script], { encoding: "utf8" });
+    assert.equal(aligned.status, 0, aligned.stderr);
   } finally {
     assert.equal(path.dirname(root), os.tmpdir());
     rmSync(root, { recursive: true, force: true });

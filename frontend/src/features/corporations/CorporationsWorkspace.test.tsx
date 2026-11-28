@@ -1,6 +1,6 @@
 import { render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
-import { afterAll, beforeAll, describe, expect, it, vi } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 import type { AuthUser } from "@/features/auth/schemas";
 import { CorporationsWorkspace } from "./CorporationsWorkspace";
 import type { Corporation } from "./schemas";
@@ -29,22 +29,6 @@ const sampleCorporation: Corporation = {
 };
 
 describe("CorporationsWorkspace", () => {
-  const getAnimations = Element.prototype.getAnimations;
-  const scrollIntoView = Element.prototype.scrollIntoView;
-  let popoverStyle: HTMLStyleElement | null = null;
-  beforeAll(() => {
-    Element.prototype.getAnimations = () => [];
-    Element.prototype.scrollIntoView = () => {};
-    popoverStyle = document.createElement("style");
-    popoverStyle.textContent = "[popover][data-open] { display: block !important; }";
-    document.head.append(popoverStyle);
-  });
-  afterAll(() => {
-    Element.prototype.getAnimations = getAnimations;
-    Element.prototype.scrollIntoView = scrollIntoView;
-    popoverStyle?.remove();
-  });
-
   it("vendor_member でも新規法人を登録でき、13桁以外の法人番号はバリデーションエラーになる", async () => {
     const user = userEvent.setup();
     const onCreateCorporation = vi.fn().mockResolvedValue(true);

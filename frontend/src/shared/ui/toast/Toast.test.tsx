@@ -13,16 +13,13 @@ class MockResizeObserver {
 }
 
 describe("ToastViewport", () => {
-  const getAnimations = Element.prototype.getAnimations;
   const originalResizeObserver = globalThis.ResizeObserver;
 
   beforeAll(() => {
-    Element.prototype.getAnimations = () => [];
     globalThis.ResizeObserver = MockResizeObserver as unknown as typeof ResizeObserver;
   });
 
   afterAll(() => {
-    Element.prototype.getAnimations = getAnimations;
     globalThis.ResizeObserver = originalResizeObserver;
   });
 
