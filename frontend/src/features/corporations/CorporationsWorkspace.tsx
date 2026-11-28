@@ -7,16 +7,13 @@ import { VendorConsoleHeader } from "@/features/auth/VendorConsoleHeader";
 import { vendorConsoleLayoutStyles as layout } from "@/features/auth/VendorConsoleLayout.styles";
 import { Alert } from "@/shared/ui/alert/Alert";
 import { Badge } from "@/shared/ui/badge/Badge";
-import { Button } from "@/shared/ui/button/Button";
 import { Select, type SelectOption } from "@/shared/ui/select/Select";
 import { Spinner } from "@/shared/ui/spinner/Spinner";
 import { TextField } from "@/shared/ui/text-field/TextField";
-import { CorporationHistoryPanel } from "./CorporationHistoryPanel";
 import { corporationsWorkspaceStyles as s } from "./CorporationsWorkspace.styles";
 import type {
   Corporation,
   CorporationCategory,
-  CorporationHistoryRecord,
   CorporationListFilter,
   CorporationStatus,
   CorporationUsageStatus,
@@ -107,51 +104,9 @@ export interface CorporationsWorkspaceProps {
   onDismissNotice?: () => void;
   isLoggingOut: boolean;
   onLogout: () => void;
-  selectedHistoryCorpId?: string | null;
-  onSelectHistoryCorp?: (corporationId: string | null) => void;
-  activeCorporations?: readonly Corporation[];
-  historyRecords?: readonly CorporationHistoryRecord[];
-  isLoadingHistory?: boolean;
-  historyErrorMessage?: string | null;
-  snapshotParams?: { as_of?: string; recorded_as_of?: string } | null;
-  onLookupSnapshot?: (params: { as_of?: string; recorded_as_of?: string } | null) => void;
-  snapshotCorporation?: Corporation | null;
-  isLoadingSnapshot?: boolean;
-  snapshotErrorMessage?: string | null;
-  isChangingStatus?: boolean;
-  statusErrorMessage?: string | null;
-  onChangeStatus?: (
-    corporationId: string,
-    input: {
-      status: "dissolved" | "merged_out";
-      effective_date?: string | null;
-      surviving_corporation_id?: string | null;
-      evidence?: string | null;
-    },
-  ) => Promise<boolean>;
-  isChangingUsageStatus?: boolean;
-  onChangeUsageStatus?: (
-    corporationId: string,
-    usageStatus: CorporationUsageStatus,
-  ) => Promise<boolean>;
-  isCorrectingHistory?: boolean;
-  correctionErrorMessage?: string | null;
-  onCorrectHistory?: (
-    corporationId: string,
-    input: {
-      as_of: string;
-      name?: string | null;
-      representative_name?: string | null;
-      corporate_number?: string | null;
-      address?: string | null;
-      valid_from?: string | null;
-      valid_to?: string | null;
-      evidence: string;
-    },
-  ) => Promise<boolean>;
 }
 
-/** Material Design 3 準拠の導入企業（法人・個人開設者）一覧・管理ワークスペース。 */
+/** Material Design 3 準拠の導入企業（法人・個人開設者）一覧ワークスペース。 */
 export function CorporationsWorkspace({
   currentUser,
   corporations,
@@ -165,25 +120,6 @@ export function CorporationsWorkspace({
   onDismissNotice,
   isLoggingOut,
   onLogout,
-  selectedHistoryCorpId = null,
-  onSelectHistoryCorp,
-  activeCorporations,
-  historyRecords = [],
-  isLoadingHistory = false,
-  historyErrorMessage = null,
-  snapshotParams = null,
-  onLookupSnapshot,
-  snapshotCorporation = null,
-  isLoadingSnapshot = false,
-  snapshotErrorMessage = null,
-  isChangingStatus = false,
-  statusErrorMessage = null,
-  onChangeStatus,
-  isChangingUsageStatus = false,
-  onChangeUsageStatus,
-  isCorrectingHistory = false,
-  correctionErrorMessage = null,
-  onCorrectHistory,
 }: CorporationsWorkspaceProps) {
   return (
     <div data-vendor-console="" {...stylex.props(layout.page)}>
@@ -203,7 +139,7 @@ export function CorporationsWorkspace({
                 登録済み企業一覧（{totalCount}件）
               </h2>
               <p {...stylex.props(s.sectionDescription)}>
-                キーワード、開設主体区分、存続状態で絞り込み、各企業の基本情報の編集・履歴確認ができます。
+                キーワード、開設主体区分、存続状態で絞り込み、各企業の詳細・編集・履歴管理画面へ移動できます。
               </p>
               <p role="status" {...stylex.props(s.sectionDescription, s.refreshStatus)}>
                 {isFetchingCorporations && !isLoadingCorporations ? "企業一覧を更新中…" : null}
@@ -340,71 +276,14 @@ export function CorporationsWorkspace({
                     </div>
 
                     <div {...stylex.props(s.actionRow)}>
-                      {item.status === "active" && onChangeUsageStatus ? (
-                        <Button
-                          variant="outlined"
-                          size="sm"
-                          disabled={isChangingUsageStatus}
-                          onClick={() => {
-                            const nextUsage =
-                              (item.usage_status ?? "not_started") === "active"
-                                ? "suspended"
-                                : "active";
-                            void onChangeUsageStatus(item.id, nextUsage);
-                          }}
-                        >
-                          {(item.usage_status ?? "not_started") === "active"
-                            ? "利用停止"
-                            : "利用開始"}
-                        </Button>
-                      ) : null}
-                      {onSelectHistoryCorp ? (
-                        <Button
-                          variant={selectedHistoryCorpId === item.id ? "tonal" : "outlined"}
-                          size="sm"
-                          onClick={() => {
-                            onSelectHistoryCorp(selectedHistoryCorpId === item.id ? null : item.id);
-                          }}
-                        >
-                          {selectedHistoryCorpId === item.id ? "履歴を閉じる" : "履歴・状態管理"}
-                        </Button>
-                      ) : null}
-                      {item.status === "active" ? (
-                        <Link
-                          href={`/vendor/corporations/${item.id}/edit`}
-                          {...stylex.props(s.outlinedLinkButton)}
-                        >
-                          基本情報を編集
-                        </Link>
-                      ) : null}
+                      <Link
+                        href={`/vendor/corporations/${item.id}/edit`}
+                        {...stylex.props(s.outlinedLinkButton)}
+                      >
+                        {item.status === "active" ? "編集・管理" : "履歴を確認"}
+                      </Link>
                     </div>
                   </div>
-
-                  {selectedHistoryCorpId === item.id &&
-                  onLookupSnapshot &&
-                  onChangeStatus &&
-                  onCorrectHistory ? (
-                    <CorporationHistoryPanel
-                      corporation={item}
-                      activeCorporations={
-                        activeCorporations ?? corporations.filter((c) => c.status === "active")
-                      }
-                      historyRecords={historyRecords}
-                      isLoadingHistory={isLoadingHistory}
-                      historyErrorMessage={historyErrorMessage}
-                      snapshotParams={snapshotParams}
-                      onLookupSnapshot={onLookupSnapshot}
-                      snapshotCorporation={snapshotCorporation}
-                      isLoadingSnapshot={isLoadingSnapshot}
-                      snapshotErrorMessage={snapshotErrorMessage}
-                      isChangingStatus={isChangingStatus}
-                      statusErrorMessage={statusErrorMessage}
-                      onChangeStatus={onChangeStatus}
-                      isCorrectingHistory={isCorrectingHistory}
-                      correctionErrorMessage={correctionErrorMessage}
-                      onCorrectHistory={onCorrectHistory}
-                    />
-                  ) : null}
                 </li>
               ))}
             </ul>
