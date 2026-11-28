@@ -275,27 +275,21 @@ export function CorporationsWorkspace({
                         </div>
                       </th>
                       <td {...stylex.props(s.tableCell)}>
-                        <span aria-hidden="true" {...stylex.props(s.mobileCellLabel)}>
+                        <span {...stylex.props(s.mobileCellLabel)}>
                           {item.category === "individual" ? "開設者:" : "代表者:"}
                         </span>
                         <span>{item.representative_name || "未設定"}</span>
                       </td>
                       <td {...stylex.props(s.tableCell)}>
-                        <span aria-hidden="true" {...stylex.props(s.mobileCellLabel)}>
-                          所在地:
-                        </span>
+                        <span {...stylex.props(s.mobileCellLabel)}>所在地:</span>
                         <span>{item.address || "未設定"}</span>
                       </td>
                       <td {...stylex.props(s.tableCell)}>
-                        <span aria-hidden="true" {...stylex.props(s.mobileCellLabel)}>
-                          存続状態:
-                        </span>
+                        <span {...stylex.props(s.mobileCellLabel)}>存続状態:</span>
                         <Badge tone={statusTone(item.status)}>{statusLabel(item.status)}</Badge>
                       </td>
                       <td {...stylex.props(s.tableCell)}>
-                        <span aria-hidden="true" {...stylex.props(s.mobileCellLabel)}>
-                          利用状態:
-                        </span>
+                        <span {...stylex.props(s.mobileCellLabel)}>利用状態:</span>
                         <Badge tone={usageStatusTone(item.usage_status ?? "not_started")}>
                           利用: {usageStatusLabel(item.usage_status ?? "not_started")}
                         </Badge>

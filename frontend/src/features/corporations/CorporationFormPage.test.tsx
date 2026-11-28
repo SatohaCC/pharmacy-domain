@@ -207,6 +207,59 @@ describe("CorporationFormPage", () => {
     });
   });
 
+  it("編集モードで initialCorporation が再取得で更新された場合、未編集項目は最新化し編集中項目は保持する", async () => {
+    const user = userEvent.setup();
+    const onUpdateCorporation = vi.fn().mockResolvedValue(true);
+
+    const { rerender } = render(
+      <CorporationFormPage
+        mode="edit"
+        currentUser={vendorMember}
+        initialCorporation={{ ...sampleCorporation, name: "旧名称" }}
+        isSubmitting={false}
+        submitErrorMessage={null}
+        submitUserFacingError={null}
+        onUpdateCorporation={onUpdateCorporation}
+        isLoggingOut={false}
+        onLogout={vi.fn()}
+      />,
+    );
+
+    const addressInput = screen.getByLabelText(/本店または主たる事務所の所在地/, {
+      selector: "input",
+    });
+    await user.clear(addressInput);
+    await user.type(addressInput, "東京都渋谷区9-9-9");
+
+    rerender(
+      <CorporationFormPage
+        mode="edit"
+        currentUser={vendorMember}
+        initialCorporation={{
+          ...sampleCorporation,
+          name: "訂正後名称",
+          updated_at: "2026-06-02T00:00:00Z",
+        }}
+        isSubmitting={false}
+        submitErrorMessage={null}
+        submitUserFacingError={null}
+        onUpdateCorporation={onUpdateCorporation}
+        isLoggingOut={false}
+        onLogout={vi.fn()}
+      />,
+    );
+
+    expect(
+      screen.getByLabelText(/法人名（個人の場合は氏名・屋号）/, { selector: "input" }),
+    ).toHaveValue("訂正後名称");
+    expect(addressInput).toHaveValue("東京都渋谷区9-9-9");
+
+    await user.click(screen.getByRole("button", { name: "基本情報を保存" }));
+    expect(onUpdateCorporation).toHaveBeenCalledWith("corp-1", {
+      address: "東京都渋谷区9-9-9",
+    });
+  });
+
   it("編集モードで利用開始・利用停止を押すと確認ダイアログが開き、確定時のみ送信する", async () => {
     const user = userEvent.setup();
     const onChangeUsageStatus = vi.fn().mockResolvedValue(true);
