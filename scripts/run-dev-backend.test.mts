@@ -20,7 +20,9 @@ test("shouldCheckMigrations は uvicorn 実行時のみ有効になる", () => {
 test("未適用マイグレーションの DB では uvicorn 起動を停止し、適用後は通過する", () => {
   const tempDir = mkdtempSync(path.join(os.tmpdir(), "dev-backend-guard-"));
   const dbPath = path.join(tempDir, "dev.sqlite3");
-  const env = { ...process.env, DATABASE_PATH: dbPath };
+  const env: NodeJS.ProcessEnv = { ...process.env, DATABASE_PATH: dbPath };
+  delete env.DATABASE_URL;
+  delete env.SKIP_MIGRATION_CHECK;
 
   try {
     const blocked = spawnSync(
