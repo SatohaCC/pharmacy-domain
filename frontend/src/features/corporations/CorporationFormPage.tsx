@@ -169,21 +169,6 @@ export interface CorporationFormPageProps {
       evidence?: string | null;
     },
   ) => Promise<boolean>;
-  isCorrectingHistory?: boolean;
-  correctionErrorMessage?: string | null;
-  onCorrectHistory?: (
-    corporationId: string,
-    input: {
-      as_of: string;
-      name?: string | null;
-      representative_name?: string | null;
-      corporate_number?: string | null;
-      address?: string | null;
-      valid_from?: string | null;
-      valid_to?: string | null;
-      evidence: string;
-    },
-  ) => Promise<boolean>;
   isLoggingOut: boolean;
   onLogout: () => void;
   backHref?: string;
@@ -214,9 +199,6 @@ export function CorporationFormPage({
   isChangingStatus = false,
   statusErrorMessage = null,
   onChangeStatus,
-  isCorrectingHistory = false,
-  correctionErrorMessage = null,
-  onCorrectHistory,
   isLoggingOut,
   onLogout,
   backHref = "/vendor/corporations",
@@ -403,7 +385,7 @@ export function CorporationFormPage({
       <div {...stylex.props(s.formStack)}>
         <Alert tone="warning" title="基本情報は編集できません">
           <p>
-            解散または合併消滅した法人の基本情報は変更できません。変更履歴の参照および過去履歴の訂正は「変更履歴・訂正」タブから行えます。
+            解散または合併消滅した法人の基本情報は変更できません。変更履歴の参照は「変更履歴」タブから行えます。
           </p>
         </Alert>
         <p {...stylex.props(s.metaGrid)}>
@@ -646,9 +628,9 @@ export function CorporationFormPage({
           },
           {
             value: "history",
-            label: "変更履歴・訂正",
+            label: "変更履歴",
             content:
-              onLookupSnapshot && onChangeStatus && onCorrectHistory ? (
+              onLookupSnapshot && onChangeStatus ? (
                 <CorporationHistoryPanel
                   section="history"
                   corporation={initialCorporation}
@@ -664,9 +646,6 @@ export function CorporationFormPage({
                   isChangingStatus={isChangingStatus}
                   statusErrorMessage={statusErrorMessage}
                   onChangeStatus={onChangeStatus}
-                  isCorrectingHistory={isCorrectingHistory}
-                  correctionErrorMessage={correctionErrorMessage}
-                  onCorrectHistory={onCorrectHistory}
                 />
               ) : (
                 <p {...stylex.props(s.sectionDescription)}>履歴機能は利用できません。</p>
@@ -761,10 +740,7 @@ export function CorporationFormPage({
                   </div>
                 ) : null}
 
-                {initialCorporation.status === "active" &&
-                onLookupSnapshot &&
-                onChangeStatus &&
-                onCorrectHistory ? (
+                {initialCorporation.status === "active" && onLookupSnapshot && onChangeStatus ? (
                   <CorporationHistoryPanel
                     section="status"
                     corporation={initialCorporation}
@@ -780,9 +756,6 @@ export function CorporationFormPage({
                     isChangingStatus={isChangingStatus}
                     statusErrorMessage={statusErrorMessage}
                     onChangeStatus={onChangeStatus}
-                    isCorrectingHistory={isCorrectingHistory}
-                    correctionErrorMessage={correctionErrorMessage}
-                    onCorrectHistory={onCorrectHistory}
                   />
                 ) : (
                   <Alert tone="info" title="状態変更は不要です">
