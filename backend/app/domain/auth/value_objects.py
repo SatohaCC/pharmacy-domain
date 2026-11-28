@@ -2,6 +2,7 @@
 
 from dataclasses import dataclass
 from enum import StrEnum
+from typing import Self
 
 from app.domain.auth.exceptions import ScopeViolationError
 from app.domain.auth.identifiers import TenantId
@@ -31,17 +32,25 @@ class TokenType(StrEnum):
 class RoleName(StrEnum):
     """スコープ付きロール名。"""
 
-    VENDOR_ADMIN = "vendor_admin"
-    VENDOR_MEMBER = "vendor_member"
-    TENANT_ADMIN = "tenant_admin"
-    PHARMACIST = "pharmacist"
-    CLERK = "clerk"
+    _allowed_scope: AffiliationType
+
+    def __new__(cls, value: str, allowed_scope: AffiliationType | None = None) -> Self:
+        if not isinstance(allowed_scope, AffiliationType):
+            raise TypeError("RoleName の定義には AffiliationType の指定が必須です。")
+        obj = str.__new__(cls, value)
+        obj._value_ = value
+        obj._allowed_scope = allowed_scope
+        return obj
+
+    VENDOR_ADMIN = ("vendor_admin", AffiliationType.VENDOR)
+    VENDOR_MEMBER = ("vendor_member", AffiliationType.VENDOR)
+    TENANT_ADMIN = ("tenant_admin", AffiliationType.TENANT)
+    PHARMACIST = ("pharmacist", AffiliationType.TENANT)
+    CLERK = ("clerk", AffiliationType.TENANT)
 
     def allowed_scope_type(self) -> AffiliationType:
         """このロールを付与可能なスコープ種別を返す。"""
-        if self in (RoleName.VENDOR_ADMIN, RoleName.VENDOR_MEMBER):
-            return AffiliationType.VENDOR
-        return AffiliationType.TENANT
+        return self._allowed_scope
 
 
 @dataclass(frozen=True, slots=True)

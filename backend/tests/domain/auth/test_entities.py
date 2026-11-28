@@ -1,6 +1,7 @@
 """User・RoleAssignment・RefreshSession・AuthScope の単体テスト。"""
 
 from datetime import UTC, datetime, timedelta
+from typing import Any, cast
 
 import pytest
 
@@ -189,3 +190,25 @@ def test_refresh_session_ttl_rotation_and_revocation() -> None:
 
     session.revoke(_now(12))
     assert session.is_revoked() is True
+
+
+def test_role_name_requires_explicit_affiliation_and_preserves_strenum_compatibility() -> None:
+    expected_scopes = {
+        RoleName.VENDOR_ADMIN: AffiliationType.VENDOR,
+        RoleName.VENDOR_MEMBER: AffiliationType.VENDOR,
+        RoleName.TENANT_ADMIN: AffiliationType.TENANT,
+        RoleName.PHARMACIST: AffiliationType.TENANT,
+        RoleName.CLERK: AffiliationType.TENANT,
+    }
+    assert set(RoleName) == set(expected_scopes)
+    for role, expected_scope in expected_scopes.items():
+        assert role.allowed_scope_type() is expected_scope
+        assert str(role) == role.value
+        assert RoleName(role.value) is role
+
+    new_member = cast(Any, RoleName)._new_member_
+    with pytest.raises(TypeError, match="AffiliationType"):
+        new_member(RoleName, "unclassified_role")
+
+    with pytest.raises(TypeError, match="AffiliationType"):
+        new_member(RoleName, "unclassified_role", "vendor")
