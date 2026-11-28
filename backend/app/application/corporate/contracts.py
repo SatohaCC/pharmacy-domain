@@ -184,7 +184,6 @@ class RegisterCorporateRelationInput:
     valid_from: date
     evidence: str
     valid_to: date | None = None
-    confirmation_status: str = "unverified"
     recorded_by: str | None = None
 
 
@@ -195,7 +194,6 @@ class CorrectCorporateRelationInput:
     valid_from: date | None = None
     valid_to: date | None = None
     evidence: str | None = None
-    confirmation_status: str | None = None
     provided_fields: frozenset[str] | None = None
     recorded_by: str | None = None
 
@@ -208,7 +206,6 @@ class ListCorporateRelationsQuery:
     as_of: date | None = None
     recorded_as_of: datetime | None = None
     relation_type: str | None = None
-    confirmation_status: str | None = None
 
 
 @dataclass(frozen=True, slots=True)
@@ -218,7 +215,6 @@ class CorporateRelationRevisionItem:
     valid_from: date
     valid_to: date | None
     evidence: str
-    confirmation_status: str
     recorded_at: datetime
     recorded_by: str | None
 

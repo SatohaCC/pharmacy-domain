@@ -20,7 +20,6 @@ from app.domain.corporate import (
     CorporateRelationType,
     CorporationId,
     CorporationNotFoundError,
-    RelationConfirmationStatus,
     RelationEvidence,
     validate_corporate_relation,
 )
@@ -32,14 +31,12 @@ from app.domain.foundation import (
 )
 
 
-def _parse_enum[T: (CorporateRelationType, RelationConfirmationStatus)](
-    enum_type: type[T], value: str, field: str
-) -> T:
+def _parse_relation_type(value: str) -> CorporateRelationType:
     try:
-        return enum_type(value)
+        return CorporateRelationType(value)
     except ValueError as exc:
         raise DomainValidationError(
-            "法人間関係の入力が不正です。", details={"field": field}
+            "法人間関係の入力が不正です。", details={"field": "relation_type"}
         ) from exc
 
 
@@ -63,10 +60,7 @@ class CorporateRelationCommandService:
             source = CorporationId.parse(data.source_corporation_id)
             target = CorporationId.parse(data.target_corporation_id)
             period = EffectiveDateRange(data.valid_from, data.valid_to)
-            kind = _parse_enum(CorporateRelationType, data.relation_type, "relation_type")
-            confirmation = _parse_enum(
-                RelationConfirmationStatus, data.confirmation_status, "confirmation_status"
-            )
+            kind = _parse_relation_type(data.relation_type)
             evidence = RelationEvidence.parse(data.evidence)
             with self._uow_factory() as uow:
                 relation = CorporateRelation(
@@ -78,7 +72,6 @@ class CorporateRelationCommandService:
                         CorporateRelationRevision(
                             period,
                             evidence,
-                            confirmation,
                             AwareDatetime(self._clock.now()),
                             recorded_by=data.recorded_by,
                         ),
@@ -104,7 +97,6 @@ class CorporateRelationCommandService:
                 "valid_from": data.valid_from,
                 "valid_to": data.valid_to,
                 "evidence": data.evidence,
-                "confirmation_status": data.confirmation_status,
             }
             fields = (
                 data.provided_fields
@@ -129,18 +121,10 @@ class CorporateRelationCommandService:
                 if "evidence" in fields and data.evidence is not None
                 else old.evidence
             )
-            confirmation = (
-                _parse_enum(
-                    RelationConfirmationStatus, data.confirmation_status, "confirmation_status"
-                )
-                if "confirmation_status" in fields and data.confirmation_status is not None
-                else old.confirmation_status
-            )
             return relation.correct(
                 CorporateRelationRevision(
                     period,
                     evidence,
-                    confirmation,
                     now,
                     recorded_by=data.recorded_by,
                 )

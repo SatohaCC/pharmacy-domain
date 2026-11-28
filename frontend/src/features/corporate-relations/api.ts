@@ -1,7 +1,6 @@
 import { authApiRequest } from "@/features/auth/api";
 import { parseZodResponse } from "@/shared/lib/api/zodResponse";
 import {
-  type ConfirmationStatus,
   type CorporateRelation,
   type CorporateRelationList,
   type CorporateRelationListFilter,
@@ -23,7 +22,6 @@ export function fetchCorporateRelations(
       corporation_id: filter.corporation_id || undefined,
       as_of: filter.as_of || undefined,
       relation_type: filter.relation_type,
-      confirmation_status: filter.confirmation_status,
     },
     signal,
     parse: (data) => parseZodResponse(corporateRelationListSchema, data),
@@ -38,7 +36,6 @@ export function registerCorporateRelation(input: {
   valid_from: string;
   valid_to?: string | null;
   evidence: string;
-  confirmation_status?: ConfirmationStatus;
 }): Promise<CorporateRelation> {
   return authApiRequest("/api/corporate-relations", {
     method: "post",
@@ -54,7 +51,6 @@ export function correctCorporateRelation(
     valid_from?: string;
     valid_to?: string | null;
     evidence?: string;
-    confirmation_status?: ConfirmationStatus;
   },
 ): Promise<CorporateRelation> {
   return authApiRequest("/api/corporate-relations/{relation_id}", {

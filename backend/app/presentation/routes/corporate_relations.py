@@ -19,7 +19,6 @@ from app.presentation.dependencies import (
     verify_csrf_origin,
 )
 from app.presentation.dto.corporate_relations import (
-    ConfirmationStatus,
     CorporateRelationCorrectionRequest,
     CorporateRelationCreateRequest,
     CorporateRelationEndRequest,
@@ -75,16 +74,14 @@ def list_relations(
     as_of: date | None = None,
     recorded_as_of: AwareDatetime | None = None,
     relation_type: RelationKind | None = None,
-    confirmation_status: ConfirmationStatus | None = None,
 ) -> CorporateRelationListResponse:
-    """法人、有効日、記録時点、種別、確認状態で法人間関係を絞り込む。"""
+    """法人、有効日、記録時点、種別で法人間関係を絞り込む。"""
     records = queries.list_relations(
         ListCorporateRelationsQuery(
             corporation_id=corporation_id,
             as_of=as_of,
             recorded_as_of=recorded_as_of,
             relation_type=relation_type,
-            confirmation_status=confirmation_status,
         )
     )
     return CorporateRelationListResponse(

@@ -44,7 +44,6 @@ const sampleRelation: CorporateRelation = {
   valid_from: "2026-01-01",
   valid_to: null,
   evidence: "資本関係確認済み",
-  confirmation_status: "verified",
   recorded_at: "2026-11-26T00:00:00Z",
   recorded_by: "vendor-1",
 };
@@ -103,7 +102,6 @@ describe("CorporateRelationsWorkspace", () => {
       valid_from: "2026-04-01",
       valid_to: null,
       evidence: "株式取得契約",
-      confirmation_status: "unverified",
     });
 
     // 関係終了

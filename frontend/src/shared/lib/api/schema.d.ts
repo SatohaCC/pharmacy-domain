@@ -85,7 +85,6 @@ export interface paths {
       parameters: {
         query: {
           as_of?: string | null;
-          confirmation_status?: "unverified" | "verified" | null;
           corporation_id?: string | null;
           recorded_as_of?: string | null;
           relation_type?: "parent_child" | "affiliate" | "fc_vc" | null;
@@ -806,13 +805,11 @@ export interface components {
       updated_at: string;
     };
     CorporateRelationCorrectionRequest: {
-      confirmation_status?: "unverified" | "verified";
       evidence?: string;
       valid_from?: string;
       valid_to?: string | null;
     };
     CorporateRelationCreateRequest: {
-      confirmation_status?: "unverified" | "verified";
       evidence: string;
       relation_type: "parent_child" | "affiliate" | "fc_vc";
       source_corporation_id: string;
@@ -828,7 +825,6 @@ export interface components {
       total: number;
     };
     CorporateRelationResponse: {
-      confirmation_status: "unverified" | "verified";
       evidence: string;
       id: string;
       recorded_at: string;
@@ -840,7 +836,6 @@ export interface components {
       valid_to: string | null;
     };
     CorporateRelationRevisionResponse: {
-      confirmation_status: "unverified" | "verified";
       evidence: string;
       recorded_at: string;
       recorded_by?: string | null;

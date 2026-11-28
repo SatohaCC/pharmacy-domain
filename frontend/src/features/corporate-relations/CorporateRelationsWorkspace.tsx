@@ -14,7 +14,6 @@ import { Spinner } from "@/shared/ui/spinner/Spinner";
 import { TextField } from "@/shared/ui/text-field/TextField";
 import { corporateRelationsWorkspaceStyles as s } from "./CorporateRelationsWorkspace.styles";
 import type {
-  ConfirmationStatus,
   CorporateRelation,
   CorporateRelationListFilter,
   CorporateRelationRevision,
@@ -32,16 +31,6 @@ const RELATION_TYPE_FILTER_OPTIONS: readonly SelectOption[] = [
   ...RELATION_TYPE_OPTIONS,
 ];
 
-const CONFIRMATION_OPTIONS: readonly SelectOption[] = [
-  { value: "unverified", label: "未確認 (unverified)" },
-  { value: "verified", label: "確認済み (verified)" },
-];
-
-const CONFIRMATION_FILTER_OPTIONS: readonly SelectOption[] = [
-  { value: "all", label: "すべての確認状態" },
-  ...CONFIRMATION_OPTIONS,
-];
-
 function relationTypeLabel(type: RelationType): string {
   switch (type) {
     case "parent_child":
@@ -51,10 +40,6 @@ function relationTypeLabel(type: RelationType): string {
     case "fc_vc":
       return "FC / VC 契約";
   }
-}
-
-function confirmationLabel(status: ConfirmationStatus): string {
-  return status === "verified" ? "確認済み" : "未確認";
 }
 
 export interface CorporateRelationsWorkspaceProps {
@@ -75,7 +60,6 @@ export interface CorporateRelationsWorkspaceProps {
     valid_from: string;
     valid_to?: string | null;
     evidence: string;
-    confirmation_status?: ConfirmationStatus;
   }) => Promise<boolean>;
   isCorrecting: boolean;
   correctErrorMessage: string | null;
@@ -85,7 +69,6 @@ export interface CorporateRelationsWorkspaceProps {
       valid_from?: string;
       valid_to?: string | null;
       evidence?: string;
-      confirmation_status?: ConfirmationStatus;
     },
   ) => Promise<boolean>;
   isEnding: boolean;
@@ -132,15 +115,12 @@ export function CorporateRelationsWorkspace({
   const [relationType, setRelationType] = useState<RelationType>("parent_child");
   const [validFrom, setValidFrom] = useState("");
   const [validTo, setValidTo] = useState("");
-  const [confirmationStatus, setConfirmationStatus] = useState<ConfirmationStatus>("unverified");
   const [evidence, setEvidence] = useState("");
   const [createFormError, setCreateFormError] = useState<string | undefined>(undefined);
 
   const [editingRelationId, setEditingRelationId] = useState<string | null>(null);
   const [editValidFrom, setEditValidFrom] = useState("");
   const [editValidTo, setEditValidTo] = useState("");
-  const [editConfirmationStatus, setEditConfirmationStatus] =
-    useState<ConfirmationStatus>("unverified");
   const [editEvidence, setEditEvidence] = useState("");
 
   const [endingRelationId, setEndingRelationId] = useState<string | null>(null);
@@ -184,7 +164,6 @@ export function CorporateRelationsWorkspace({
       valid_from: validFrom.trim(),
       valid_to: validTo.trim() || null,
       evidence: evidence.trim(),
-      confirmation_status: confirmationStatus,
     });
     if (ok) {
       setSourceCorpId("");
@@ -200,7 +179,6 @@ export function CorporateRelationsWorkspace({
     setEditingRelationId(rel.id);
     setEditValidFrom(rel.valid_from);
     setEditValidTo(rel.valid_to ?? "");
-    setEditConfirmationStatus(rel.confirmation_status);
     setEditEvidence(rel.evidence);
   }
 
@@ -213,7 +191,6 @@ export function CorporateRelationsWorkspace({
       valid_from?: string;
       valid_to?: string | null;
       evidence?: string;
-      confirmation_status?: ConfirmationStatus;
     } = {};
     const trimmedFrom = editValidFrom.trim();
     const nextValidTo = editValidTo.trim() || null;
@@ -227,9 +204,6 @@ export function CorporateRelationsWorkspace({
     }
     if (trimmedEvidence && trimmedEvidence !== rel.evidence) {
       payload.evidence = trimmedEvidence;
-    }
-    if (editConfirmationStatus !== rel.confirmation_status) {
-      payload.confirmation_status = editConfirmationStatus;
     }
 
     const ok = await onCorrectRelation(rel.id, payload);
@@ -313,16 +287,6 @@ export function CorporateRelationsWorkspace({
                       setRelationType(value);
                     }
                   }}
-                  disabled={isRegistering}
-                />
-                <Select
-                  label="確認状態"
-                  name="confirmation_status"
-                  items={CONFIRMATION_OPTIONS}
-                  value={confirmationStatus}
-                  onValueChange={(value) =>
-                    setConfirmationStatus(value === "verified" ? "verified" : "unverified")
-                  }
                   disabled={isRegistering}
                 />
                 <TextField
@@ -409,19 +373,6 @@ export function CorporateRelationsWorkspace({
                   })
                 }
               />
-              <Select
-                label="確認状態"
-                name="filter_confirmation_status"
-                items={CONFIRMATION_FILTER_OPTIONS}
-                value={filter.confirmation_status ?? "all"}
-                onValueChange={(value) =>
-                  onFilterChange({
-                    ...filter,
-                    confirmation_status:
-                      value === "unverified" || value === "verified" ? value : undefined,
-                  })
-                }
-              />
             </search>
 
             {isLoadingRelations ? (
@@ -452,11 +403,6 @@ export function CorporateRelationsWorkspace({
                               {sourceName} → {targetName}
                             </p>
                             <Badge tone="neutral">{relationTypeLabel(rel.relation_type)}</Badge>
-                            <Badge
-                              tone={rel.confirmation_status === "verified" ? "success" : "neutral"}
-                            >
-                              {confirmationLabel(rel.confirmation_status)}
-                            </Badge>
                           </div>
                           <p {...stylex.props(s.metaGrid)}>
                             <span>
@@ -529,18 +475,6 @@ export function CorporateRelationsWorkspace({
                               onValueChange={setEditValidTo}
                               disabled={isCorrecting}
                             />
-                            <Select
-                              label="確認状態"
-                              name={`edit_confirmation_${rel.id}`}
-                              items={CONFIRMATION_OPTIONS}
-                              value={editConfirmationStatus}
-                              onValueChange={(value) =>
-                                setEditConfirmationStatus(
-                                  value === "verified" ? "verified" : "unverified",
-                                )
-                              }
-                              disabled={isCorrecting}
-                            />
                             <TextField
                               label="根拠・契約メモ"
                               name={`edit_evidence_${rel.id}`}
@@ -607,9 +541,6 @@ export function CorporateRelationsWorkspace({
                                   <p {...stylex.props(s.metaGrid)}>
                                     <span>
                                       有効期間: {rev.valid_from} 〜 {rev.valid_to ?? "終了未定"}
-                                    </span>
-                                    <span>
-                                      確認状態: {confirmationLabel(rev.confirmation_status)}
                                     </span>
                                     <span>根拠: {rev.evidence}</span>
                                     <span>記録日時: {rev.recorded_at}</span>

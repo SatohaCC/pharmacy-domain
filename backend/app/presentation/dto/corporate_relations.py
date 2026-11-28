@@ -7,7 +7,6 @@ from pydantic import AwareDatetime, BaseModel, ConfigDict, Field
 from pydantic.json_schema import SkipJsonSchema
 
 RelationKind = Literal["parent_child", "affiliate", "fc_vc"]
-ConfirmationStatus = Literal["unverified", "verified"]
 _Omitted = Annotated[None, SkipJsonSchema()]
 
 
@@ -22,7 +21,6 @@ class CorporateRelationCreateRequest(BaseModel):
     valid_from: date
     valid_to: date | None = None
     evidence: str
-    confirmation_status: ConfirmationStatus = "unverified"
 
 
 class CorporateRelationCorrectionRequest(BaseModel):
@@ -33,7 +31,6 @@ class CorporateRelationCorrectionRequest(BaseModel):
     valid_from: date | _Omitted = Field(default_factory=lambda: None)
     valid_to: date | None = None
     evidence: str | _Omitted = Field(default_factory=lambda: None)
-    confirmation_status: ConfirmationStatus | _Omitted = Field(default_factory=lambda: None)
 
 
 class CorporateRelationEndRequest(BaseModel):
@@ -50,7 +47,6 @@ class CorporateRelationRevisionResponse(BaseModel):
     valid_from: date
     valid_to: date | None
     evidence: str
-    confirmation_status: ConfirmationStatus
     recorded_at: AwareDatetime
     recorded_by: str | None = None
 
