@@ -26,6 +26,15 @@ description: dev-workflow で開発着手時の Issue を用意するときや�
   - [作業タスク](../../../.github/ISSUE_TEMPLATE/work_item.yml) は、個別にレビューする作業の範囲、成果物、完了条件と検証方法、必要な依存関係を記録する。サブ Issue に分ける場合は、対応する親 Issue や合意済みの要求を参照する。
 - 下書きや分割案の依頼なら、タイトルと本文を提示し、分割する場合は親子関係の案も示す。GitHub への書き込みは、開発作業の Issue の起票・更新と必要な紐付け、または直接依頼された範囲に限る。
 
+## ラベル付けの基準
+
+GitHub Issue のラベルは、一般的な運用（`type:` 種別 / `priority:` 優先度 / `area:` 対象領域 / `status:` 状態 の軸で整理し、1 Issue に種別は 1 つ、増やしすぎない）を踏まえつつ、このリポジトリに存在するラベル（`gh label list` で確認）とテンプレートの既定ラベルを優先して適用する。
+
+- **既存ラベルから選ぶ**: 勝手に新しいラベルを作成せず、リポジトリ定義済みのラベル（`bug` / `enhancement` / `documentation` / `accessibility` / `question` / `duplicate` / `invalid` / `wontfix` など）を使う。
+- **種別は 1 つ**: バグなら `bug`、機能追加・改善なら `enhancement`、ドキュメントなら `documentation` のように主たる種別を 1 つ付ける。
+- **補助ラベルは必要時のみ**: アクセシビリティに関わる場合は `accessibility`、追加情報が必要なら `question` など、該当するものだけを追加する。
+- **テンプレートの既定ラベルを尊重する**: `.github/ISSUE_TEMPLATE/*.yml` に `labels:` が設定されている場合はそれを必ず付与する。
+
 ## GitHub での登録と確認
 
 1. 対象の Issue があれば再利用し、新規なら起票する。既存のサブ Issue が対象なら、その親子関係を確認する。CLI では `gh issue create --repo <owner/repo> --title <title> --body-file <file>` を使える。該当テンプレートに既定ラベルがあれば適用する。作成・再利用した Issue の URL を控える。
