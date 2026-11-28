@@ -169,32 +169,30 @@ test.describe
         page.getByRole("heading", { name: "導入企業（法人・個人開設者）管理" }),
       ).toBeVisible();
       await expect(page.getByText(`初期システム管理者（${adminEmail}）`)).toBeVisible();
-      const corporationFrames = new Map<number, Awaited<ReturnType<typeof consoleFrames>>>();
-      for (const viewport of desktopViewports) {
-        await page.setViewportSize(viewport);
-        corporationFrames.set(
-          viewport.width,
-          await consoleFrames(page, /新規企業/, /登録済み企業一覧/),
-        );
-      }
 
       // リロードしても Cookie 認証状態が維持される。
       await page.reload();
       await expect(page.getByText(`初期システム管理者（${adminEmail}）`)).toBeVisible();
 
-      // 2. 法人管理画面で新しい薬局法人を登録し、基本情報を編集する。
+      // 2. 法人一覧から登録画面（/vendor/corporations/new）へ遷移して新しい薬局法人を登録し、編集画面で更新する。
+      await page.getByRole("link", { name: "新規企業を登録" }).click();
+      await page.waitForURL("**/vendor/corporations/new");
       await page.locator('input[name="name"]').fill("株式会社さくら薬局");
       await page.locator('input[name="representative_name"]').fill("佐藤 一郎");
       await page.locator('input[name="corporate_number"]').fill("1234567890123");
       await page.locator('input[name="address"]').fill("東京都新宿区1-2-3");
       await page.getByRole("button", { name: "企業（法人・個人）を登録" }).click();
 
+      await page.waitForURL("**/vendor/corporations?notice=created");
       await expect(page.getByText("企業（テナント）を登録しました")).toBeVisible();
       await expect(page.getByText("株式会社さくら薬局").first()).toBeVisible();
 
-      await page.getByRole("button", { name: "基本情報を編集" }).click();
-      await page.locator('input[name="edit_address"]').fill("東京都渋谷区4-5-6");
+      await page.getByRole("link", { name: "基本情報を編集" }).click();
+      await page.waitForURL("**/vendor/corporations/*/edit");
+      await page.locator('input[name="address"]').fill("東京都渋谷区4-5-6");
       await page.getByRole("button", { name: "基本情報を保存" }).click();
+
+      await page.waitForURL("**/vendor/corporations?notice=updated");
       await expect(page.getByText("企業の基本情報を更新しました")).toBeVisible();
       await expect(page.getByText("所在地: 東京都渋谷区4-5-6")).toBeVisible();
 
@@ -209,9 +207,7 @@ test.describe
           page.getByRole("heading", { name: "ベンダー社員アカウントの発行" }),
           page.getByRole("heading", { name: "登録済みベンダーアカウント一覧" }),
         );
-        expect(
-          await consoleFrames(page, /ベンダー社員アカウントの発行/, /登録済みベンダー/),
-        ).toEqual(corporationFrames.get(viewport.width));
+        await consoleFrames(page, /ベンダー社員アカウントの発行/, /登録済みベンダー/);
       }
 
       await page.locator('input[name="display_name"]').fill(staffName);
@@ -248,10 +244,13 @@ test.describe
       await expect(page.getByText(`${staffName}（${staffEmail}）`)).toBeVisible();
       await expect(page.getByText("株式会社さくら薬局").first()).toBeVisible();
 
+      await page.getByRole("link", { name: "新規企業を登録" }).click();
+      await page.waitForURL("**/vendor/corporations/new");
       await page.locator('input[name="name"]').fill("株式会社あおぞら薬局");
       await page.locator('input[name="representative_name"]').fill("鈴木 花子");
       await page.locator('input[name="corporate_number"]').fill("9876543210123");
       await page.getByRole("button", { name: "企業（法人・個人）を登録" }).click();
+      await page.waitForURL("**/vendor/corporations?notice=created");
       await expect(page.getByText("株式会社あおぞら薬局").first()).toBeVisible();
 
       // 一般社員が /vendor/users へ移動すると社員発行フォームは非表示で案内が表示される。
