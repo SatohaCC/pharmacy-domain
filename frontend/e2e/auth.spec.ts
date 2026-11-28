@@ -200,7 +200,7 @@ test.describe
 
       await page.waitForURL("**/vendor/corporations?notice=updated");
       await expect(page.getByText("企業の基本情報を更新しました")).toBeVisible();
-      await expect(page.getByText("所在地: 東京都渋谷区4-5-6")).toBeVisible();
+      await expect(page.getByText("東京都渋谷区4-5-6")).toBeVisible();
 
       // 3. 上部ナビゲーションからベンダー社員管理（/vendor/users）へ移動し、一般社員を発行する。
       await page.getByRole("link", { name: "ベンダー社員管理" }).click();

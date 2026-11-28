@@ -64,7 +64,7 @@ test("存続状態の初回変更で一覧の再取得中も画面のスクロ�
 
   try {
     await filter.click();
-    await page.getByRole("option", { name: "存続（active）" }).click();
+    await page.getByRole("option", { name: "存続中" }).click();
     await filteredRequest.promise;
     await page.evaluate(
       () =>

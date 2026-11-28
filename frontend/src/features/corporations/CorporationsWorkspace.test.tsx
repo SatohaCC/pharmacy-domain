@@ -60,6 +60,14 @@ describe("CorporationsWorkspace", () => {
       />,
     );
 
+    expect(screen.getByRole("table")).toBeInTheDocument();
+    expect(screen.getByRole("columnheader", { name: "法人名" })).toBeInTheDocument();
+    expect(screen.getByRole("columnheader", { name: "代表者 / 開設者" })).toBeInTheDocument();
+    expect(screen.getByRole("rowheader", { name: /株式会社さくら薬局/ })).toBeInTheDocument();
+    expect(screen.queryByText("テナントID:")).not.toBeInTheDocument();
+    for (const label of screen.getAllByText(/^(代表者|開設者|所在地|存続状態|利用状態):$/)) {
+      expect(label).not.toHaveAttribute("aria-hidden");
+    }
     expect(screen.getByRole("link", { name: "新規企業を登録" })).toHaveAttribute(
       "href",
       "/vendor/corporations/new",

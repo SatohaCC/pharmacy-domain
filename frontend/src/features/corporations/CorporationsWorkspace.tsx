@@ -27,9 +27,9 @@ const CATEGORY_FILTER_OPTIONS: readonly SelectOption[] = [
 
 const STATUS_FILTER_OPTIONS: readonly SelectOption[] = [
   { value: "all", label: "すべての存続状態" },
-  { value: "active", label: "存続（active）" },
-  { value: "dissolved", label: "解散（dissolved）" },
-  { value: "merged_out", label: "合併消滅（merged_out）" },
+  { value: "active", label: "存続中" },
+  { value: "dissolved", label: "解散" },
+  { value: "merged_out", label: "合併消滅" },
 ];
 
 const USAGE_STATUS_OPTIONS: readonly SelectOption[] = [
@@ -241,52 +241,72 @@ export function CorporationsWorkspace({
           ) : corporations.length === 0 ? (
             <p {...stylex.props(s.emptyState)}>条件に一致する企業は登録されていません。</p>
           ) : (
-            <ul {...stylex.props(s.corpList)}>
-              {corporations.map((item) => (
-                <li key={item.id} {...stylex.props(s.corpItem)}>
-                  <div {...stylex.props(s.corpItemHeader)}>
-                    <div {...stylex.props(s.corpMainInfo)}>
-                      <div {...stylex.props(s.corpTitleRow)}>
-                        <p {...stylex.props(s.corpName)}>{item.name}</p>
-                        <Badge tone="neutral">{categoryLabel(item.category)}</Badge>
+            <div {...stylex.props(s.tableWrapper)}>
+              <table {...stylex.props(s.table)}>
+                <thead {...stylex.props(s.tableHead)}>
+                  <tr>
+                    <th scope="col" {...stylex.props(s.tableHeadCell)}>
+                      法人名
+                    </th>
+                    <th scope="col" {...stylex.props(s.tableHeadCell)}>
+                      代表者 / 開設者
+                    </th>
+                    <th scope="col" {...stylex.props(s.tableHeadCell)}>
+                      所在地
+                    </th>
+                    <th scope="col" {...stylex.props(s.tableHeadCell)}>
+                      存続状態
+                    </th>
+                    <th scope="col" {...stylex.props(s.tableHeadCell)}>
+                      利用状態
+                    </th>
+                    <th scope="col" {...stylex.props(s.tableHeadCell)}>
+                      操作
+                    </th>
+                  </tr>
+                </thead>
+                <tbody {...stylex.props(s.tableBody)}>
+                  {corporations.map((item) => (
+                    <tr key={item.id} {...stylex.props(s.tableRow)}>
+                      <th scope="row" {...stylex.props(s.tableRowHeader)}>
+                        <div {...stylex.props(s.nameCellContent)}>
+                          <span {...stylex.props(s.corpName)}>{item.name}</span>
+                          <Badge tone="neutral">{categoryLabel(item.category)}</Badge>
+                        </div>
+                      </th>
+                      <td {...stylex.props(s.tableCell)}>
+                        <span {...stylex.props(s.mobileCellLabel)}>
+                          {item.category === "individual" ? "開設者:" : "代表者:"}
+                        </span>
+                        <span>{item.representative_name || "未設定"}</span>
+                      </td>
+                      <td {...stylex.props(s.tableCell)}>
+                        <span {...stylex.props(s.mobileCellLabel)}>所在地:</span>
+                        <span>{item.address || "未設定"}</span>
+                      </td>
+                      <td {...stylex.props(s.tableCell)}>
+                        <span {...stylex.props(s.mobileCellLabel)}>存続状態:</span>
                         <Badge tone={statusTone(item.status)}>{statusLabel(item.status)}</Badge>
+                      </td>
+                      <td {...stylex.props(s.tableCell)}>
+                        <span {...stylex.props(s.mobileCellLabel)}>利用状態:</span>
                         <Badge tone={usageStatusTone(item.usage_status ?? "not_started")}>
                           利用: {usageStatusLabel(item.usage_status ?? "not_started")}
                         </Badge>
-                      </div>
-                      <p {...stylex.props(s.metaGrid)}>
-                        <span>
-                          {item.category === "individual" ? "開設者" : "代表者"}:{" "}
-                          {item.representative_name || "未設定"}
-                        </span>
-                        <span>
-                          法人番号:{" "}
-                          <code {...stylex.props(s.metaCode)}>
-                            {item.corporate_number ?? "未設定"}
-                          </code>
-                        </span>
-                        <span>所在地: {item.address || "未設定"}</span>
-                        <span>
-                          有効期間: {item.valid_from ?? "未設定"} 〜 {item.valid_to ?? "終了未定"}
-                        </span>
-                        <span>
-                          テナントID: <code {...stylex.props(s.metaCode)}>{item.id}</code>
-                        </span>
-                      </p>
-                    </div>
-
-                    <div {...stylex.props(s.actionRow)}>
-                      <Link
-                        href={`/vendor/corporations/${item.id}/edit`}
-                        {...stylex.props(s.outlinedLinkButton)}
-                      >
-                        {item.status === "active" ? "編集・管理" : "履歴を確認"}
-                      </Link>
-                    </div>
-                  </div>
-                </li>
-              ))}
-            </ul>
+                      </td>
+                      <td {...stylex.props(s.tableCell)}>
+                        <Link
+                          href={`/vendor/corporations/${item.id}/edit`}
+                          {...stylex.props(s.outlinedLinkButton)}
+                        >
+                          {item.status === "active" ? "編集・管理" : "履歴を確認"}
+                        </Link>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
           )}
         </section>
       </div>
