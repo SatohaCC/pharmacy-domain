@@ -23,6 +23,14 @@ class CorporationStatus(StrEnum):
     MERGED_OUT = "merged_out"
 
 
+class CorporationUsageStatus(StrEnum):
+    """法人のシステム利用状態。関係図上の参照専用（未利用）とシステム利用中を区別する。"""
+
+    NOT_STARTED = "not_started"
+    ACTIVE = "active"
+    SUSPENDED = "suspended"
+
+
 class CorporateRelationType(StrEnum):
     """法人間関係の種別。親子関係の方向は親から子。"""
 
@@ -31,18 +39,11 @@ class CorporateRelationType(StrEnum):
     FC_VC = "fc_vc"
 
 
-class RelationConfirmationStatus(StrEnum):
-    """法人間関係の根拠を確認済みかどうか。"""
-
-    UNVERIFIED = "unverified"
-    VERIFIED = "verified"
-
-
 @dataclass(frozen=True, slots=True)
 class CorporateRelationRevision:
-    """関係の適用期間・根拠・確認状態を、システム記録日時ごとに保持する。"""
+    """関係の適用期間・根拠を、システム記録日時ごとに保持する。"""
 
     period: EffectiveDateRange
     evidence: RelationEvidence
-    confirmation_status: RelationConfirmationStatus
     recorded_at: AwareDatetime
+    recorded_by: str | None = None

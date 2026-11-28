@@ -5,6 +5,7 @@ from datetime import UTC, date, datetime, timedelta, timezone
 
 from app.application.corporate.contracts import (
     ChangeCorporationStatusInput,
+    ChangeCorporationUsageStatusInput,
     CorporationHistoryItem,
     CorporationItem,
     RegisterCorporationInput,
@@ -13,6 +14,7 @@ from app.application.corporate.contracts import (
 from app.application.corporate.mappers import (
     parse_category,
     parse_status,
+    parse_usage_status,
     to_application_error,
     to_corporation_history_item,
     to_corporation_item,
@@ -24,6 +26,7 @@ from app.domain.corporate.entities import Corporation
 from app.domain.corporate.exceptions import (
     CorporationNotFoundError,
     DuplicateCorporateNumberError,
+    InvalidCorporationTransitionError,
     InvalidCorporationUpdateError,
 )
 from app.domain.corporate.history import (
@@ -37,14 +40,18 @@ from app.domain.corporate.primitives import (
     CorporateAddress,
     CorporateNumber,
     CorporationName,
+    RepresentativeName,
 )
-from app.domain.corporate.value_objects import CorporationStatus
+from app.domain.corporate.value_objects import CorporationStatus, CorporationUsageStatus
 from app.domain.foundation.exceptions import DomainError, DomainValidationError
 from app.domain.foundation.primitives import AwareDatetime
 from app.domain.foundation.value_objects import EffectiveDateRange
 
 _JAPAN_TIME = timezone(timedelta(hours=9))
-_PROFILE_FIELDS = frozenset({"name", "address", "corporate_number"})
+_PROFILE_FIELDS = frozenset({"name", "representative_name", "address", "corporate_number"})
+_UPDATE_FIELDS = frozenset(
+    {"name", "representative_name", "address", "corporate_number", "valid_to"}
+)
 
 
 def _effective_date(requested: date | None, today: date) -> date:
@@ -92,6 +99,7 @@ class CorporationCommandService:
         resolved_now = now or self._clock.now()
         resolved_id = corporation_id if corporation_id is not None else self._id_generator.new_id()
         category = parse_category(data.category)
+        usage_status = parse_usage_status(data.usage_status)
 
         try:
             corporate_number = (
@@ -107,31 +115,35 @@ class CorporationCommandService:
                 id=CorporationId.parse(resolved_id),
                 category=category,
                 name=CorporationName.parse(data.name),
+                representative_name=RepresentativeName.parse(data.representative_name),
                 corporate_number=corporate_number,
                 address=CorporateAddress.parse(data.address),
                 status=CorporationStatus.ACTIVE,
                 created_at=resolved_timestamp,
                 updated_at=resolved_timestamp,
+                usage_status=usage_status,
             )
             with self._uow_factory() as uow:
                 if corporate_number is not None and uow.corporations.exists_by_corporate_number(
                     corporate_number
                 ):
                     raise DuplicateCorporateNumberError()
+                period = EffectiveDateRange(effective_date, data.valid_to)
                 uow.corporations.add(corporation)
                 uow.corporations.append_history(
                     CorporationHistoryRecord(
                         corporation,
-                        EffectiveDateRange(effective_date),
+                        period,
                         CorporationChangeKind.REGISTRATION,
                         _evidence(data.evidence),
+                        recorded_by=data.recorded_by,
                     )
                 )
                 uow.commit()
         except DomainError as exc:
             raise to_application_error(exc) from exc
 
-        return to_corporation_item(corporation)
+        return to_corporation_item(corporation, period=period)
 
     def update_corporation(
         self,
@@ -140,17 +152,17 @@ class CorporationCommandService:
         *,
         now: datetime | None = None,
     ) -> CorporationItem:
-        """既存法人の名称・所在地・法人番号を更新する。"""
-        updated, _record = self._record_profile_change(
+        """既存法人の名称・所在地・法人番号・有効終了日を更新する。"""
+        updated, _record, latest = self._record_profile_change(
             corporation_id, data.valid_from, data, correction=False, now=now
         )
-        return to_corporation_item(updated)
+        return to_corporation_item(updated, period=latest.period)
 
     def correct_history(
         self, corporation_id: str, as_of: date, data: UpdateCorporationInput
     ) -> CorporationHistoryItem:
         """対象期間の基本情報を訂正し、それ以前の記録を保持する。"""
-        _current, record = self._record_profile_change(
+        _current, record, _latest = self._record_profile_change(
             corporation_id, as_of, data, correction=True, now=None
         )
         return to_corporation_history_item(record)
@@ -163,9 +175,10 @@ class CorporationCommandService:
         *,
         correction: bool,
         now: datetime | None,
-    ) -> tuple[Corporation, CorporationHistoryRecord]:
+    ) -> tuple[Corporation, CorporationHistoryRecord, CorporationHistoryRecord]:
+        allowed_fields = _UPDATE_FIELDS | {"valid_from"} if correction else _UPDATE_FIELDS
         provided = (
-            data.provided_fields & _PROFILE_FIELDS if data.provided_fields is not None else None
+            data.provided_fields & allowed_fields if data.provided_fields is not None else None
         )
         clear_corporate_number = False
         if provided is not None:
@@ -177,6 +190,8 @@ class CorporationCommandService:
                 if getattr(data, field_name) is None:
                     if field_name == "corporate_number":
                         clear_corporate_number = True
+                    elif field_name == "valid_to":
+                        continue
                     else:
                         raise ApplicationBadRequestError(
                             f"更新項目 {field_name} に null は指定できません",
@@ -189,6 +204,11 @@ class CorporationCommandService:
             if correction and evidence is None:
                 raise DomainValidationError("履歴の訂正には根拠を指定してください。")
             next_name = CorporationName.parse(data.name) if data.name is not None else None
+            next_representative_name = (
+                RepresentativeName.parse(data.representative_name)
+                if data.representative_name is not None
+                else None
+            )
             next_address = (
                 CorporateAddress.parse(data.address) if data.address is not None else None
             )
@@ -217,28 +237,57 @@ class CorporationCommandService:
                     raise DomainValidationError("効力日が確認済みの法人情報より前です。")
                 # 当日の通常更新は、トランザクション内で確定済みの現在行を基にする。
                 baseline = current if effective == today and not correction else old.corporation
-                change_profile = baseline.correct_profile if correction else baseline.update_profile
-                revised = change_profile(
-                    name=next_name,
-                    address=next_address,
-                    corporate_number=next_corporate_number,
-                    clear_corporate_number=clear_corporate_number,
-                    updated_at=resolved_now,
+                has_profile_change = (
+                    next_name is not None
+                    or next_representative_name is not None
+                    or next_address is not None
+                    or next_corporate_number is not None
+                    or clear_corporate_number
+                )
+                if has_profile_change:
+                    change_profile = (
+                        baseline.correct_profile if correction else baseline.update_profile
+                    )
+                    revised = change_profile(
+                        name=next_name,
+                        representative_name=next_representative_name,
+                        address=next_address,
+                        corporate_number=next_corporate_number,
+                        clear_corporate_number=clear_corporate_number,
+                        updated_at=resolved_now,
+                    )
+                else:
+                    revised = replace(baseline, updated_at=resolved_now)
+                valid_to_provided = (
+                    "valid_to" in provided if provided is not None else data.valid_to is not None
+                )
+                next_valid_to = data.valid_to if valid_to_provided else old.period.valid_to
+                next_period = (
+                    EffectiveDateRange(
+                        data.valid_from
+                        if correction and data.valid_from is not None
+                        else old.period.valid_from,
+                        next_valid_to,
+                    )
+                    if correction
+                    else EffectiveDateRange(effective, next_valid_to)
                 )
                 record = CorporationHistoryRecord(
                     revised,
-                    old.period
-                    if correction
-                    else EffectiveDateRange(effective, old.period.valid_to),
+                    next_period,
                     CorporationChangeKind.CORRECTION
                     if correction
                     else CorporationChangeKind.PROFILE,
                     evidence,
+                    recorded_by=data.recorded_by,
                 )
-                latest = history.append(record).at(today)
-                if latest is None:
-                    raise DomainValidationError("現在有効な法人情報がありません。")
-                updated = replace(latest.corporation, updated_at=resolved_now)
+                appended = history.append(record)
+                latest = appended.at(today) or appended.records[-1]
+                updated = replace(
+                    latest.corporation,
+                    usage_status=current.usage_status,
+                    updated_at=resolved_now,
+                )
                 if (
                     updated.corporate_number is not None
                     and uow.corporations.exists_by_corporate_number(
@@ -253,7 +302,7 @@ class CorporationCommandService:
         except DomainError as exc:
             raise to_application_error(exc) from exc
 
-        return updated, record
+        return updated, record, latest
 
     def change_status(
         self,
@@ -288,12 +337,61 @@ class CorporationCommandService:
                     recorded_at=resolved_now,
                     evidence=_evidence(data.evidence),
                     surviving_corporation_id=surviving_id,
+                    recorded_by=data.recorded_by,
                 )
-                if surviving_id is not None and uow.corporations.get(surviving_id) is None:
-                    raise CorporationNotFoundError()
-                updated = replace(current, status=next_status, updated_at=resolved_now)
+                if surviving_id is not None:
+                    surviving = uow.corporations.get(surviving_id)
+                    if surviving is None:
+                        raise CorporationNotFoundError()
+                    surviving_history = CorporationHistory(uow.corporations.history(surviving_id))
+                    surviving_snapshot = surviving_history.at(effective_date)
+                    if surviving.status != CorporationStatus.ACTIVE or (
+                        surviving_snapshot is not None
+                        and surviving_snapshot.corporation.status != CorporationStatus.ACTIVE
+                    ):
+                        raise InvalidCorporationTransitionError(
+                            "合併先の存続法人は存続（active）状態である必要があります。",
+                            details={"surviving_corporation_id": surviving_id.value},
+                        )
+                next_usage_status = (
+                    CorporationUsageStatus.SUSPENDED
+                    if next_status in (CorporationStatus.DISSOLVED, CorporationStatus.MERGED_OUT)
+                    else current.usage_status
+                )
+                updated = replace(
+                    current,
+                    status=next_status,
+                    usage_status=next_usage_status,
+                    updated_at=resolved_now,
+                )
                 uow.corporations.save(updated)
                 uow.corporations.append_history(record)
+                uow.commit()
+        except DomainError as exc:
+            raise to_application_error(exc) from exc
+
+        return to_corporation_item(updated)
+
+    def change_usage_status(
+        self,
+        corporation_id: str,
+        data: ChangeCorporationUsageStatusInput,
+        *,
+        now: datetime | None = None,
+    ) -> CorporationItem:
+        """法人のシステム利用状態を変更する。"""
+        next_usage_status = parse_usage_status(data.usage_status)
+
+        try:
+            parsed_id = CorporationId.parse(corporation_id)
+            with self._uow_factory() as uow:
+                current = uow.corporations.get(parsed_id)
+                if current is None:
+                    raise CorporationNotFoundError()
+                clock_time = AwareDatetime(now or self._clock.now())
+                resolved_now = _next_recorded_time(clock_time, current)
+                updated = current.change_usage_status(next_usage_status, updated_at=resolved_now)
+                uow.corporations.save(updated)
                 uow.commit()
         except DomainError as exc:
             raise to_application_error(exc) from exc

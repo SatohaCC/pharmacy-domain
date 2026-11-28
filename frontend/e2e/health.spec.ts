@@ -1,5 +1,16 @@
 import { expect, test } from "@playwright/test";
 
+test("ライト表示は白いページ背景、ダーク表示は濃いページ背景になる", async ({ page }) => {
+  await page.emulateMedia({ colorScheme: "light" });
+  await page.goto("/");
+
+  await expect(page.locator("body")).toHaveCSS("background-color", "rgb(255, 255, 255)");
+
+  await page.emulateMedia({ colorScheme: "dark" });
+
+  await expect(page.locator("body")).toHaveCSS("background-color", "rgb(16, 21, 20)");
+});
+
 test("トップページでバックエンドのヘルスステータスを表示・更新できる", async ({ page }) => {
   await page.goto("/");
 

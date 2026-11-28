@@ -3,18 +3,10 @@ import { render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { Field, FieldDescription, FieldError, FieldLabel } from "@ui-sdk/react/field";
 import { useState } from "react";
-import { afterAll, beforeAll, describe, expect, it, vi } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 import { Checkbox } from "./Checkbox";
 
 describe("Checkbox", () => {
-  const getAnimations = Element.prototype.getAnimations;
-  beforeAll(() => {
-    // jsdomにないWeb Animations APIを、アニメーションなしのブラウザとして補う。
-    Element.prototype.getAnimations = () => [];
-  });
-  afterAll(() => {
-    Element.prototype.getAnimations = getAnimations;
-  });
   it("クリックとSpaceキーでチェック状態を切り替え、説明文と関連付ける", async () => {
     const user = userEvent.setup();
     const onCheckedChange = vi.fn();

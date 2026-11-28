@@ -4,7 +4,7 @@ import { tokens } from "../../shared/styles/tokens.stylex";
 export const vendorConsoleLayoutStyles = stylex.create({
   page: {
     minHeight: "100dvh",
-    backgroundColor: tokens.surface,
+    backgroundColor: tokens.pageBackground,
     color: tokens.onSurface,
     paddingBlock: "clamp(1rem, 3vw, 2rem) 3rem",
     paddingInline: "clamp(1rem, 4vw, 3rem)",

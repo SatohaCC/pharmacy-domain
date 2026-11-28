@@ -10,10 +10,13 @@ from threading import Event
 
 import pytest
 from alembic import command
+from alembic.autogenerate import compare_metadata
 from alembic.config import Config
+from alembic.migration import MigrationContext
 from fastapi.testclient import TestClient
 from httpx import Response
 from sqlalchemy import Connection, event, text
+from sqlalchemy.exc import IntegrityError
 
 from app.cli.bootstrap_vendor_admin import main as cli_main
 from app.infrastructure.config import Settings
@@ -137,12 +140,20 @@ def test_postgres_migrations_and_api_end_to_end(monkeypatch: pytest.MonkeyPatch)
             ind1 = client.post(
                 "/api/corporations",
                 headers={"X-Requested-With": "XMLHttpRequest"},
-                json={"category": "individual", "name": "個人薬局A"},
+                json={
+                    "category": "individual",
+                    "name": "個人薬局A",
+                    "representative_name": "個人A",
+                },
             )
             ind2 = client.post(
                 "/api/corporations",
                 headers={"X-Requested-With": "XMLHttpRequest"},
-                json={"category": "individual", "name": "個人薬局B"},
+                json={
+                    "category": "individual",
+                    "name": "個人薬局B",
+                    "representative_name": "個人B",
+                },
             )
             assert ind1.status_code == 201
             assert ind2.status_code == 201
@@ -153,6 +164,7 @@ def test_postgres_migrations_and_api_end_to_end(monkeypatch: pytest.MonkeyPatch)
                 json={
                     "category": "corporation",
                     "name": "株式会社Sakura薬局",
+                    "representative_name": "Sakura代表",
                     "corporate_number": "1234567890123",
                     "address": "東京都新宿区1-2-3",
                 },
@@ -166,6 +178,7 @@ def test_postgres_migrations_and_api_end_to_end(monkeypatch: pytest.MonkeyPatch)
                 json={
                     "category": "corporation",
                     "name": "重複テスト薬局",
+                    "representative_name": "重複代表",
                     "corporate_number": "1234567890123",
                 },
             )
@@ -312,7 +325,7 @@ def test_postgres_concurrent_writes_preserve_serialization_and_report_lock_timeo
             # 1. 解散と同時実行された基本情報 PATCH は解散後の状態を見て 400 で拒否される。
             created = client.post(
                 "/api/corporations",
-                json={"category": "corporation", "name": "法人"},
+                json={"category": "corporation", "name": "法人", "representative_name": "法人代表"},
             )
             assert created.status_code == 201
             corp_id = created.json()["id"]
@@ -335,13 +348,24 @@ def test_postgres_concurrent_writes_preserve_serialization_and_report_lock_timeo
 
             # 2. 同一子法人への異なる親法人の同時親子登録は 201 + 409 に直列化される。
             parent_a = client.post(
-                "/api/corporations", json={"category": "corporation", "name": "親法人A"}
+                "/api/corporations",
+                json={
+                    "category": "corporation",
+                    "name": "親法人A",
+                    "representative_name": "親A代表",
+                },
             ).json()["id"]
             parent_b = client.post(
-                "/api/corporations", json={"category": "corporation", "name": "親法人B"}
+                "/api/corporations",
+                json={
+                    "category": "corporation",
+                    "name": "親法人B",
+                    "representative_name": "親B代表",
+                },
             ).json()["id"]
             child = client.post(
-                "/api/corporations", json={"category": "corporation", "name": "子法人"}
+                "/api/corporations",
+                json={"category": "corporation", "name": "子法人", "representative_name": "子代表"},
             ).json()["id"]
 
             rel1, rel2 = _overlap_postgres_corporation_writes(
@@ -384,5 +408,58 @@ def test_postgres_concurrent_writes_preserve_serialization_and_report_lock_timeo
                 )
             assert conflict_res.status_code == 409
             assert conflict_res.json()["code"] == "CORPORATION_CONFLICT"
+
+            # 4. PostgreSQL スキーマと metadata の構造差分がなく、usage_status CHECK 制約が効く。
+            with engine.connect() as connection:
+                diffs = compare_metadata(MigrationContext.configure(connection), database.metadata)
+                structural = [
+                    diff
+                    for diff in diffs
+                    if diff[0]
+                    in {
+                        "add_table",
+                        "remove_table",
+                        "add_column",
+                        "remove_column",
+                        "modify_nullable",
+                        "modify_type",
+                        "add_fk",
+                        "remove_fk",
+                    }
+                ]
+                assert structural == []
+
+                constraints = {
+                    row[0]
+                    for row in connection.execute(
+                        text(
+                            "SELECT conname FROM pg_constraint "
+                            "WHERE conname IN ("
+                            "'ck_corporations_usage_status', "
+                            "'ck_corporation_history_usage_status'"
+                            ")"
+                        )
+                    )
+                }
+                assert constraints == {
+                    "ck_corporations_usage_status",
+                    "ck_corporation_history_usage_status",
+                }
+
+            with pytest.raises(IntegrityError), engine.begin() as connection:
+                connection.execute(
+                    text(
+                        "INSERT INTO corporations "
+                        "(id, category, name, address, status, usage_status, "
+                        "created_at, updated_at) "
+                        "VALUES ('invalid-usage', 'corporation', '不正法人', '', 'active', "
+                        "'invalid', '2026-01-01T00:00:00+00:00', '2026-01-01T00:00:00+00:00')"
+                    )
+                )
+
+        # 5. 0008 -> 0007 -> head の可逆性を検証する。
+        alembic_cfg = Config(str(_ALEMBIC_INI))
+        command.downgrade(alembic_cfg, "0007_corporate_usage_status")
+        command.upgrade(alembic_cfg, "head")
     finally:
         _reset_postgres_schema(postgres_url)

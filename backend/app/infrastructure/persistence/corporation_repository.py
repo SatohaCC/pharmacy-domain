@@ -20,8 +20,13 @@ from app.domain.corporate.primitives import (
     CorporateAddress,
     CorporateNumber,
     CorporationName,
+    RepresentativeName,
 )
-from app.domain.corporate.value_objects import CorporationCategory, CorporationStatus
+from app.domain.corporate.value_objects import (
+    CorporationCategory,
+    CorporationStatus,
+    CorporationUsageStatus,
+)
 from app.domain.foundation.exceptions import DomainConflictError
 from app.domain.foundation.primitives import AwareDatetime
 from app.domain.foundation.value_objects import EffectiveDateRange
@@ -41,11 +46,13 @@ def _row_to_corporation(row: RowMapping) -> Corporation:
         id=CorporationId(str(row["id"])),
         category=CorporationCategory(str(row["category"])),
         name=CorporationName(str(row["name"])),
+        representative_name=RepresentativeName(str(row["representative_name"])),
         corporate_number=CorporateNumber(str(raw_number)) if raw_number is not None else None,
         address=CorporateAddress(str(row["address"])),
         status=CorporationStatus(str(row["status"])),
         created_at=_parse_iso_utc(str(row["created_at"])),
         updated_at=_parse_iso_utc(str(row["updated_at"])),
+        usage_status=CorporationUsageStatus(str(row["usage_status"])),
     )
 
 
@@ -53,21 +60,25 @@ def _row_to_history_record(row: RowMapping) -> CorporationHistoryRecord:
     value = row["corporate_number"]
     evidence = row["evidence"]
     survivor = row["surviving_corporation_id"]
+    recorded_by = row["recorded_by"]
     return CorporationHistoryRecord(
         corporation=Corporation(
             id=CorporationId(row["corporation_id"]),
             category=CorporationCategory(row["category"]),
             name=CorporationName(row["name"]),
+            representative_name=RepresentativeName(str(row["representative_name"])),
             corporate_number=CorporateNumber(value) if value is not None else None,
             address=CorporateAddress(row["address"]),
             status=CorporationStatus(row["status"]),
             created_at=_parse_iso_utc(row["created_at"]),
             updated_at=_parse_iso_utc(row["recorded_at"]),
+            usage_status=CorporationUsageStatus(str(row["usage_status"])),
         ),
         period=EffectiveDateRange(row["valid_from"], row["valid_to"]),
         kind=CorporationChangeKind(row["kind"]),
         evidence=CorporationEvidence(evidence) if evidence is not None else None,
         surviving_corporation_id=CorporationId(survivor) if survivor is not None else None,
+        recorded_by=str(recorded_by) if recorded_by is not None else None,
     )
 
 
@@ -83,6 +94,7 @@ class SqlAlchemyCorporationRepository:
             id=corporation.id.value,
             category=corporation.category.value,
             name=corporation.name.value,
+            representative_name=corporation.representative_name.value,
             corporate_number=(
                 corporation.corporate_number.value
                 if corporation.corporate_number is not None
@@ -90,6 +102,7 @@ class SqlAlchemyCorporationRepository:
             ),
             address=corporation.address.value,
             status=corporation.status.value,
+            usage_status=corporation.usage_status.value,
             created_at=corporation.created_at.value.isoformat(),
             updated_at=corporation.updated_at.value.isoformat(),
         )
@@ -133,6 +146,7 @@ class SqlAlchemyCorporationRepository:
             .where(corporations_table.c.id == corporation.id.value)
             .values(
                 name=corporation.name.value,
+                representative_name=corporation.representative_name.value,
                 corporate_number=(
                     corporation.corporate_number.value
                     if corporation.corporate_number is not None
@@ -140,6 +154,7 @@ class SqlAlchemyCorporationRepository:
                 ),
                 address=corporation.address.value,
                 status=corporation.status.value,
+                usage_status=corporation.usage_status.value,
                 updated_at=corporation.updated_at.value.isoformat(),
             )
         )
@@ -179,12 +194,15 @@ class SqlAlchemyCorporationRepository:
                 valid_from=record.period.valid_from,
                 valid_to=record.period.valid_to,
                 name=state.name.value,
+                representative_name=state.representative_name.value,
                 corporate_number=number.value if number is not None else None,
                 address=state.address.value,
                 status=state.status.value,
+                usage_status=state.usage_status.value,
                 recorded_at=record.recorded_at.value.isoformat(),
                 kind=record.kind.value,
                 evidence=record.evidence.value if record.evidence is not None else None,
                 surviving_corporation_id=survivor.value if survivor is not None else None,
+                recorded_by=record.recorded_by,
             )
         )

@@ -11,19 +11,24 @@ class CorporationCreateRequest(BaseModel):
 
     category: Literal["corporation", "individual"]
     name: str
+    representative_name: str
     corporate_number: str | None = None
     address: str = ""
     valid_from: date | None = None
+    valid_to: date | None = None
     evidence: str | None = None
+    usage_status: Literal["not_started", "active", "suspended"] = "not_started"
 
 
 class CorporationUpdateRequest(BaseModel):
     """法人基本情報部分更新リクエスト DTO。"""
 
     name: str | None = None
+    representative_name: str | None = None
     address: str | None = None
     corporate_number: str | None = None
     valid_from: date | None = None
+    valid_to: date | None = None
     evidence: str | None = None
 
 
@@ -35,6 +40,12 @@ class CorporationStatusChangeRequest(BaseModel):
     evidence: str | None = None
 
 
+class CorporationUsageStatusChangeRequest(BaseModel):
+    """法人システム利用状態変更リクエスト DTO。"""
+
+    usage_status: Literal["not_started", "active", "suspended"]
+
+
 class CorporationHistoryCorrectionRequest(BaseModel):
     """指定日を含む既知の有効期間について、変更前の記録を保持して訂正する。"""
 
@@ -43,8 +54,11 @@ class CorporationHistoryCorrectionRequest(BaseModel):
     as_of: date
     evidence: str
     name: str | None = None
+    representative_name: str | None = None
     address: str | None = None
     corporate_number: str | None = None
+    valid_from: date | None = None
+    valid_to: date | None = None
 
 
 class CorporationMergerRequest(BaseModel):
@@ -68,6 +82,10 @@ class CorporationResponse(BaseModel):
     status: Literal["active", "dissolved", "merged_out"]
     created_at: datetime
     updated_at: datetime
+    valid_from: date | None = None
+    valid_to: date | None = None
+    usage_status: Literal["not_started", "active", "suspended"] = "not_started"
+    representative_name: str
 
 
 class CorporationListResponse(BaseModel):
@@ -87,3 +105,4 @@ class CorporationHistoryResponse(BaseModel):
     kind: Literal["legacy", "registration", "profile", "correction", "dissolution", "merger"]
     evidence: str | None
     surviving_corporation_id: str | None
+    recorded_by: str | None = None

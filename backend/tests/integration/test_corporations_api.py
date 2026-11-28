@@ -45,6 +45,7 @@ def test_corporations_api_crud_and_validation_flow(
             json={
                 "category": "corporation",
                 "name": "法人番号の検証",
+                "representative_name": "代表太郎",
                 "corporate_number": full_width_number,
             },
         )
@@ -54,10 +55,27 @@ def test_corporations_api_crud_and_validation_flow(
         # 不正な空白名は 422。
         invalid_create = client.post(
             "/api/corporations",
-            json={"category": "corporation", "name": "   "},
+            json={"category": "corporation", "name": "   ", "representative_name": "代表太郎"},
         )
         assert invalid_create.status_code == 422
         assert invalid_create.json()["code"] == "VALIDATION_ERROR"
+
+        # 代表者名（開設者氏名）が未指定・空白のみは 422。
+        missing_rep_create = client.post(
+            "/api/corporations",
+            json={"category": "corporation", "name": "代表者なし法人"},
+        )
+        assert missing_rep_create.status_code == 422
+        blank_rep_create = client.post(
+            "/api/corporations",
+            json={
+                "category": "corporation",
+                "name": "代表者空白法人",
+                "representative_name": "   ",
+            },
+        )
+        assert blank_rep_create.status_code == 422
+        assert blank_rep_create.json()["code"] == "VALIDATION_ERROR"
 
         # 個人区分への法人番号指定は 422。
         invalid_individual = client.post(
@@ -65,6 +83,7 @@ def test_corporations_api_crud_and_validation_flow(
             json={
                 "category": "individual",
                 "name": "山田太郎",
+                "representative_name": "山田太郎",
                 "corporate_number": "1234567890123",
             },
         )
@@ -76,6 +95,7 @@ def test_corporations_api_crud_and_validation_flow(
             json={
                 "category": "corporation",
                 "name": "株式会社さくら薬局",
+                "representative_name": "佐藤 一郎",
                 "corporate_number": "1234567890123",
                 "address": "東京都新宿区1-2-3",
             },
@@ -85,6 +105,7 @@ def test_corporations_api_crud_and_validation_flow(
         corp_id = created["id"]
         assert created["category"] == "corporation"
         assert created["status"] == "active"
+        assert created["representative_name"] == "佐藤 一郎"
 
         invalid_number_patch = client.patch(
             f"/api/corporations/{corp_id}", json={"corporate_number": full_width_number}
@@ -98,20 +119,26 @@ def test_corporations_api_crud_and_validation_flow(
             json={
                 "category": "corporation",
                 "name": "別名法人",
+                "representative_name": "別代表",
                 "corporate_number": "1234567890123",
             },
         )
         assert dup_res.status_code == 409
         assert dup_res.json()["code"] == "DUPLICATE_CORPORATE_NUMBER"
 
-        # 一覧・詳細取得。
+        # 一覧・詳細取得（法人名・代表者名の両方で検索できる）。
         list_res = client.get("/api/corporations", params={"q": "さくら"})
         assert list_res.status_code == 200
         assert list_res.json()["total"] == 1
 
+        rep_list_res = client.get("/api/corporations", params={"q": "佐藤 一郎"})
+        assert rep_list_res.status_code == 200
+        assert rep_list_res.json()["total"] == 1
+
         get_res = client.get(f"/api/corporations/{corp_id}")
         assert get_res.status_code == 200
         assert get_res.json()["name"] == "株式会社さくら薬局"
+        assert get_res.json()["representative_name"] == "佐藤 一郎"
         assert get_res.json()["corporate_number"] == "1234567890123"
 
         # 空の PATCH は 400。
@@ -119,10 +146,26 @@ def test_corporations_api_crud_and_validation_flow(
         assert empty_patch.status_code == 400
         assert empty_patch.json()["code"] == "EMPTY_UPDATE"
 
-        # name に null は 400。
+        # name / representative_name に null は 400。
         null_patch = client.patch(f"/api/corporations/{corp_id}", json={"name": None})
         assert null_patch.status_code == 400
         assert null_patch.json()["code"] == "INVALID_UPDATE"
+        null_rep_patch = client.patch(
+            f"/api/corporations/{corp_id}", json={"representative_name": None}
+        )
+        assert null_rep_patch.status_code == 400
+        assert null_rep_patch.json()["code"] == "INVALID_UPDATE"
+
+        # 代表者名の更新・空文字拒否。
+        blank_rep_patch = client.patch(
+            f"/api/corporations/{corp_id}", json={"representative_name": "  "}
+        )
+        assert blank_rep_patch.status_code == 422
+        rep_patch = client.patch(
+            f"/api/corporations/{corp_id}", json={"representative_name": "高橋 次郎"}
+        )
+        assert rep_patch.status_code == 200
+        assert rep_patch.json()["representative_name"] == "高橋 次郎"
 
         # 基本情報更新（自法人番号維持・所在地空文字クリア・address=null 拒否）。
         patch_res = client.patch(
@@ -155,6 +198,7 @@ def test_corporations_api_crud_and_validation_flow(
             json={
                 "category": "corporation",
                 "name": "株式会社別法人",
+                "representative_name": "別法人代表",
                 "corporate_number": "9999999999999",
             },
         )
@@ -222,7 +266,11 @@ def test_corporations_and_relations_require_vendor_auth_and_csrf(
         unauth_create = client.post(
             "/api/corporations",
             headers={"X-Requested-With": "XMLHttpRequest"},
-            json={"category": "corporation", "name": "未認証法人"},
+            json={
+                "category": "corporation",
+                "name": "未認証法人",
+                "representative_name": "未認証代表",
+            },
         )
         assert unauth_create.status_code == 401
         assert unauth_create.json()["code"] == "UNAUTHORIZED"
@@ -241,7 +289,11 @@ def test_corporations_and_relations_require_vendor_auth_and_csrf(
         # CSRF ヘッダーなしの POST /api/corporations は 403 CSRF_VALIDATION_FAILED
         no_csrf = client.post(
             "/api/corporations",
-            json={"category": "corporation", "name": "CSRFなし法人"},
+            json={
+                "category": "corporation",
+                "name": "CSRFなし法人",
+                "representative_name": "CSRFなし代表",
+            },
         )
         assert no_csrf.status_code == 403
         assert no_csrf.json()["code"] == "CSRF_VALIDATION_FAILED"
@@ -272,6 +324,7 @@ def test_corporations_and_relations_require_vendor_auth_and_csrf(
             json={
                 "category": "corporation",
                 "name": "株式会社あおぞら薬局",
+                "representative_name": "あおぞら代表",
                 "corporate_number": "1111222233334",
                 "address": "東京都千代田区1-1",
             },
@@ -337,7 +390,11 @@ def test_corporations_and_relations_require_vendor_auth_and_csrf(
         forbidden_post = client.post(
             "/api/corporations",
             headers={"X-Requested-With": "XMLHttpRequest"},
-            json={"category": "corporation", "name": "テナントからの不正登録"},
+            json={
+                "category": "corporation",
+                "name": "テナントからの不正登録",
+                "representative_name": "不正代表",
+            },
         )
         assert forbidden_post.status_code == 403
         assert forbidden_post.json()["code"] == "INSUFFICIENT_ROLE"

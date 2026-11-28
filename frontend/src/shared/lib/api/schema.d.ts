@@ -87,6 +87,7 @@ export interface paths {
           as_of?: string | null;
           corporation_id?: string | null;
           recorded_as_of?: string | null;
+          relation_type?: "parent_child" | "affiliate" | "fc_vc" | null;
         };
       };
       responses: {
@@ -324,6 +325,7 @@ export interface paths {
           category?: "corporation" | "individual" | null;
           q?: string | null;
           status?: "active" | "dissolved" | "merged_out" | null;
+          usage_status?: "not_started" | "active" | "suspended" | null;
         };
       };
       responses: {
@@ -660,6 +662,52 @@ export interface paths {
       };
     };
   };
+  "/api/corporations/{corporation_id}/usage-status": {
+    patch: {
+      parameters: {
+        path: {
+          corporation_id: string;
+        };
+      };
+      requestBody: {
+        content: {
+          "application/json": components["schemas"]["CorporationUsageStatusChangeRequest"];
+        };
+      };
+      responses: {
+        200: {
+          content: {
+            "application/json": components["schemas"]["CorporationResponse"];
+          };
+        };
+        400: {
+          content: {
+            "application/json": components["schemas"]["ErrorResponse"];
+          };
+        };
+        401: {
+          content: {
+            "application/json": components["schemas"]["ErrorResponse"];
+          };
+        };
+        403: {
+          content: {
+            "application/json": components["schemas"]["ErrorResponse"];
+          };
+        };
+        404: {
+          content: {
+            "application/json": components["schemas"]["ErrorResponse"];
+          };
+        };
+        422: {
+          content: {
+            "application/json": components["schemas"]["ErrorResponse"];
+          };
+        };
+      };
+    };
+  };
   "/api/health": {
     get: {
       responses: {
@@ -757,13 +805,11 @@ export interface components {
       updated_at: string;
     };
     CorporateRelationCorrectionRequest: {
-      confirmation_status?: "unverified" | "verified";
       evidence?: string;
       valid_from?: string;
       valid_to?: string | null;
     };
     CorporateRelationCreateRequest: {
-      confirmation_status?: "unverified" | "verified";
       evidence: string;
       relation_type: "parent_child" | "affiliate" | "fc_vc";
       source_corporation_id: string;
@@ -779,10 +825,10 @@ export interface components {
       total: number;
     };
     CorporateRelationResponse: {
-      confirmation_status: "unverified" | "verified";
       evidence: string;
       id: string;
       recorded_at: string;
+      recorded_by?: string | null;
       relation_type: "parent_child" | "affiliate" | "fc_vc";
       source_corporation_id: string;
       target_corporation_id: string;
@@ -790,9 +836,9 @@ export interface components {
       valid_to: string | null;
     };
     CorporateRelationRevisionResponse: {
-      confirmation_status: "unverified" | "verified";
       evidence: string;
       recorded_at: string;
+      recorded_by?: string | null;
       valid_from: string;
       valid_to: string | null;
     };
@@ -802,7 +848,10 @@ export interface components {
       corporate_number?: string | null;
       evidence?: string | null;
       name: string;
+      representative_name: string;
+      usage_status?: "not_started" | "active" | "suspended";
       valid_from?: string | null;
+      valid_to?: string | null;
     };
     CorporationHistoryCorrectionRequest: {
       address?: string | null;
@@ -810,12 +859,16 @@ export interface components {
       corporate_number?: string | null;
       evidence: string;
       name?: string | null;
+      representative_name?: string | null;
+      valid_from?: string | null;
+      valid_to?: string | null;
     };
     CorporationHistoryResponse: {
       corporation: components["schemas"]["CorporationResponse"];
       evidence: string | null;
       kind: "legacy" | "registration" | "profile" | "correction" | "dissolution" | "merger";
       recorded_at: string;
+      recorded_by?: string | null;
       surviving_corporation_id: string | null;
       valid_from: string;
       valid_to: string | null;
@@ -836,8 +889,12 @@ export interface components {
       created_at: string;
       id: string;
       name: string;
+      representative_name: string;
       status: "active" | "dissolved" | "merged_out";
       updated_at: string;
+      usage_status?: "not_started" | "active" | "suspended";
+      valid_from?: string | null;
+      valid_to?: string | null;
     };
     CorporationStatusChangeRequest: {
       effective_date?: string | null;
@@ -849,7 +906,12 @@ export interface components {
       corporate_number?: string | null;
       evidence?: string | null;
       name?: string | null;
+      representative_name?: string | null;
       valid_from?: string | null;
+      valid_to?: string | null;
+    };
+    CorporationUsageStatusChangeRequest: {
+      usage_status: "not_started" | "active" | "suspended";
     };
     CreateVendorUserV2Request: {
       display_name: string;

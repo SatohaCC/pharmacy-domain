@@ -14,8 +14,13 @@ from app.domain.corporate.exceptions import (
     InvalidCorporationUpdateError,
 )
 from app.domain.corporate.history import CorporationHistoryRecord
-from app.domain.corporate.value_objects import CorporationCategory, CorporationStatus
+from app.domain.corporate.value_objects import (
+    CorporationCategory,
+    CorporationStatus,
+    CorporationUsageStatus,
+)
 from app.domain.foundation.exceptions import DomainError
+from app.domain.foundation.value_objects import EffectiveDateRange
 
 
 def to_application_error(exc: DomainError) -> ApplicationError:
@@ -36,7 +41,11 @@ def to_application_error(exc: DomainError) -> ApplicationError:
     return from_domain_error(exc)
 
 
-def to_corporation_item(corporation: Corporation) -> CorporationItem:
+def to_corporation_item(
+    corporation: Corporation,
+    *,
+    period: EffectiveDateRange | None = None,
+) -> CorporationItem:
     """法人集約を公開用読み取り結果へ変換する。"""
     return CorporationItem(
         id=corporation.id.value,
@@ -49,13 +58,17 @@ def to_corporation_item(corporation: Corporation) -> CorporationItem:
         status=corporation.status.value,
         created_at=corporation.created_at.value,
         updated_at=corporation.updated_at.value,
+        valid_from=period.valid_from if period is not None else None,
+        valid_to=period.valid_to if period is not None else None,
+        usage_status=corporation.usage_status.value,
+        representative_name=corporation.representative_name.value,
     )
 
 
 def to_corporation_history_item(record: CorporationHistoryRecord) -> CorporationHistoryItem:
     """有効期間つきの法人記録を公開契約に変換する。"""
     return CorporationHistoryItem(
-        corporation=to_corporation_item(record.corporation),
+        corporation=to_corporation_item(record.corporation, period=record.period),
         valid_from=record.period.valid_from,
         valid_to=record.period.valid_to,
         recorded_at=record.recorded_at.value,
@@ -66,6 +79,7 @@ def to_corporation_history_item(record: CorporationHistoryRecord) -> Corporation
             if record.surviving_corporation_id is not None
             else None
         ),
+        recorded_by=record.recorded_by,
     )
 
 
@@ -90,4 +104,16 @@ def parse_status(raw: str) -> CorporationStatus:
             "不正な存続状態です。",
             code="VALIDATION_ERROR",
             details={"field": "status"},
+        ) from exc
+
+
+def parse_usage_status(raw: str) -> CorporationUsageStatus:
+    """システム利用状態文字列を検証付きで Value Object へ変換する。"""
+    try:
+        return CorporationUsageStatus(raw)
+    except ValueError as exc:
+        raise ApplicationValidationError(
+            "不正なシステム利用状態です。",
+            code="VALIDATION_ERROR",
+            details={"field": "usage_status"},
         ) from exc

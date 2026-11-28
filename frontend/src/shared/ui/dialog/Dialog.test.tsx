@@ -2,7 +2,7 @@ import * as stylex from "@stylexjs/stylex";
 import { render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { useRef } from "react";
-import { afterAll, beforeAll, describe, expect, it, vi } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 import { TextField } from "../text-field/TextField";
 import {
   Dialog,
@@ -40,19 +40,6 @@ function FocusTargetDialog() {
 }
 
 describe("Dialog", () => {
-  const getAnimations = Element.prototype.getAnimations;
-  let popoverStyle: HTMLStyleElement | null = null;
-  beforeAll(() => {
-    // jsdomにないWeb Animations APIとPopover表示スタイルをテスト環境向けに補う。
-    Element.prototype.getAnimations = () => [];
-    popoverStyle = document.createElement("style");
-    popoverStyle.textContent = "[popover][data-open] { display: block !important; }";
-    document.head.append(popoverStyle);
-  });
-  afterAll(() => {
-    Element.prototype.getAnimations = getAnimations;
-    popoverStyle?.remove();
-  });
   it("トリガーで開き、閉じる操作とEscapeで閉じてトリガーへフォーカスを戻す", async () => {
     const user = userEvent.setup();
     const onOpenChange = vi.fn();

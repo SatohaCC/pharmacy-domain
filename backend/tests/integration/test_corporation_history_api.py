@@ -47,6 +47,7 @@ def _register(client: TestClient, name: str) -> str:
         json={
             "category": "corporation",
             "name": name,
+            "representative_name": f"{name}代表",
             "address": "東京都",
             "valid_from": "2025-01-01",
             "evidence": "登記を確認",
@@ -227,3 +228,226 @@ def test_migration_keeps_legacy_rows_and_leaves_unknown_past_unfilled(tmp_path: 
         legacy_relation = client.get("/api/corporate-relations/legacy-relation")
         assert legacy_relation.status_code == 200
         assert legacy_relation.json()["source_corporation_id"] == "legacy"
+
+
+def test_corporation_valid_to_registration_update_clear_and_correction(
+    client: TestClient,
+) -> None:
+    # 1. 有効終了日付きで登録でき、valid_to <= valid_from は 422 となる。
+    invalid_create = client.post(
+        "/api/corporations",
+        json={
+            "category": "corporation",
+            "name": "不正期間法人",
+            "representative_name": "不正期間代表",
+            "valid_from": "2025-05-01",
+            "valid_to": "2025-05-01",
+        },
+    )
+    assert invalid_create.status_code == 422
+
+    created = client.post(
+        "/api/corporations",
+        json={
+            "category": "corporation",
+            "name": "期間限定薬局",
+            "representative_name": "期間限定代表",
+            "valid_from": "2025-01-01",
+            "valid_to": "2026-12-31",
+            "evidence": "契約期間を確認",
+        },
+    )
+    assert created.status_code == 201
+    corp_id = created.json()["id"]
+    assert created.json()["valid_from"] == "2025-01-01"
+    assert created.json()["valid_to"] == "2026-12-31"
+
+    # 2. valid_to のみの更新、および null 指定による終了未定への解除ができる。
+    extended = client.patch(
+        f"/api/corporations/{corp_id}",
+        json={"valid_from": "2025-01-01", "valid_to": "2027-03-31"},
+    )
+    assert extended.status_code == 200
+    assert extended.json()["valid_to"] == "2027-03-31"
+
+    cleared = client.patch(
+        f"/api/corporations/{corp_id}",
+        json={"valid_from": "2025-01-01", "valid_to": None},
+    )
+    assert cleared.status_code == 200
+    assert cleared.json()["valid_to"] is None
+
+    # 3. 履歴訂正で valid_from のみ、および valid_from / valid_to を訂正できる。
+    start_only = client.patch(
+        f"/api/corporations/{corp_id}/history",
+        json={
+            "as_of": "2025-06-01",
+            "valid_from": "2025-01-15",
+            "evidence": "開始日のみ訂正",
+        },
+    )
+    assert start_only.status_code == 200
+    assert start_only.json()["valid_from"] == "2025-01-15"
+
+    corrected = client.patch(
+        f"/api/corporations/{corp_id}/history",
+        json={
+            "as_of": "2025-06-01",
+            "valid_from": "2025-02-01",
+            "valid_to": "2026-06-30",
+            "evidence": "期間訂正",
+        },
+    )
+    assert corrected.status_code == 200
+    assert corrected.json()["valid_from"] == "2025-02-01"
+    assert corrected.json()["valid_to"] == "2026-06-30"
+    assert corrected.json()["recorded_by"] == "vendor-admin-1"
+    history = client.get(f"/api/corporations/{corp_id}/history").json()
+    assert [item["recorded_by"] for item in history] == [
+        "vendor-admin-1",
+        "vendor-admin-1",
+        "vendor-admin-1",
+        "vendor-admin-1",
+        "vendor-admin-1",
+    ]
+
+
+def test_backdated_update_returns_current_state_period(client: TestClient) -> None:
+    created = client.post(
+        "/api/corporations",
+        json={
+            "category": "corporation",
+            "name": "当初法人",
+            "representative_name": "当初代表",
+            "valid_from": "2025-01-01",
+        },
+    )
+    assert created.status_code == 201
+    corp_id = created.json()["id"]
+
+    future_renamed = client.patch(
+        f"/api/corporations/{corp_id}",
+        json={"name": "現在法人", "valid_from": "2025-03-01"},
+    )
+    assert future_renamed.status_code == 200
+
+    backdated = client.patch(
+        f"/api/corporations/{corp_id}",
+        json={"name": "中間法人", "valid_from": "2025-02-01"},
+    )
+    assert backdated.status_code == 200
+    assert backdated.json()["name"] == "現在法人"
+    assert backdated.json()["valid_from"] == "2025-03-01"
+    assert backdated.json()["valid_to"] is None
+
+
+def test_merge_requires_active_surviving_corporation(client: TestClient) -> None:
+    target = _register(client, "消滅予定法人")
+    dissolved_surviving = _register(client, "解散済み合併先")
+    dissolved_id = dissolved_surviving.rsplit("/", 1)[-1]
+    assert (
+        client.patch(
+            f"{dissolved_surviving}/status",
+            json={"status": "dissolved", "effective_date": "2025-02-01"},
+        ).status_code
+        == 200
+    )
+
+    rejected = client.post(
+        f"{target}/merge",
+        json={
+            "effective_date": "2025-03-01",
+            "surviving_corporation_id": dissolved_id,
+            "evidence": "合併テスト",
+        },
+    )
+
+    assert (rejected.status_code, rejected.json()["code"]) == (
+        400,
+        "INVALID_CORPORATION_TRANSITION",
+    )
+
+
+def test_usage_status_lifecycle_and_dissolution_sync(client: TestClient) -> None:
+    # 1. デフォルトは not_started。参照専用法人として登録でき、active に切り替えられる。
+    ref_corp = client.post(
+        "/api/corporations",
+        json={"category": "corporation", "name": "持株会社", "representative_name": "持株代表"},
+    )
+    assert ref_corp.status_code == 201
+    assert ref_corp.json()["usage_status"] == "not_started"
+
+    active_corp = client.post(
+        "/api/corporations",
+        json={
+            "category": "corporation",
+            "name": "利用中薬局",
+            "representative_name": "利用中代表",
+            "valid_from": "2025-01-01",
+            "usage_status": "active",
+        },
+    )
+    assert active_corp.status_code == 201
+    assert active_corp.json()["usage_status"] == "active"
+
+    # usage_status でフィルタリングできる
+    only_not_started = client.get("/api/corporations", params={"usage_status": "not_started"})
+    assert [item["id"] for item in only_not_started.json()["items"]] == [ref_corp.json()["id"]]
+
+    # PATCH /usage-status で利用開始・停止を切り替えられる
+    activated = client.patch(
+        f"/api/corporations/{ref_corp.json()['id']}/usage-status",
+        json={"usage_status": "active"},
+    )
+    assert activated.status_code == 200
+    assert activated.json()["usage_status"] == "active"
+
+    # 利用開始後に基本情報を更新しても usage_status が active のまま維持される
+    renamed_ref = client.patch(
+        f"/api/corporations/{ref_corp.json()['id']}",
+        json={"name": "持株会社（改）"},
+    )
+    assert renamed_ref.status_code == 200
+    assert renamed_ref.json()["usage_status"] == "active"
+
+    # 解散すると usage_status は自動で suspended になる
+    dissolved = client.patch(
+        f"/api/corporations/{active_corp.json()['id']}/status",
+        json={"status": "dissolved", "effective_date": "2025-02-01"},
+    )
+    assert dissolved.status_code == 200
+    assert dissolved.json()["status"] == "dissolved"
+    assert dissolved.json()["usage_status"] == "suspended"
+
+    # 解散後の時点参照・履歴訂正でも usage_status は suspended のまま維持される
+    as_of_dissolved = client.get(
+        f"/api/corporations/{active_corp.json()['id']}",
+        params={"as_of": "2025-02-10"},
+    )
+    assert as_of_dissolved.status_code == 200
+    assert as_of_dissolved.json()["usage_status"] == "suspended"
+
+    corrected_dissolved = client.patch(
+        f"/api/corporations/{active_corp.json()['id']}/history",
+        json={
+            "as_of": "2025-02-10",
+            "address": "東京都港区",
+            "evidence": "登記簿住所修正",
+        },
+    )
+    assert corrected_dissolved.status_code == 200
+    assert corrected_dissolved.json()["corporation"]["usage_status"] == "suspended"
+    assert (
+        client.get(f"/api/corporations/{active_corp.json()['id']}").json()["usage_status"]
+        == "suspended"
+    )
+
+    # 解散済み法人のシステム利用を active にすることはできない
+    reopen_rejected = client.patch(
+        f"/api/corporations/{active_corp.json()['id']}/usage-status",
+        json={"usage_status": "active"},
+    )
+    assert (reopen_rejected.status_code, reopen_rejected.json()["code"]) == (
+        400,
+        "INVALID_CORPORATION_TRANSITION",
+    )

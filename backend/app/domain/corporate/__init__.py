@@ -19,6 +19,7 @@ from app.domain.corporate.primitives import (
     CorporateNumber,
     CorporationName,
     RelationEvidence,
+    RepresentativeName,
 )
 from app.domain.corporate.repositories import CorporateRelationRepository, CorporationRepository
 from app.domain.corporate.services import validate_corporate_relation
@@ -27,7 +28,6 @@ from app.domain.corporate.value_objects import (
     CorporateRelationType,
     CorporationCategory,
     CorporationStatus,
-    RelationConfirmationStatus,
 )
 
 __all__ = [
@@ -53,8 +53,8 @@ __all__ = [
     "InvalidCorporationTransitionError",
     "InvalidCorporationUpdateError",
     "MultipleCorporateParentsError",
-    "RelationConfirmationStatus",
     "RelationEvidence",
+    "RepresentativeName",
     "SelfCorporateRelationError",
     "validate_corporate_relation",
 ]

@@ -1,0 +1,6 @@
+or {
+  `Element.prototype.getAnimations = $_`,
+  `Element.prototype.scrollIntoView = $_`
+} as $assign where {
+  register_diagnostic(span=$assign, message="getAnimations / scrollIntoView のポリフィルは frontend/vitest.setup.ts に集約されています。")
+}

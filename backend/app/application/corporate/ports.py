@@ -13,6 +13,7 @@ from app.domain.corporate.entities import CorporateRelation
 from app.domain.corporate.history import CorporationHistoryRecord
 from app.domain.corporate.identifiers import CorporateRelationId, CorporationId
 from app.domain.corporate.repositories import CorporateRelationRepository, CorporationRepository
+from app.domain.corporate.value_objects import CorporateRelationType
 from app.domain.foundation.primitives import AwareDatetime
 
 
@@ -105,6 +106,7 @@ class CorporateRelationQueryGateway(Protocol):
         corporation_id: CorporationId | None,
         as_of: date | None,
         recorded_as_of: AwareDatetime | None,
+        relation_type: CorporateRelationType | None = None,
     ) -> tuple[CorporateRelation, ...]:
-        """有効日・記録日時・関係する法人で絞り込む。"""
+        """有効日・記録日時・関係する法人・種別で絞り込む。"""
         ...

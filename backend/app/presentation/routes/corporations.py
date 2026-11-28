@@ -6,6 +6,7 @@ from typing import Annotated, Literal
 from fastapi import APIRouter, Depends, Query, status
 from pydantic import AwareDatetime
 
+from app.application.auth.contracts import AuthPrincipal
 from app.application.corporate.contracts import (
     CorporationCommandPort,
     CorporationQueryPort,
@@ -26,10 +27,12 @@ from app.presentation.dto.corporations import (
     CorporationResponse,
     CorporationStatusChangeRequest,
     CorporationUpdateRequest,
+    CorporationUsageStatusChangeRequest,
 )
 from app.presentation.dto.error import ErrorResponse
 from app.presentation.mappers.corporations import (
     to_change_status_input,
+    to_change_usage_status_input,
     to_corporation_history_response,
     to_corporation_list_response,
     to_corporation_response,
@@ -59,11 +62,17 @@ def list_corporations(
         Literal["active", "dissolved", "merged_out"] | None,
         Query(alias="status"),
     ] = None,
+    usage_status: Literal["not_started", "active", "suspended"] | None = None,
     q: str | None = None,
 ) -> CorporationListResponse:
     """条件に一致する法人一覧を返す。"""
     result = queries.list_corporations(
-        to_list_corporations_query(category=category, status=corporation_status, q=q)
+        to_list_corporations_query(
+            category=category,
+            status=corporation_status,
+            usage_status=usage_status,
+            q=q,
+        )
     )
     return to_corporation_list_response(result)
 
@@ -79,10 +88,13 @@ def list_corporations(
 )
 def register_corporation(
     payload: CorporationCreateRequest,
+    principal: Annotated[AuthPrincipal, Depends(require_vendor_user)],
     commands: Annotated[CorporationCommandPort, Depends(get_corporation_commands)],
 ) -> CorporationResponse:
     """新しい法人（または個人開設者）を登録する。"""
-    created = commands.register_corporation(to_register_corporation_input(payload))
+    created = commands.register_corporation(
+        to_register_corporation_input(payload, recorded_by=principal.user_id)
+    )
     return to_corporation_response(created)
 
 
@@ -120,10 +132,14 @@ def get_corporation(
 def update_corporation(
     corporation_id: str,
     payload: CorporationUpdateRequest,
+    principal: Annotated[AuthPrincipal, Depends(require_vendor_user)],
     commands: Annotated[CorporationCommandPort, Depends(get_corporation_commands)],
 ) -> CorporationResponse:
     """指定 ID の法人基本情報を部分更新する。"""
-    updated = commands.update_corporation(corporation_id, to_update_corporation_input(payload))
+    updated = commands.update_corporation(
+        corporation_id,
+        to_update_corporation_input(payload, recorded_by=principal.user_id),
+    )
     return to_corporation_response(updated)
 
 
@@ -140,10 +156,37 @@ def update_corporation(
 def change_corporation_status(
     corporation_id: str,
     payload: CorporationStatusChangeRequest,
+    principal: Annotated[AuthPrincipal, Depends(require_vendor_user)],
     commands: Annotated[CorporationCommandPort, Depends(get_corporation_commands)],
 ) -> CorporationResponse:
     """指定 ID の法人の存続状態を変更する。"""
-    updated = commands.change_status(corporation_id, to_change_status_input(payload))
+    updated = commands.change_status(
+        corporation_id,
+        to_change_status_input(payload, recorded_by=principal.user_id),
+    )
+    return to_corporation_response(updated)
+
+
+@router.patch(
+    "/{corporation_id}/usage-status",
+    response_model=CorporationResponse,
+    responses={
+        400: {"model": ErrorResponse},
+        404: {"model": ErrorResponse},
+        422: {"model": ErrorResponse},
+    },
+)
+def change_corporation_usage_status(
+    corporation_id: str,
+    payload: CorporationUsageStatusChangeRequest,
+    principal: Annotated[AuthPrincipal, Depends(require_vendor_user)],
+    commands: Annotated[CorporationCommandPort, Depends(get_corporation_commands)],
+) -> CorporationResponse:
+    """指定 ID の法人のシステム利用状態を変更する。"""
+    updated = commands.change_usage_status(
+        corporation_id,
+        to_change_usage_status_input(payload, recorded_by=principal.user_id),
+    )
     return to_corporation_response(updated)
 
 
@@ -171,10 +214,15 @@ def list_corporation_history(
 def correct_corporation_history(
     corporation_id: str,
     payload: CorporationHistoryCorrectionRequest,
+    principal: Annotated[AuthPrincipal, Depends(require_vendor_user)],
     commands: Annotated[CorporationCommandPort, Depends(get_corporation_commands)],
 ) -> CorporationHistoryResponse:
     """指定日を含む確認済みの期間について、過去の名称・所在地・法人番号を訂正する。"""
-    record = commands.correct_history(corporation_id, payload.as_of, to_correction_input(payload))
+    record = commands.correct_history(
+        corporation_id,
+        payload.as_of,
+        to_correction_input(payload, recorded_by=principal.user_id),
+    )
     return to_corporation_history_response(record)
 
 
@@ -190,7 +238,13 @@ def correct_corporation_history(
 def merge_corporation(
     corporation_id: str,
     payload: CorporationMergerRequest,
+    principal: Annotated[AuthPrincipal, Depends(require_vendor_user)],
     commands: Annotated[CorporationCommandPort, Depends(get_corporation_commands)],
 ) -> CorporationResponse:
     """存続法人・効力日・根拠を記録して吸収合併を確定する。"""
-    return to_corporation_response(commands.change_status(corporation_id, to_merger_input(payload)))
+    return to_corporation_response(
+        commands.change_status(
+            corporation_id,
+            to_merger_input(payload, recorded_by=principal.user_id),
+        )
+    )

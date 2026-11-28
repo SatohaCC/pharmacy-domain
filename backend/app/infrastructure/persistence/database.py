@@ -39,13 +39,16 @@ corporations_table = Table(
     Column("id", Text, primary_key=True, nullable=False),
     Column("category", Text, nullable=False),
     Column("name", Text, nullable=False),
+    Column("representative_name", Text, nullable=False, server_default=""),
     Column("corporate_number", Text, nullable=True),
     Column("address", Text, nullable=False),
     Column("status", Text, nullable=False),
+    Column("usage_status", Text, nullable=False, server_default="not_started"),
     Column("created_at", Text, nullable=False),
     Column("updated_at", Text, nullable=False),
     CheckConstraint("category IN ('corporation', 'individual')"),
     CheckConstraint("status IN ('active', 'dissolved', 'merged_out')"),
+    CheckConstraint("usage_status IN ('not_started', 'active', 'suspended')"),
     CheckConstraint("NOT (category = 'individual' AND corporate_number IS NOT NULL)"),
 )
 
@@ -79,9 +82,8 @@ corporate_relation_revisions_table = Table(
     Column("valid_from", Date, nullable=False),
     Column("valid_to", Date),
     Column("evidence", Text, nullable=False),
-    Column("confirmation_status", Text, nullable=False),
+    Column("recorded_by", Text, nullable=True),
     CheckConstraint("valid_to IS NULL OR valid_from < valid_to"),
-    CheckConstraint("confirmation_status IN ('unverified', 'verified')"),
 )
 
 corporation_history_table = Table(
@@ -92,15 +94,19 @@ corporation_history_table = Table(
     Column("valid_from", Date, nullable=False),
     Column("valid_to", Date),
     Column("name", Text, nullable=False),
+    Column("representative_name", Text, nullable=False, server_default=""),
     Column("corporate_number", Text),
     Column("address", Text, nullable=False),
     Column("status", Text, nullable=False),
+    Column("usage_status", Text, nullable=False, server_default="not_started"),
     Column("recorded_at", Text, nullable=False),
     Column("kind", Text, nullable=False),
     Column("evidence", Text),
     Column("surviving_corporation_id", Text, ForeignKey("corporations.id")),
+    Column("recorded_by", Text, nullable=True),
     CheckConstraint("valid_to IS NULL OR valid_from < valid_to"),
     CheckConstraint("status IN ('active', 'dissolved', 'merged_out')"),
+    CheckConstraint("usage_status IN ('not_started', 'active', 'suspended')"),
     CheckConstraint(
         "surviving_corporation_id IS NULL OR surviving_corporation_id <> corporation_id"
     ),

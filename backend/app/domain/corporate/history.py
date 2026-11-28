@@ -45,6 +45,7 @@ class CorporationHistoryRecord:
     kind: CorporationChangeKind
     evidence: CorporationEvidence | None = None
     surviving_corporation_id: CorporationId | None = None
+    recorded_by: str | None = None
 
     def __post_init__(self) -> None:
         if self.surviving_corporation_id == self.corporation.id:
@@ -125,6 +126,7 @@ class CorporationHistory:
                     corporation=replace(
                         selected.corporation,
                         status=status_change.corporation.status,
+                        usage_status=status_change.corporation.usage_status,
                         updated_at=max(selected.recorded_at, status_change.recorded_at),
                     ),
                     period=EffectiveDateRange(max(start, transition), end),
@@ -142,6 +144,7 @@ class CorporationHistory:
         recorded_at: AwareDatetime,
         evidence: CorporationEvidence | None,
         surviving_corporation_id: CorporationId | None,
+        recorded_by: str | None = None,
     ) -> CorporationHistoryRecord:
         """存続状態が指定日から変わる事実を追記するための記録を作る。"""
         updated = current.change_status(status, updated_at=recorded_at)
@@ -154,9 +157,15 @@ class CorporationHistory:
             else CorporationChangeKind.DISSOLUTION
         )
         return CorporationHistoryRecord(
-            replace(baseline.corporation, status=updated.status, updated_at=recorded_at),
+            replace(
+                baseline.corporation,
+                status=updated.status,
+                usage_status=updated.usage_status,
+                updated_at=recorded_at,
+            ),
             EffectiveDateRange(effective_date),
             kind,
             evidence,
             surviving_corporation_id,
+            recorded_by,
         )

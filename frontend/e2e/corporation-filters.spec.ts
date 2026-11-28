@@ -6,6 +6,7 @@ test("存続状態の初回変更で一覧の再取得中も画面のスクロ�
     id: `test-corporation-${index}`,
     category: "corporation",
     name: `検証用企業 ${index + 1}`,
+    representative_name: `代表者 ${index + 1}`,
     corporate_number: null,
     address: "",
     status: "active",
@@ -51,9 +52,8 @@ test("存続状態の初回変更で一覧の再取得中も画面のスクロ�
 
   await page.goto("/vendor/corporations");
   await expect(page.getByText("検証用企業 1", { exact: true })).toBeVisible();
-  await page.getByRole("button", { name: "基本情報を編集" }).first().click();
-  const save = page.getByRole("button", { name: "基本情報を保存" });
-  await expect(save).toBeEnabled();
+  const editLink = page.getByRole("link", { name: "編集・管理" }).first();
+  await expect(editLink).toHaveAttribute("href", "/vendor/corporations/test-corporation-0/edit");
   const filter = page.getByRole("combobox", { name: "存続状態フィルタ" });
   const filterTop = await filter.evaluate((element) => element.getBoundingClientRect().top);
   await page.evaluate((top) => window.scrollTo({ top: top - 24, behavior: "instant" }), filterTop);
@@ -64,7 +64,7 @@ test("存続状態の初回変更で一覧の再取得中も画面のスクロ�
 
   try {
     await filter.click();
-    await page.getByRole("option", { name: "存続（active）" }).click();
+    await page.getByRole("option", { name: "存続中" }).click();
     await filteredRequest.promise;
     await page.evaluate(
       () =>
@@ -73,8 +73,6 @@ test("存続状態の初回変更で一覧の再取得中も画面のスクロ�
         ),
     );
     await expect(page.getByRole("status")).toHaveText("企業一覧を更新中…");
-    await expect(page.getByRole("button", { name: "基本情報を編集" }).first()).toBeDisabled();
-    await expect(save).toBeDisabled();
     expect(await scroll()).toBe(before);
     await expect(page.getByText("検証用企業 1", { exact: true })).toBeVisible({ timeout: 1500 });
   } finally {
@@ -82,7 +80,5 @@ test("存続状態の初回変更で一覧の再取得中も画面のスクロ�
   }
   await expect(page.getByText("存続中 検証用企業 1", { exact: true })).toBeVisible();
   await expect(page.getByRole("status")).toBeEmpty();
-  await expect(page.getByRole("button", { name: "基本情報を編集" }).first()).toBeEnabled();
-  await expect(save).toBeEnabled();
   expect(await scroll()).toBe(before);
 });

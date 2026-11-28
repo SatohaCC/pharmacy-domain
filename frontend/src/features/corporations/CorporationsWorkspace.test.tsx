@@ -17,136 +17,101 @@ const vendorMember: AuthUser = {
   updated_at: "2026-11-26T00:00:00Z",
 };
 
-const sampleCorporation: Corporation = {
+const activeCorporation: Corporation = {
   id: "corp-1",
   category: "corporation",
   name: "株式会社さくら薬局",
+  representative_name: "佐藤 一郎",
   corporate_number: "1234567890123",
   address: "東京都新宿区1-2-3",
   status: "active",
+  usage_status: "not_started",
   created_at: "2026-11-26T00:00:00Z",
   updated_at: "2026-11-26T00:00:00Z",
 };
 
+const dissolvedCorporation: Corporation = {
+  ...activeCorporation,
+  id: "corp-2",
+  name: "株式会社旧薬局",
+  status: "dissolved",
+  usage_status: "suspended",
+};
+
 describe("CorporationsWorkspace", () => {
-  it("vendor_member でも新規法人を登録でき、13桁以外の法人番号はバリデーションエラーになる", async () => {
+  it("一覧から登録画面・編集管理画面への遷移リンクと完了通知を表示し、状態操作を置かない", async () => {
     const user = userEvent.setup();
-    const onCreateCorporation = vi.fn().mockResolvedValue(true);
+    const onDismissNotice = vi.fn();
 
     render(
       <CorporationsWorkspace
         currentUser={vendorMember}
-        corporations={[sampleCorporation]}
-        totalCount={1}
+        corporations={[activeCorporation, dissolvedCorporation]}
+        totalCount={2}
         filter={{}}
         onFilterChange={vi.fn()}
         isLoadingCorporations={false}
         isFetchingCorporations={false}
         corporationsErrorMessage={null}
-        isCreatingCorporation={false}
-        createErrorMessage={null}
-        createUserFacingError={null}
-        lastCreatedCorporation={null}
-        onDismissCreatedBanner={vi.fn()}
-        onCreateCorporation={onCreateCorporation}
-        isUpdatingCorporation={false}
-        updateErrorMessage={null}
-        updateUserFacingError={null}
-        lastUpdatedCorporation={null}
-        onDismissUpdatedBanner={vi.fn()}
-        onUpdateCorporation={vi.fn()}
+        notice="created"
+        onDismissNotice={onDismissNotice}
         isLoggingOut={false}
         onLogout={vi.fn()}
       />,
     );
 
-    const nameInput = screen.getByLabelText(/法人名（個人の場合は氏名・屋号）/, {
-      selector: "input",
-    });
-    const numberInput = screen.getByLabelText(/法人番号（13桁）/, { selector: "input" });
-    const addressInput = screen.getByLabelText(/本店または主たる事務所の所在地/, {
-      selector: "input",
-    });
+    expect(screen.getByRole("table")).toBeInTheDocument();
+    expect(screen.getByRole("columnheader", { name: "法人名" })).toBeInTheDocument();
+    expect(screen.getByRole("columnheader", { name: "代表者 / 開設者" })).toBeInTheDocument();
+    expect(screen.getByRole("rowheader", { name: /株式会社さくら薬局/ })).toBeInTheDocument();
+    expect(screen.queryByText("テナントID:")).not.toBeInTheDocument();
+    for (const label of screen.getAllByText(/^(代表者|開設者|所在地|存続状態|利用状態):$/)) {
+      expect(label).not.toHaveAttribute("aria-hidden");
+    }
+    expect(screen.getByRole("link", { name: "新規企業を登録" })).toHaveAttribute(
+      "href",
+      "/vendor/corporations/new",
+    );
+    expect(screen.getByRole("link", { name: "編集・管理" })).toHaveAttribute(
+      "href",
+      "/vendor/corporations/corp-1/edit",
+    );
+    expect(screen.getByRole("link", { name: "履歴を確認" })).toHaveAttribute(
+      "href",
+      "/vendor/corporations/corp-2/edit",
+    );
+    expect(screen.queryByRole("button", { name: "利用開始" })).not.toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "利用停止" })).not.toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "履歴・状態管理" })).not.toBeInTheDocument();
+    expect(screen.getByText("企業（テナント）を登録しました")).toBeInTheDocument();
 
-    await user.type(nameInput, "株式会社ひまわり薬局");
-    await user.type(numberInput, "12345");
-    await user.click(screen.getByRole("button", { name: "企業（法人・個人）を登録" }));
-
-    expect(screen.getByText("法人番号は半角数字13桁で入力してください。")).toBeInTheDocument();
-    expect(onCreateCorporation).not.toHaveBeenCalled();
-
-    await user.clear(numberInput);
-    await user.type(numberInput, "9876543210123");
-    await user.type(addressInput, "大阪府大阪市北区1-1");
-    await user.click(screen.getByRole("button", { name: "企業（法人・個人）を登録" }));
-
-    expect(onCreateCorporation).toHaveBeenCalledWith({
-      category: "corporation",
-      name: "株式会社ひまわり薬局",
-      corporate_number: "9876543210123",
-      address: "大阪府大阪市北区1-1",
-      valid_from: null,
-      evidence: null,
-    });
-    expect(nameInput).toHaveValue("");
-    expect(numberInput).toHaveValue("");
-    expect(addressInput).toHaveValue("");
+    await user.click(screen.getByRole("button", { name: "登録完了メッセージを閉じる" }));
+    expect(onDismissNotice).toHaveBeenCalledTimes(1);
   });
 
-  it("基本情報の編集では変更された項目のみを送信し、過去効力日指定時に未変更項目を上書きしない", async () => {
+  it("システム利用状態フィルタで絞り込み条件を更新できる", async () => {
     const user = userEvent.setup();
-    const onUpdateCorporation = vi.fn().mockResolvedValue(true);
+    const onFilterChange = vi.fn();
 
     render(
       <CorporationsWorkspace
         currentUser={vendorMember}
-        corporations={[sampleCorporation]}
+        corporations={[activeCorporation]}
         totalCount={1}
         filter={{}}
-        onFilterChange={vi.fn()}
+        onFilterChange={onFilterChange}
         isLoadingCorporations={false}
         isFetchingCorporations={false}
         corporationsErrorMessage={null}
-        isCreatingCorporation={false}
-        createErrorMessage={null}
-        createUserFacingError={null}
-        lastCreatedCorporation={null}
-        onDismissCreatedBanner={vi.fn()}
-        onCreateCorporation={vi.fn()}
-        isUpdatingCorporation={false}
-        updateErrorMessage={null}
-        updateUserFacingError={null}
-        lastUpdatedCorporation={null}
-        onDismissUpdatedBanner={vi.fn()}
-        onUpdateCorporation={onUpdateCorporation}
         isLoggingOut={false}
         onLogout={vi.fn()}
       />,
     );
 
-    await user.click(screen.getByRole("button", { name: "基本情報を編集" }));
+    expect(screen.getByText("利用: 未利用")).toBeInTheDocument();
 
-    // 未変更のまま保存しようとするとエラーを表示し送信しない
-    await user.click(screen.getByRole("button", { name: "基本情報を保存" }));
-    expect(
-      screen.getByText(
-        "変更された項目がありません。名称・法人番号・所在地のいずれかを変更してください。",
-      ),
-    ).toBeInTheDocument();
-    expect(onUpdateCorporation).not.toHaveBeenCalled();
-
-    const editAddressInput = screen.getByLabelText(/変更後の所在地/, { selector: "input" });
-    const editValidFromInput = screen.getByLabelText(/変更の有効開始日（任意）/, {
-      selector: "input",
-    });
-    await user.clear(editAddressInput);
-    await user.type(editAddressInput, "東京都渋谷区9-9-9");
-    await user.type(editValidFromInput, "2026-09-01");
-    await user.click(screen.getByRole("button", { name: "基本情報を保存" }));
-
-    expect(onUpdateCorporation).toHaveBeenCalledWith("corp-1", {
-      address: "東京都渋谷区9-9-9",
-      valid_from: "2026-09-01",
-    });
+    await user.click(screen.getByRole("combobox", { name: "システム利用状態" }));
+    await user.click(screen.getByRole("option", { name: "利用中" }));
+    expect(onFilterChange).toHaveBeenCalledWith({ usage_status: "active" });
   });
 });

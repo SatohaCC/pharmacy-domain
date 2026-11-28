@@ -14,12 +14,14 @@ from app.domain.corporate.primitives import (
     CorporateAddress,
     CorporateNumber,
     CorporationName,
+    RepresentativeName,
 )
 from app.domain.corporate.value_objects import (
     CorporateRelationRevision,
     CorporateRelationType,
     CorporationCategory,
     CorporationStatus,
+    CorporationUsageStatus,
 )
 from app.domain.foundation.exceptions import DomainValidationError
 from app.domain.foundation.primitives import AwareDatetime
@@ -37,6 +39,8 @@ class Corporation:
     status: CorporationStatus
     created_at: AwareDatetime
     updated_at: AwareDatetime
+    usage_status: CorporationUsageStatus = CorporationUsageStatus.NOT_STARTED
+    representative_name: RepresentativeName = RepresentativeName("")
 
     def __post_init__(self) -> None:
         if self.category == CorporationCategory.INDIVIDUAL and self.corporate_number is not None:
@@ -50,16 +54,37 @@ class Corporation:
                 details={"field": "updated_at"},
             )
 
+    def change_usage_status(
+        self,
+        next_usage_status: CorporationUsageStatus,
+        *,
+        updated_at: AwareDatetime,
+    ) -> Corporation:
+        """システム利用状態を変更する。解散・合併消滅法人の利用開始・再開は不可。"""
+        if (
+            self.status != CorporationStatus.ACTIVE
+            and next_usage_status == CorporationUsageStatus.ACTIVE
+        ):
+            raise InvalidCorporationTransitionError(
+                "解散または吸収合併で消滅した法人のシステム利用は開始・再開できません。",
+                details={
+                    "status": self.status.value,
+                    "usage_status": next_usage_status.value,
+                },
+            )
+        return replace(self, usage_status=next_usage_status, updated_at=updated_at)
+
     def update_profile(
         self,
         *,
         name: CorporationName | None = None,
+        representative_name: RepresentativeName | None = None,
         address: CorporateAddress | None = None,
         corporate_number: CorporateNumber | None = None,
         clear_corporate_number: bool = False,
         updated_at: AwareDatetime,
     ) -> Corporation:
-        """基本情報（名称・所在地・法人番号）を検証して新しい Corporation を返す。"""
+        """基本情報（名称・代表者名・所在地・法人番号）を検証して新しい Corporation を返す。"""
         if self.status != CorporationStatus.ACTIVE:
             raise InvalidCorporationUpdateError(
                 "解散または合併消滅した法人の基本情報は変更できません。",
@@ -67,6 +92,7 @@ class Corporation:
             )
         return self.correct_profile(
             name=name,
+            representative_name=representative_name,
             address=address,
             corporate_number=corporate_number,
             clear_corporate_number=clear_corporate_number,
@@ -77,6 +103,7 @@ class Corporation:
         self,
         *,
         name: CorporationName | None = None,
+        representative_name: RepresentativeName | None = None,
         address: CorporateAddress | None = None,
         corporate_number: CorporateNumber | None = None,
         clear_corporate_number: bool = False,
@@ -85,6 +112,7 @@ class Corporation:
         """既に確認済みの基本情報を、当時の存続状態を保って訂正する。"""
         if (
             name is None
+            and representative_name is None
             and address is None
             and corporate_number is None
             and not clear_corporate_number
@@ -122,6 +150,10 @@ class Corporation:
             status=self.status,
             created_at=self.created_at,
             updated_at=updated_at,
+            usage_status=self.usage_status,
+            representative_name=(
+                representative_name if representative_name is not None else self.representative_name
+            ),
         )
 
     def change_status(
@@ -153,6 +185,11 @@ class Corporation:
                 details={"field": "updated_at"},
             )
 
+        next_usage_status = (
+            CorporationUsageStatus.SUSPENDED
+            if next_status in (CorporationStatus.DISSOLVED, CorporationStatus.MERGED_OUT)
+            else self.usage_status
+        )
         return Corporation(
             id=self.id,
             category=self.category,
@@ -162,6 +199,8 @@ class Corporation:
             status=next_status,
             created_at=self.created_at,
             updated_at=updated_at,
+            usage_status=next_usage_status,
+            representative_name=self.representative_name,
         )
 
 
@@ -210,10 +249,19 @@ class CorporateRelation:
         """訂正前の記録を保ったまま、訂正後の記録を追加する。"""
         return replace(self, revisions=(*self.revisions, revision))
 
-    def end(self, *, end_date: date, recorded_at: AwareDatetime) -> CorporateRelation:
+    def end(
+        self,
+        *,
+        end_date: date,
+        recorded_at: AwareDatetime,
+        recorded_by: str | None = None,
+    ) -> CorporateRelation:
         """指定日で関係を終了し、それまでの記録を保持する。"""
         return self.correct(
             replace(
-                self.current, period=self.current.period.close_at(end_date), recorded_at=recorded_at
+                self.current,
+                period=self.current.period.close_at(end_date),
+                recorded_at=recorded_at,
+                recorded_by=recorded_by,
             )
         )

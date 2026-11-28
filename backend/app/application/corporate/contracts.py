@@ -11,10 +11,14 @@ class RegisterCorporationInput:
 
     category: str
     name: str
+    representative_name: str
     corporate_number: str | None = None
     address: str = ""
     valid_from: date | None = None
+    valid_to: date | None = None
     evidence: str | None = None
+    recorded_by: str | None = None
+    usage_status: str = "not_started"
 
 
 @dataclass(frozen=True, slots=True)
@@ -22,11 +26,14 @@ class UpdateCorporationInput:
     """法人基本情報更新コマンドの入力。"""
 
     name: str | None = None
+    representative_name: str | None = None
     address: str | None = None
     corporate_number: str | None = None
     provided_fields: frozenset[str] | None = None
     valid_from: date | None = None
+    valid_to: date | None = None
     evidence: str | None = None
+    recorded_by: str | None = None
 
 
 @dataclass(frozen=True, slots=True)
@@ -37,6 +44,15 @@ class ChangeCorporationStatusInput:
     effective_date: date | None = None
     evidence: str | None = None
     surviving_corporation_id: str | None = None
+    recorded_by: str | None = None
+
+
+@dataclass(frozen=True, slots=True)
+class ChangeCorporationUsageStatusInput:
+    """法人システム利用状態変更コマンドの入力。"""
+
+    usage_status: str
+    recorded_by: str | None = None
 
 
 @dataclass(frozen=True, slots=True)
@@ -46,6 +62,7 @@ class ListCorporationsQuery:
     category: str | None = None
     status: str | None = None
     query: str | None = None
+    usage_status: str | None = None
 
 
 @dataclass(frozen=True, slots=True)
@@ -60,6 +77,10 @@ class CorporationItem:
     status: str
     created_at: datetime
     updated_at: datetime
+    valid_from: date | None = None
+    valid_to: date | None = None
+    usage_status: str = "not_started"
+    representative_name: str = ""
 
 
 @dataclass(frozen=True, slots=True)
@@ -81,6 +102,7 @@ class CorporationHistoryItem:
     kind: str
     evidence: str | None
     surviving_corporation_id: str | None
+    recorded_by: str | None = None
 
 
 class CorporationCommandPort(Protocol):
@@ -114,6 +136,16 @@ class CorporationCommandPort(Protocol):
         now: datetime | None = None,
     ) -> CorporationItem:
         """法人の存続状態を変更する。"""
+        ...
+
+    def change_usage_status(
+        self,
+        corporation_id: str,
+        data: ChangeCorporationUsageStatusInput,
+        *,
+        now: datetime | None = None,
+    ) -> CorporationItem:
+        """法人のシステム利用状態を変更する。"""
         ...
 
     def correct_history(
@@ -155,7 +187,7 @@ class RegisterCorporateRelationInput:
     valid_from: date
     evidence: str
     valid_to: date | None = None
-    confirmation_status: str = "unverified"
+    recorded_by: str | None = None
 
 
 @dataclass(frozen=True, slots=True)
@@ -165,8 +197,8 @@ class CorrectCorporateRelationInput:
     valid_from: date | None = None
     valid_to: date | None = None
     evidence: str | None = None
-    confirmation_status: str | None = None
     provided_fields: frozenset[str] | None = None
+    recorded_by: str | None = None
 
 
 @dataclass(frozen=True, slots=True)
@@ -176,6 +208,7 @@ class ListCorporateRelationsQuery:
     corporation_id: str | None = None
     as_of: date | None = None
     recorded_as_of: datetime | None = None
+    relation_type: str | None = None
 
 
 @dataclass(frozen=True, slots=True)
@@ -185,8 +218,8 @@ class CorporateRelationRevisionItem:
     valid_from: date
     valid_to: date | None
     evidence: str
-    confirmation_status: str
     recorded_at: datetime
+    recorded_by: str | None
 
 
 @dataclass(frozen=True, slots=True)
@@ -212,7 +245,13 @@ class CorporateRelationCommandPort(Protocol):
         """指定の関係に訂正記録を追加する。"""
         ...
 
-    def end_relation(self, relation_id: str, end_date: date) -> CorporateRelationItem:
+    def end_relation(
+        self,
+        relation_id: str,
+        end_date: date,
+        *,
+        recorded_by: str | None = None,
+    ) -> CorporateRelationItem:
         """指定の関係を有効終了日で終了する。"""
         ...
 

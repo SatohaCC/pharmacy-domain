@@ -11,8 +11,8 @@ def to_revision_item(revision: CorporateRelationRevision) -> CorporateRelationRe
         valid_from=revision.period.valid_from,
         valid_to=revision.period.valid_to,
         evidence=revision.evidence.value,
-        confirmation_status=revision.confirmation_status.value,
         recorded_at=revision.recorded_at.value,
+        recorded_by=revision.recorded_by,
     )
 
 
@@ -28,6 +28,6 @@ def to_relation_item(
         valid_from=revision.period.valid_from,
         valid_to=revision.period.valid_to,
         evidence=revision.evidence.value,
-        confirmation_status=revision.confirmation_status.value,
         recorded_at=revision.recorded_at.value,
+        recorded_by=revision.recorded_by,
     )

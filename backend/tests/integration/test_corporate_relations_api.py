@@ -33,7 +33,10 @@ def _vendor_principal() -> AuthPrincipal:
 
 
 def _create_corporation(client: TestClient, name: str, category: str = "corporation") -> str:
-    response = client.post("/api/corporations", json={"category": category, "name": name})
+    response = client.post(
+        "/api/corporations",
+        json={"category": category, "name": name, "representative_name": f"{name}代表"},
+    )
     assert response.status_code == 201, response.text
     return str(response.json()["id"])
 
@@ -89,7 +92,6 @@ def test_revision_history_and_business_date_filters_survive_migration(
         path,
         json={
             "evidence": "原契約を確認",
-            "confirmation_status": "verified",
             "valid_from": "2026-01-02",
         },
     )
@@ -116,7 +118,11 @@ def test_revision_history_and_business_date_filters_survive_migration(
         "2026-01-02",
         "2026-01-02",
     ]
-    assert history.json()[-1]["confirmation_status"] == "verified"
+    assert [record["recorded_by"] for record in history.json()] == [
+        "vendor-admin-1",
+        "vendor-admin-1",
+        "vendor-admin-1",
+    ]
     assert before_end.json()["items"][0]["id"] == initial["id"]
     assert after_end.json() == {"items": [], "total": 0}
     assert previously_known.json()["items"] == [initial]
@@ -236,3 +242,30 @@ def test_concurrent_registration_validates_committed_relation_before_writing(
     assert saved.status_code == 201
     assert (rejected.status_code, rejected.json()["code"]) == (409, error_code)
     assert client.get(_RELATIONS).json()["total"] == 1
+
+
+def test_list_relations_filters_by_relation_type(
+    relations_api: tuple[TestClient, Engine, str],
+) -> None:
+    client, _engine, parent = relations_api
+    child = _create_corporation(client, "子法人")
+    partner = _create_corporation(client, "提携法人")
+
+    parent_rel = _register(client, parent, child, kind="parent_child")
+    affiliate_rel = client.post(
+        _RELATIONS,
+        json={
+            "source_corporation_id": parent,
+            "target_corporation_id": partner,
+            "relation_type": "affiliate",
+            "valid_from": "2026-01-01",
+            "evidence": "提携契約書",
+        },
+    )
+    assert parent_rel.status_code == affiliate_rel.status_code == 201
+
+    only_affiliate = client.get(_RELATIONS, params={"relation_type": "affiliate"})
+    only_fc_vc = client.get(_RELATIONS, params={"relation_type": "fc_vc"})
+
+    assert [item["id"] for item in only_affiliate.json()["items"]] == [affiliate_rel.json()["id"]]
+    assert only_fc_vc.json() == {"items": [], "total": 0}

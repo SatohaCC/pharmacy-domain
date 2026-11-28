@@ -12,7 +12,6 @@ from app.domain.corporate import (
     CorporateRelationRevision,
     CorporateRelationType,
     CorporationId,
-    RelationConfirmationStatus,
     RelationEvidence,
 )
 from app.domain.foundation import AwareDatetime, DomainConflictError, EffectiveDateRange
@@ -27,11 +26,12 @@ def _stored_time(value: AwareDatetime) -> str:
 
 
 def _revision(row: RowMapping) -> CorporateRelationRevision:
+    recorded_by = row["recorded_by"]
     return CorporateRelationRevision(
         EffectiveDateRange(row["valid_from"], row["valid_to"]),
         RelationEvidence(row["evidence"]),
-        RelationConfirmationStatus(row["confirmation_status"]),
         AwareDatetime.parse(row["recorded_at"]),
+        recorded_by=str(recorded_by) if recorded_by is not None else None,
     )
 
 
@@ -114,6 +114,7 @@ class SqlAlchemyCorporateRelationRepository:
         corporation_id: CorporationId | None,
         as_of: date | None,
         recorded_as_of: AwareDatetime | None,
+        relation_type: CorporateRelationType | None = None,
     ) -> tuple[CorporateRelation, ...]:
         """指定の記録時点から見た有効な関係を取得する。"""
         statement = _latest_revisions(recorded_as_of)
@@ -129,6 +130,8 @@ class SqlAlchemyCorporateRelationRepository:
                 revisions.c.valid_from <= as_of,
                 or_(revisions.c.valid_to.is_(None), revisions.c.valid_to > as_of),
             )
+        if relation_type is not None:
+            statement = statement.where(relations.c.relation_type == relation_type.value)
         return self._list(statement)
 
     def save(self, relation: CorporateRelation) -> None:
@@ -150,7 +153,7 @@ class SqlAlchemyCorporateRelationRepository:
                 valid_from=revision.period.valid_from,
                 valid_to=revision.period.valid_to,
                 evidence=revision.evidence.value,
-                confirmation_status=revision.confirmation_status.value,
+                recorded_by=revision.recorded_by,
             )
         )
 

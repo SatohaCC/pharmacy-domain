@@ -11,6 +11,7 @@ from app.application.corporate.contracts import (
 from app.application.corporate.mappers import (
     parse_category,
     parse_status,
+    parse_usage_status,
     to_application_error,
     to_corporation_history_item,
 )
@@ -87,6 +88,9 @@ class CorporationQueryService:
             parse_category(query.category).value if query.category is not None else None
         )
         normalized_status = parse_status(query.status).value if query.status is not None else None
+        normalized_usage_status = (
+            parse_usage_status(query.usage_status).value if query.usage_status is not None else None
+        )
         normalized_query = query.query.strip() if query.query is not None else None
         if normalized_query == "":
             normalized_query = None
@@ -95,6 +99,7 @@ class CorporationQueryService:
             ListCorporationsQuery(
                 category=normalized_category,
                 status=normalized_status,
+                usage_status=normalized_usage_status,
                 query=normalized_query,
             )
         )

@@ -24,7 +24,7 @@ export function formatAuthRoleLabel(role: AuthRole): string {
 
 export interface VendorConsoleHeaderProps {
   title: string;
-  activeSection: "corporations" | "users";
+  activeSection: "corporations" | "relations" | "users";
   currentUser: AuthUser;
   isLoggingOut: boolean;
   onLogout: () => void;
@@ -42,21 +42,22 @@ export function VendorConsoleHeader({
     <header {...stylex.props(s.topBar)}>
       <div {...stylex.props(s.topRow)}>
         <div {...stylex.props(s.identity)}>
-          <p {...stylex.props(s.eyebrow)}>SYSTEM VENDOR CONSOLE</p>
           <div {...stylex.props(s.titleRow)}>
             <h1 {...stylex.props(s.heading)}>{title}</h1>
+          </div>
+          <div {...stylex.props(s.metaRow)}>
+            <p {...stylex.props(s.subText)}>
+              ログイン中: {currentUser.display_name}（{currentUser.email}）
+            </p>
             {currentUser.roles.map((role) => (
               <Badge key={role} tone={role === "vendor_admin" ? "success" : "neutral"}>
                 {formatAuthRoleLabel(role)}
               </Badge>
             ))}
           </div>
-          <p {...stylex.props(s.subText)}>
-            ログイン中: {currentUser.display_name}（{currentUser.email}）
-          </p>
         </div>
         <div {...stylex.props(s.topActions)}>
-          <Button variant="outlined" onClick={onLogout} disabled={isLoggingOut}>
+          <Button variant="outlined" size="sm" onClick={onLogout} disabled={isLoggingOut}>
             {isLoggingOut ? "ログアウト中…" : "ログアウト"}
           </Button>
         </div>
@@ -69,6 +70,13 @@ export function VendorConsoleHeader({
           {...stylex.props(s.navLink, activeSection === "corporations" && s.navLinkActive)}
         >
           法人管理
+        </Link>
+        <Link
+          href="/vendor/corporations/relations"
+          aria-current={activeSection === "relations" ? "page" : undefined}
+          {...stylex.props(s.navLink, activeSection === "relations" && s.navLinkActive)}
+        >
+          法人間関係
         </Link>
         <Link
           href="/vendor/users"

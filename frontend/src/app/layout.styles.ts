@@ -3,7 +3,7 @@ import { tokens } from "../shared/styles/tokens.stylex";
 
 export const layoutStyles = stylex.create({
   body: {
-    backgroundColor: tokens.surface,
+    backgroundColor: tokens.pageBackground,
     color: tokens.onSurface,
     accentColor: tokens.primary,
   },
