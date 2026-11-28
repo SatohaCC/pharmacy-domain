@@ -74,6 +74,7 @@ export const tokens = stylex.defineVars({
   onTertiary: { default: palette.neutral100, [DARK]: palette.tertiary20 },
   tertiaryContainer: { default: palette.tertiary90, [DARK]: palette.tertiary30 },
   onTertiaryContainer: { default: palette.tertiary10, [DARK]: palette.tertiary90 },
+  pageBackground: { default: palette.neutral100, [DARK]: palette.neutral6 },
   surface: { default: palette.neutral98, [DARK]: palette.neutral6 },
   surfaceContainerLowest: { default: palette.neutral100, [DARK]: palette.neutral4 },
   surfaceContainerLow: { default: palette.neutral96, [DARK]: palette.neutral10 },

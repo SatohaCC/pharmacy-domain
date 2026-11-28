@@ -8,7 +8,7 @@ export const loginFormStyles = stylex.create({
     placeItems: "center",
     paddingBlock: "clamp(1rem, 5dvh, 3rem)",
     paddingInline: "clamp(1rem, 4vw, 3rem)",
-    backgroundColor: tokens.surface,
+    backgroundColor: tokens.pageBackground,
     color: tokens.onSurface,
   },
   card: {
