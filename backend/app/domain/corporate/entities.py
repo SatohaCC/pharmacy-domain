@@ -62,7 +62,7 @@ class Corporation:
     ) -> Corporation:
         """システム利用状態を変更する。解散・合併消滅法人の利用開始・再開は不可。"""
         if (
-            self.status != CorporationStatus.ACTIVE
+            not self.status.allows_usage_activation
             and next_usage_status == CorporationUsageStatus.ACTIVE
         ):
             raise InvalidCorporationTransitionError(
@@ -73,6 +73,14 @@ class Corporation:
                 },
             )
         return replace(self, usage_status=next_usage_status, updated_at=updated_at)
+
+    def ensure_profile_updatable(self) -> None:
+        """現在の存続状態で通常の基本情報更新が可能かを検証する。"""
+        if not self.status.allows_profile_update:
+            raise InvalidCorporationUpdateError(
+                "解散または合併消滅した法人の基本情報は変更できません。",
+                details={"current_status": self.status.value},
+            )
 
     def update_profile(
         self,
@@ -85,11 +93,7 @@ class Corporation:
         updated_at: AwareDatetime,
     ) -> Corporation:
         """基本情報（名称・代表者名・所在地・法人番号）を検証して新しい Corporation を返す。"""
-        if self.status != CorporationStatus.ACTIVE:
-            raise InvalidCorporationUpdateError(
-                "解散または合併消滅した法人の基本情報は変更できません。",
-                details={"current_status": self.status.value},
-            )
+        self.ensure_profile_updatable()
         return self.correct_profile(
             name=name,
             representative_name=representative_name,
@@ -171,7 +175,7 @@ class Corporation:
                     "target_status": next_status.value,
                 },
             )
-        if self.status in (CorporationStatus.DISSOLVED, CorporationStatus.MERGED_OUT):
+        if self.status.is_terminal:
             raise InvalidCorporationTransitionError(
                 "解散または合併消滅した法人の存続状態は変更できません。",
                 details={
@@ -186,9 +190,7 @@ class Corporation:
             )
 
         next_usage_status = (
-            CorporationUsageStatus.SUSPENDED
-            if next_status in (CorporationStatus.DISSOLVED, CorporationStatus.MERGED_OUT)
-            else self.usage_status
+            CorporationUsageStatus.SUSPENDED if next_status.suspends_usage else self.usage_status
         )
         return Corporation(
             id=self.id,

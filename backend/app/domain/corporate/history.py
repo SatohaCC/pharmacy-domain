@@ -1,10 +1,13 @@
 """法人の有効期間と記録時点に基づく変更・訂正履歴。"""
 
+from collections.abc import Mapping
 from dataclasses import dataclass, replace
 from datetime import UTC, date
 from enum import StrEnum
+from typing import Self
 
 from app.domain.corporate.entities import Corporation
+from app.domain.corporate.exceptions import InvalidCorporationTransitionError
 from app.domain.corporate.identifiers import CorporationId
 from app.domain.corporate.primitives import CorporationEvidence
 from app.domain.corporate.value_objects import CorporationStatus
@@ -18,12 +21,67 @@ from app.domain.foundation import (
 class CorporationChangeKind(StrEnum):
     """法人履歴に残す業務操作。"""
 
-    LEGACY = "legacy"
-    REGISTRATION = "registration"
-    PROFILE = "profile"
-    CORRECTION = "correction"
-    DISSOLUTION = "dissolution"
-    MERGER = "merger"
+    _is_status_change: bool
+
+    def __new__(cls, value: str, is_status_change: bool | None = None) -> Self:
+        if not isinstance(is_status_change, bool):
+            raise TypeError("CorporationChangeKind の定義には is_status_change の指定が必須です。")
+        obj = str.__new__(cls, value)
+        obj._value_ = value
+        obj._is_status_change = is_status_change
+        return obj
+
+    LEGACY = ("legacy", False)
+    REGISTRATION = ("registration", False)
+    PROFILE = ("profile", False)
+    CORRECTION = ("correction", False)
+    DISSOLUTION = ("dissolution", True)
+    MERGER = ("merger", True)
+
+    @property
+    def is_status_change(self) -> bool:
+        """存続状態の変更を表す操作種別かどうかを返す。"""
+        return self._is_status_change
+
+
+_STATUS_CHANGE_KINDS: dict[CorporationStatus, CorporationChangeKind | None] = {
+    CorporationStatus.ACTIVE: None,
+    CorporationStatus.DISSOLVED: CorporationChangeKind.DISSOLUTION,
+    CorporationStatus.MERGED_OUT: CorporationChangeKind.MERGER,
+}
+
+
+def _validate_status_change_kinds(
+    mapping: Mapping[CorporationStatus, CorporationChangeKind | None],
+) -> None:
+    missing = set(CorporationStatus) - set(mapping)
+    if missing:
+        names = ", ".join(sorted(status.value for status in missing))
+        raise ValueError(f"CorporationStatus に対応する履歴種別が未定義です: {names}")
+    for status, kind in mapping.items():
+        if kind is not None and not kind.is_status_change:
+            raise ValueError(
+                f"状態遷移先 {status.value} に状態変更ではない履歴種別 "
+                f"{kind.value} は指定できません。"
+            )
+
+
+_validate_status_change_kinds(_STATUS_CHANGE_KINDS)
+
+
+def status_change_kind_for(status: CorporationStatus) -> CorporationChangeKind | None:
+    """存続状態に対応する履歴操作種別を返す。未定義状態は ValueError。"""
+    if status not in _STATUS_CHANGE_KINDS:
+        raise ValueError(f"未定義の存続状態です: {status}")
+    return _STATUS_CHANGE_KINDS[status]
+
+
+@dataclass(frozen=True, slots=True)
+class CorporationStatusTransition:
+    """存続状態遷移の結果として確定した現在法人と追記用履歴記録。"""
+
+    corporation: Corporation
+    record: CorporationHistoryRecord
 
 
 @dataclass(frozen=True, slots=True)
@@ -74,18 +132,10 @@ class CorporationHistory:
             else self.records
         )
         status_change = next(
-            (
-                r
-                for r in reversed(recorded)
-                if r.kind in (CorporationChangeKind.DISSOLUTION, CorporationChangeKind.MERGER)
-            ),
+            (r for r in reversed(recorded) if r.kind.is_status_change),
             None,
         )
-        profiles = tuple(
-            r
-            for r in recorded
-            if r.kind not in (CorporationChangeKind.DISSOLUTION, CorporationChangeKind.MERGER)
-        )
+        profiles = tuple(r for r in recorded if not r.kind.is_status_change)
         for index in range(len(profiles) - 1, -1, -1):
             selected = profiles[index]
             if selected.period.contains(day):
@@ -135,18 +185,19 @@ class CorporationHistory:
         evidence: CorporationEvidence | None,
         surviving_corporation_id: CorporationId | None,
         recorded_by: str | None = None,
-    ) -> CorporationHistoryRecord:
-        """存続状態が指定日から変わる事実を追記するための記録を作る。"""
+    ) -> CorporationStatusTransition:
+        """存続状態が指定日から変わる事実を追記するための遷移結果と履歴記録を作る。"""
         updated = current.change_status(status, updated_at=recorded_at)
         baseline = self.at(effective_date)
         if baseline is None:
             raise DomainValidationError("効力日が確認済みの法人情報より前です。")
-        kind = (
-            CorporationChangeKind.MERGER
-            if status == CorporationStatus.MERGED_OUT
-            else CorporationChangeKind.DISSOLUTION
-        )
-        return CorporationHistoryRecord(
+        kind = status_change_kind_for(updated.status)
+        if kind is None:
+            raise InvalidCorporationTransitionError(
+                "指定された存続状態への遷移は履歴に記録できません。",
+                details={"target_status": updated.status.value},
+            )
+        record = CorporationHistoryRecord(
             replace(
                 baseline.corporation,
                 status=updated.status,
@@ -159,3 +210,4 @@ class CorporationHistory:
             surviving_corporation_id,
             recorded_by,
         )
+        return CorporationStatusTransition(corporation=updated, record=record)

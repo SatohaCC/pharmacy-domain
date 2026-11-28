@@ -21,6 +21,7 @@ from app.domain.corporate import (
     InvalidCorporationUpdateError,
     RepresentativeName,
 )
+from app.domain.corporate.value_objects import CorporationUsageStatus
 from app.domain.foundation import (
     AwareDatetime,
     DomainConflictError,
@@ -364,3 +365,51 @@ def test_corporate_domain_exceptions_expose_expected_codes_and_details() -> None
         "current_status": "dissolved",
         "target_status": "active",
     }
+
+
+def test_corporation_status_requires_explicit_rule_and_preserves_strenum_compatibility() -> None:
+    assert CorporationStatus.ACTIVE == "active"
+    assert CorporationStatus("dissolved") is CorporationStatus.DISSOLVED
+    assert CorporationStatus.ACTIVE.is_terminal is False
+    assert CorporationStatus.ACTIVE.suspends_usage is False
+    assert CorporationStatus.ACTIVE.allows_profile_update is True
+    assert CorporationStatus.ACTIVE.allows_usage_activation is True
+
+    for terminal in (CorporationStatus.DISSOLVED, CorporationStatus.MERGED_OUT):
+        assert terminal.is_terminal is True
+        assert terminal.suspends_usage is True
+        assert terminal.allows_profile_update is False
+        assert terminal.allows_usage_activation is False
+
+    new_member = cast(Any, CorporationStatus)._new_member_
+    with pytest.raises(TypeError, match="CorporationStatusRule"):
+        new_member(CorporationStatus, "broken")
+
+    with pytest.raises(TypeError, match="CorporationStatusRule"):
+        new_member(CorporationStatus, "broken", "not_a_rule")
+
+
+def test_corporation_status_transition_suspends_usage_and_blocks_profile_update() -> None:
+    base_dt = datetime(2026, 11, 21, 9, 0, tzinfo=UTC)
+    active_corp = _make_corporation(created_at=base_dt, updated_at=base_dt).change_usage_status(
+        CorporationUsageStatus.ACTIVE,
+        updated_at=AwareDatetime(base_dt + timedelta(minutes=1)),
+    )
+    active_corp.ensure_profile_updatable()
+
+    for terminal_status in (CorporationStatus.DISSOLVED, CorporationStatus.MERGED_OUT):
+        terminated = active_corp.change_status(
+            terminal_status,
+            updated_at=AwareDatetime(base_dt + timedelta(minutes=2)),
+        )
+        assert terminated.usage_status == CorporationUsageStatus.SUSPENDED
+
+        with pytest.raises(InvalidCorporationUpdateError) as exc:
+            terminated.ensure_profile_updatable()
+        assert exc.value.details == {"current_status": terminal_status.value}
+
+        with pytest.raises(InvalidCorporationTransitionError):
+            terminated.change_usage_status(
+                CorporationUsageStatus.ACTIVE,
+                updated_at=AwareDatetime(base_dt + timedelta(minutes=3)),
+            )

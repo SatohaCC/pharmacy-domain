@@ -6,6 +6,7 @@ import pytest
 from app.application.corporate.commands import CorporationCommandService
 from app.application.corporate.contracts import (
     ChangeCorporationStatusInput,
+    ChangeCorporationUsageStatusInput,
     CorporationItem,
     CorporationListResult,
     ListCorporationsQuery,
@@ -20,9 +21,10 @@ from app.application.foundation.errors import (
     ApplicationValidationError,
 )
 from app.domain.corporate.entities import Corporation
-from app.domain.corporate.history import CorporationHistoryRecord
+from app.domain.corporate.history import CorporationChangeKind, CorporationHistoryRecord
 from app.domain.corporate.identifiers import CorporationId
 from app.domain.corporate.primitives import CorporateNumber
+from app.domain.corporate.value_objects import CorporationStatus, CorporationUsageStatus
 
 
 class _FixedClock:
@@ -309,3 +311,71 @@ def test_corporation_use_cases_register_duplicate_check_and_status_transition() 
     assert dissolved_update_exc.value.code == "INVALID_UPDATE"
     with pytest.raises(ApplicationBadRequestError):
         commands.change_status(created.id, ChangeCorporationStatusInput(status="active"))
+
+
+@pytest.mark.parametrize(
+    ("target_status", "expected_kind"),
+    [
+        ("dissolved", CorporationChangeKind.DISSOLUTION),
+        ("merged_out", CorporationChangeKind.MERGER),
+    ],
+)
+def test_change_status_persists_domain_transition_and_matching_history(
+    target_status: str,
+    expected_kind: CorporationChangeKind,
+) -> None:
+    store: dict[str, Corporation] = {}
+    history: dict[str, tuple[CorporationHistoryRecord, ...]] = {}
+    events: list[str] = []
+    fixed_now = datetime(2026, 11, 21, 10, 0, tzinfo=UTC)
+
+    commands = CorporationCommandService(
+        uow_factory=lambda: _FakeCorporationUnitOfWork(store, events, history),
+        clock=_FixedClock(fixed_now),
+        id_generator=_SequentialIdGenerator(),
+    )
+    created = commands.register_corporation(
+        RegisterCorporationInput(
+            category="corporation",
+            name="株式会社テスト薬局",
+            representative_name="山田 太郎",
+            usage_status="active",
+        )
+    )
+    surviving = (
+        commands.register_corporation(
+            RegisterCorporationInput(
+                category="corporation",
+                name="株式会社存続薬局",
+                representative_name="佐藤 花子",
+            )
+        )
+        if target_status == "merged_out"
+        else None
+    )
+
+    updated = commands.change_status(
+        created.id,
+        ChangeCorporationStatusInput(
+            status=target_status,
+            evidence="登記簿を確認" if surviving is not None else None,
+            surviving_corporation_id=surviving.id if surviving is not None else None,
+        ),
+    )
+
+    saved_corp = store[created.id]
+    latest_record = history[created.id][-1]
+    assert updated.status == target_status
+    assert updated.usage_status == "suspended"
+    assert saved_corp.status == CorporationStatus(target_status)
+    assert saved_corp.usage_status == CorporationUsageStatus.SUSPENDED
+    assert latest_record.kind == expected_kind
+    assert latest_record.corporation.status == saved_corp.status
+    assert latest_record.corporation.usage_status == saved_corp.usage_status
+    assert latest_record.corporation.updated_at == saved_corp.updated_at
+
+    with pytest.raises(ApplicationBadRequestError):
+        commands.change_usage_status(
+            created.id,
+            ChangeCorporationUsageStatusInput(usage_status="active"),
+        )
