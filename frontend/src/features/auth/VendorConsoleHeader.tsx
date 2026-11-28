@@ -42,21 +42,22 @@ export function VendorConsoleHeader({
     <header {...stylex.props(s.topBar)}>
       <div {...stylex.props(s.topRow)}>
         <div {...stylex.props(s.identity)}>
-          <p {...stylex.props(s.eyebrow)}>SYSTEM VENDOR CONSOLE</p>
           <div {...stylex.props(s.titleRow)}>
             <h1 {...stylex.props(s.heading)}>{title}</h1>
+          </div>
+          <div {...stylex.props(s.metaRow)}>
+            <p {...stylex.props(s.subText)}>
+              ログイン中: {currentUser.display_name}（{currentUser.email}）
+            </p>
             {currentUser.roles.map((role) => (
               <Badge key={role} tone={role === "vendor_admin" ? "success" : "neutral"}>
                 {formatAuthRoleLabel(role)}
               </Badge>
             ))}
           </div>
-          <p {...stylex.props(s.subText)}>
-            ログイン中: {currentUser.display_name}（{currentUser.email}）
-          </p>
         </div>
         <div {...stylex.props(s.topActions)}>
-          <Button variant="outlined" onClick={onLogout} disabled={isLoggingOut}>
+          <Button variant="outlined" size="sm" onClick={onLogout} disabled={isLoggingOut}>
             {isLoggingOut ? "ログアウト中…" : "ログアウト"}
           </Button>
         </div>

@@ -60,6 +60,11 @@ describe("CorporationsWorkspace", () => {
       />,
     );
 
+    expect(screen.getByRole("table")).toBeInTheDocument();
+    expect(screen.getByRole("columnheader", { name: "法人名" })).toBeInTheDocument();
+    expect(screen.getByRole("columnheader", { name: "代表者 / 開設者" })).toBeInTheDocument();
+    expect(screen.getByRole("rowheader", { name: /株式会社さくら薬局/ })).toBeInTheDocument();
+    expect(screen.queryByText("テナントID:")).not.toBeInTheDocument();
     expect(screen.getByRole("link", { name: "新規企業を登録" })).toHaveAttribute(
       "href",
       "/vendor/corporations/new",
