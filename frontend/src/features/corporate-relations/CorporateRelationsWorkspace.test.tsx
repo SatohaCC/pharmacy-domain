@@ -52,10 +52,9 @@ const sampleRelation: CorporateRelation = {
 };
 
 describe("CorporateRelationsWorkspace", () => {
-  it("新規法人間関係を登録し、一覧・絞り込み・終了操作を呼び出せる", async () => {
+  it("テーブル一覧・登録画面への遷移リンク・完了通知・終了操作を実行できる", async () => {
     const user = userEvent.setup();
-    const onRegisterRelation = vi.fn().mockResolvedValue(true);
-    const onFilterChange = vi.fn();
+    const onDismissNotice = vi.fn();
     const onEndRelation = vi.fn().mockResolvedValue(true);
 
     render(
@@ -65,12 +64,11 @@ describe("CorporateRelationsWorkspace", () => {
         relations={[sampleRelation]}
         totalCount={1}
         filter={{}}
-        onFilterChange={onFilterChange}
+        onFilterChange={vi.fn()}
         isLoadingRelations={false}
         relationsErrorMessage={null}
-        isRegistering={false}
-        registerErrorMessage={null}
-        onRegisterRelation={onRegisterRelation}
+        notice="created"
+        onDismissNotice={onDismissNotice}
         isCorrecting={false}
         correctErrorMessage={null}
         onCorrectRelation={vi.fn().mockResolvedValue(true)}
@@ -87,31 +85,20 @@ describe("CorporateRelationsWorkspace", () => {
       />,
     );
 
-    expect(screen.getByText("株式会社親薬局 → 子薬局")).toBeInTheDocument();
+    expect(screen.getByRole("table")).toBeInTheDocument();
+    expect(screen.getByRole("rowheader", { name: "株式会社親薬局" })).toBeInTheDocument();
+    expect(screen.getByRole("link", { name: "新規関係を登録" })).toHaveAttribute(
+      "href",
+      "/vendor/corporations/relations/new",
+    );
+    expect(screen.getByText("法人間関係を登録しました")).toBeInTheDocument();
 
-    // 登録フォーム送信（セレクトボックスにUUIDを含めず代表者/開設者を表示する）
-    await user.click(screen.getByRole("combobox", { name: "関係元法人（親・本部等）" }));
-    expect(screen.queryByRole("option", { name: /corp-parent/ })).not.toBeInTheDocument();
-    await user.click(screen.getByRole("option", { name: "株式会社親薬局（代表: 親代表 太郎）" }));
-    await user.click(screen.getByRole("combobox", { name: "関係先法人（子・加盟店等）" }));
-    expect(screen.queryByRole("option", { name: /corp-child/ })).not.toBeInTheDocument();
-    await user.click(screen.getByRole("option", { name: "子薬局（開設者: 山田 花子）" }));
-    await user.type(screen.getByLabelText(/有効開始日/), "2026-04-01");
-    await user.type(screen.getByLabelText(/根拠・契約メモ/), "株式取得契約");
-    await user.click(screen.getByRole("button", { name: "法人間関係を登録" }));
-
-    expect(onRegisterRelation).toHaveBeenCalledWith({
-      source_corporation_id: "corp-parent",
-      target_corporation_id: "corp-child",
-      relation_type: "parent_child",
-      valid_from: "2026-04-01",
-      valid_to: null,
-      evidence: "株式取得契約",
-    });
+    await user.click(screen.getByRole("button", { name: "登録完了メッセージを閉じる" }));
+    expect(onDismissNotice).toHaveBeenCalledTimes(1);
 
     // 関係終了
     await user.click(screen.getByRole("button", { name: "関係を終了" }));
-    await user.type(screen.getByLabelText(/終了日 \(valid_to\)/), "2026-12-31");
+    await user.type(screen.getByLabelText(/終了日/), "2026-12-31");
     await user.click(screen.getByRole("button", { name: "この日で終了" }));
     expect(onEndRelation).toHaveBeenCalledWith("rel-1", "2026-12-31");
   });
@@ -130,9 +117,6 @@ describe("CorporateRelationsWorkspace", () => {
         onFilterChange={vi.fn()}
         isLoadingRelations={false}
         relationsErrorMessage={null}
-        isRegistering={false}
-        registerErrorMessage={null}
-        onRegisterRelation={vi.fn().mockResolvedValue(true)}
         isCorrecting={false}
         correctErrorMessage={null}
         onCorrectRelation={onCorrectRelation}
