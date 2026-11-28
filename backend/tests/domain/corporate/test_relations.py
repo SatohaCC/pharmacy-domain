@@ -2,6 +2,7 @@
 
 from dataclasses import replace
 from datetime import UTC, date, datetime, timedelta, tzinfo
+from typing import Any, cast
 
 import pytest
 
@@ -22,6 +23,11 @@ from app.domain.corporate import (
     MultipleCorporateParentsError,
     SelfCorporateRelationError,
     validate_corporate_relation,
+)
+from app.domain.corporate.services import (
+    CorporateRelationValidationRule,
+    _validate_relation_rules,
+    validation_rule_for,
 )
 from app.domain.foundation import AwareDatetime, DomainValidationError, EffectiveDateRange
 
@@ -197,3 +203,33 @@ def test_revision_order_compares_instants_across_a_repeated_local_hour() -> None
 
     assert revised.revision_at(earlier) == relation.current
     assert revised.revision_at(later) == revised.current
+
+
+def test_every_relation_type_has_explicit_validation_rule_and_rejects_unclassified() -> None:
+    assert validation_rule_for(
+        CorporateRelationType.PARENT_CHILD
+    ) == CorporateRelationValidationRule(
+        reject_reverse_duplicate=False,
+        single_parent_per_target=True,
+        forbid_cycles=True,
+    )
+    for symmetric_type in (CorporateRelationType.AFFILIATE, CorporateRelationType.FC_VC):
+        assert validation_rule_for(symmetric_type) == CorporateRelationValidationRule(
+            reject_reverse_duplicate=True,
+            single_parent_per_target=False,
+            forbid_cycles=False,
+        )
+
+    with pytest.raises(ValueError, match="未定義"):
+        _validate_relation_rules(
+            {
+                CorporateRelationType.PARENT_CHILD: CorporateRelationValidationRule(
+                    reject_reverse_duplicate=False,
+                    single_parent_per_target=True,
+                    forbid_cycles=True,
+                )
+            }
+        )
+
+    with pytest.raises(ValueError, match="未定義"):
+        validation_rule_for(cast(Any, "unknown"))
