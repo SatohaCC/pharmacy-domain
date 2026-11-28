@@ -304,29 +304,21 @@ export function CorporateRelationsWorkspace({
                             <span>{sourceName}</span>
                           </th>
                           <td {...stylex.props(s.tableCell)}>
-                            <span aria-hidden="true" {...stylex.props(s.mobileCellLabel)}>
-                              関係先:
-                            </span>
+                            <span {...stylex.props(s.mobileCellLabel)}>関係先:</span>
                             <span>{targetName}</span>
                           </td>
                           <td {...stylex.props(s.tableCell)}>
-                            <span aria-hidden="true" {...stylex.props(s.mobileCellLabel)}>
-                              種別:
-                            </span>
+                            <span {...stylex.props(s.mobileCellLabel)}>種別:</span>
                             <Badge tone="neutral">{relationTypeLabel(rel.relation_type)}</Badge>
                           </td>
                           <td {...stylex.props(s.tableCell)}>
-                            <span aria-hidden="true" {...stylex.props(s.mobileCellLabel)}>
-                              有効期間:
-                            </span>
+                            <span {...stylex.props(s.mobileCellLabel)}>有効期間:</span>
                             <span>
                               {rel.valid_from} 〜 {rel.valid_to ?? "終了未定"}
                             </span>
                           </td>
                           <td {...stylex.props(s.tableCell)}>
-                            <span aria-hidden="true" {...stylex.props(s.mobileCellLabel)}>
-                              根拠:
-                            </span>
+                            <span {...stylex.props(s.mobileCellLabel)}>根拠:</span>
                             <span>{rel.evidence}</span>
                           </td>
                           <td {...stylex.props(s.tableCell)}>
