@@ -1,0 +1,206 @@
+import { render, screen } from "@testing-library/react";
+import userEvent from "@testing-library/user-event";
+import { describe, expect, it, vi } from "vitest";
+import type { AuthUser } from "@/features/auth/schemas";
+import { CorporationFormPage } from "./CorporationFormPage";
+import type { Corporation } from "./schemas";
+
+const vendorMember: AuthUser = {
+  id: "member-1",
+  email: "member@vendor.example.com",
+  display_name: "運用 太郎",
+  affiliation_type: "vendor",
+  tenant_id: null,
+  roles: ["vendor_member"],
+  status: "active",
+  created_at: "2026-11-26T00:00:00Z",
+  updated_at: "2026-11-26T00:00:00Z",
+};
+
+const sampleCorporation: Corporation = {
+  id: "corp-1",
+  category: "corporation",
+  name: "株式会社さくら薬局",
+  representative_name: "佐藤 一郎",
+  corporate_number: "1234567890123",
+  address: "東京都新宿区1-2-3",
+  status: "active",
+  created_at: "2026-11-26T00:00:00Z",
+  updated_at: "2026-11-26T00:00:00Z",
+};
+
+describe("CorporationFormPage", () => {
+  it("登録モードでバリデーション後に新規企業を登録できる", async () => {
+    const user = userEvent.setup();
+    const onCreateCorporation = vi.fn().mockResolvedValue(true);
+
+    render(
+      <CorporationFormPage
+        mode="create"
+        currentUser={vendorMember}
+        isSubmitting={false}
+        submitErrorMessage={null}
+        submitUserFacingError={null}
+        onCreateCorporation={onCreateCorporation}
+        isLoggingOut={false}
+        onLogout={vi.fn()}
+      />,
+    );
+
+    expect(screen.getByRole("link", { name: "法人一覧へ戻る" })).toHaveAttribute(
+      "href",
+      "/vendor/corporations",
+    );
+
+    const nameInput = screen.getByLabelText(/法人名（個人の場合は氏名・屋号）/, {
+      selector: "input",
+    });
+    const repInput = screen.getByLabelText(/代表者名/, { selector: "input" });
+    const numberInput = screen.getByLabelText(/法人番号（13桁）/, { selector: "input" });
+    const addressInput = screen.getByLabelText(/本店または主たる事務所の所在地/, {
+      selector: "input",
+    });
+
+    await user.type(nameInput, "株式会社ひまわり薬局");
+    await user.type(repInput, "山田 太郎");
+    await user.type(numberInput, "12345");
+    await user.click(screen.getByRole("button", { name: "企業（法人・個人）を登録" }));
+
+    expect(screen.getByText("法人番号は半角数字13桁で入力してください。")).toBeInTheDocument();
+    expect(onCreateCorporation).not.toHaveBeenCalled();
+
+    await user.clear(numberInput);
+    await user.type(numberInput, "9876543210123");
+    await user.type(addressInput, "大阪府大阪市北区1-1");
+    await user.click(screen.getByRole("button", { name: "企業（法人・個人）を登録" }));
+
+    expect(onCreateCorporation).toHaveBeenCalledWith({
+      category: "corporation",
+      name: "株式会社ひまわり薬局",
+      representative_name: "山田 太郎",
+      corporate_number: "9876543210123",
+      address: "大阪府大阪市北区1-1",
+      valid_from: null,
+      valid_to: null,
+      evidence: null,
+      usage_status: "not_started",
+    });
+  });
+
+  it("登録モードで個人開設者を選ぶと法人番号が無効になり、開設者氏名ラベルに切り替わる", async () => {
+    const user = userEvent.setup();
+    render(
+      <CorporationFormPage
+        mode="create"
+        currentUser={vendorMember}
+        isSubmitting={false}
+        submitErrorMessage={null}
+        submitUserFacingError={null}
+        onCreateCorporation={vi.fn().mockResolvedValue(true)}
+        isLoggingOut={false}
+        onLogout={vi.fn()}
+      />,
+    );
+
+    await user.click(screen.getByRole("radio", { name: "個人開設者" }));
+    expect(screen.getByLabelText(/開設者氏名/, { selector: "input" })).toBeInTheDocument();
+    expect(screen.getByLabelText(/法人番号（13桁）/, { selector: "input" })).toBeDisabled();
+  });
+
+  it("登録モードで有効終了日が有効開始日以前の場合は送信を拒否する", async () => {
+    const user = userEvent.setup();
+    const onCreateCorporation = vi.fn().mockResolvedValue(true);
+
+    render(
+      <CorporationFormPage
+        mode="create"
+        currentUser={vendorMember}
+        isSubmitting={false}
+        submitErrorMessage={null}
+        submitUserFacingError={null}
+        onCreateCorporation={onCreateCorporation}
+        isLoggingOut={false}
+        onLogout={vi.fn()}
+      />,
+    );
+
+    await user.type(
+      screen.getByLabelText(/法人名（個人の場合は氏名・屋号）/, { selector: "input" }),
+      "期間不正法人",
+    );
+    await user.type(screen.getByLabelText(/代表者名/, { selector: "input" }), "代表太郎");
+    await user.type(
+      screen.getByLabelText(/有効開始日（任意）/, { selector: "input" }),
+      "2026-05-01",
+    );
+    await user.type(
+      screen.getByLabelText(/有効終了日（任意）/, { selector: "input" }),
+      "2026-05-01",
+    );
+    await user.click(screen.getByRole("button", { name: "企業（法人・個人）を登録" }));
+
+    expect(
+      screen.getByText("有効終了日は有効開始日より後の日付を指定してください。"),
+    ).toBeInTheDocument();
+    expect(onCreateCorporation).not.toHaveBeenCalled();
+  });
+
+  it("編集モードでは既存値を初期表示し、変更された項目のみを送信する", async () => {
+    const user = userEvent.setup();
+    const onUpdateCorporation = vi.fn().mockResolvedValue(true);
+
+    render(
+      <CorporationFormPage
+        mode="edit"
+        currentUser={vendorMember}
+        initialCorporation={sampleCorporation}
+        isSubmitting={false}
+        submitErrorMessage={null}
+        submitUserFacingError={null}
+        onUpdateCorporation={onUpdateCorporation}
+        isLoggingOut={false}
+        onLogout={vi.fn()}
+      />,
+    );
+
+    expect(
+      screen.queryByRole("combobox", { name: "初期システム利用状態" }),
+    ).not.toBeInTheDocument();
+    expect(screen.getByRole("radio", { name: "個人開設者" })).toBeDisabled();
+
+    // 未変更のまま保存しようとするとエラーを表示し送信しない
+    await user.click(screen.getByRole("button", { name: "基本情報を保存" }));
+    expect(
+      screen.getByText(
+        "変更された項目がありません。名称・代表者名・法人番号・所在地・有効終了日のいずれかを変更してください。",
+      ),
+    ).toBeInTheDocument();
+    expect(onUpdateCorporation).not.toHaveBeenCalled();
+
+    const repInput = screen.getByLabelText(/代表者名/, { selector: "input" });
+    const addressInput = screen.getByLabelText(/本店または主たる事務所の所在地/, {
+      selector: "input",
+    });
+    const validFromInput = screen.getByLabelText(/変更の有効開始日（任意）/, {
+      selector: "input",
+    });
+    const validToInput = screen.getByLabelText(/変更後の有効終了日（任意）/, {
+      selector: "input",
+    });
+
+    await user.clear(repInput);
+    await user.type(repInput, "高橋 次郎");
+    await user.clear(addressInput);
+    await user.type(addressInput, "東京都渋谷区9-9-9");
+    await user.type(validFromInput, "2026-09-01");
+    await user.type(validToInput, "2027-08-31");
+    await user.click(screen.getByRole("button", { name: "基本情報を保存" }));
+
+    expect(onUpdateCorporation).toHaveBeenCalledWith("corp-1", {
+      representative_name: "高橋 次郎",
+      address: "東京都渋谷区9-9-9",
+      valid_from: "2026-09-01",
+      valid_to: "2027-08-31",
+    });
+  });
+});

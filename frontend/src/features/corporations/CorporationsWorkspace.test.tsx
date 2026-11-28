@@ -30,9 +30,9 @@ const sampleCorporation: Corporation = {
 };
 
 describe("CorporationsWorkspace", () => {
-  it("vendor_member でも新規法人を登録でき、13桁以外の法人番号はバリデーションエラーになる", async () => {
+  it("一覧から登録画面・編集画面への遷移リンクと完了通知を表示できる", async () => {
     const user = userEvent.setup();
-    const onCreateCorporation = vi.fn().mockResolvedValue(true);
+    const onDismissNotice = vi.fn();
 
     render(
       <CorporationsWorkspace
@@ -44,174 +44,25 @@ describe("CorporationsWorkspace", () => {
         isLoadingCorporations={false}
         isFetchingCorporations={false}
         corporationsErrorMessage={null}
-        isCreatingCorporation={false}
-        createErrorMessage={null}
-        createUserFacingError={null}
-        lastCreatedCorporation={null}
-        onDismissCreatedBanner={vi.fn()}
-        onCreateCorporation={onCreateCorporation}
-        isUpdatingCorporation={false}
-        updateErrorMessage={null}
-        updateUserFacingError={null}
-        lastUpdatedCorporation={null}
-        onDismissUpdatedBanner={vi.fn()}
-        onUpdateCorporation={vi.fn()}
+        notice="created"
+        onDismissNotice={onDismissNotice}
         isLoggingOut={false}
         onLogout={vi.fn()}
       />,
     );
 
-    const nameInput = screen.getByLabelText(/法人名（個人の場合は氏名・屋号）/, {
-      selector: "input",
-    });
-    const repInput = screen.getByLabelText(/代表者名/, { selector: "input" });
-    const numberInput = screen.getByLabelText(/法人番号（13桁）/, { selector: "input" });
-    const addressInput = screen.getByLabelText(/本店または主たる事務所の所在地/, {
-      selector: "input",
-    });
-
-    await user.type(nameInput, "株式会社ひまわり薬局");
-    await user.type(repInput, "山田 太郎");
-    await user.type(numberInput, "12345");
-    await user.click(screen.getByRole("button", { name: "企業（法人・個人）を登録" }));
-
-    expect(screen.getByText("法人番号は半角数字13桁で入力してください。")).toBeInTheDocument();
-    expect(onCreateCorporation).not.toHaveBeenCalled();
-
-    await user.clear(numberInput);
-    await user.type(numberInput, "9876543210123");
-    await user.type(addressInput, "大阪府大阪市北区1-1");
-    await user.click(screen.getByRole("button", { name: "企業（法人・個人）を登録" }));
-
-    expect(onCreateCorporation).toHaveBeenCalledWith({
-      category: "corporation",
-      name: "株式会社ひまわり薬局",
-      representative_name: "山田 太郎",
-      corporate_number: "9876543210123",
-      address: "大阪府大阪市北区1-1",
-      valid_from: null,
-      valid_to: null,
-      evidence: null,
-      usage_status: "not_started",
-    });
-    expect(nameInput).toHaveValue("");
-    expect(repInput).toHaveValue("");
-    expect(numberInput).toHaveValue("");
-    expect(addressInput).toHaveValue("");
-  });
-
-  it("基本情報の編集では変更された項目のみを送信し、過去効力日指定時に未変更項目を上書きしない", async () => {
-    const user = userEvent.setup();
-    const onUpdateCorporation = vi.fn().mockResolvedValue(true);
-
-    render(
-      <CorporationsWorkspace
-        currentUser={vendorMember}
-        corporations={[sampleCorporation]}
-        totalCount={1}
-        filter={{}}
-        onFilterChange={vi.fn()}
-        isLoadingCorporations={false}
-        isFetchingCorporations={false}
-        corporationsErrorMessage={null}
-        isCreatingCorporation={false}
-        createErrorMessage={null}
-        createUserFacingError={null}
-        lastCreatedCorporation={null}
-        onDismissCreatedBanner={vi.fn()}
-        onCreateCorporation={vi.fn()}
-        isUpdatingCorporation={false}
-        updateErrorMessage={null}
-        updateUserFacingError={null}
-        lastUpdatedCorporation={null}
-        onDismissUpdatedBanner={vi.fn()}
-        onUpdateCorporation={onUpdateCorporation}
-        isLoggingOut={false}
-        onLogout={vi.fn()}
-      />,
+    expect(screen.getByRole("link", { name: "新規企業を登録" })).toHaveAttribute(
+      "href",
+      "/vendor/corporations/new",
     );
-
-    await user.click(screen.getByRole("button", { name: "基本情報を編集" }));
-
-    // 未変更のまま保存しようとするとエラーを表示し送信しない
-    await user.click(screen.getByRole("button", { name: "基本情報を保存" }));
-    expect(
-      screen.getByText(
-        "変更された項目がありません。名称・代表者名・法人番号・所在地・有効終了日のいずれかを変更してください。",
-      ),
-    ).toBeInTheDocument();
-    expect(onUpdateCorporation).not.toHaveBeenCalled();
-
-    const editAddressInput = screen.getByLabelText(/変更後の所在地/, { selector: "input" });
-    const editValidFromInput = screen.getByLabelText(/変更の有効開始日（任意）/, {
-      selector: "input",
-    });
-    const editValidToInput = screen.getByLabelText(/変更後の有効終了日（任意）/, {
-      selector: "input",
-    });
-    await user.clear(editAddressInput);
-    await user.type(editAddressInput, "東京都渋谷区9-9-9");
-    await user.type(editValidFromInput, "2026-09-01");
-    await user.type(editValidToInput, "2027-08-31");
-    await user.click(screen.getByRole("button", { name: "基本情報を保存" }));
-
-    expect(onUpdateCorporation).toHaveBeenCalledWith("corp-1", {
-      address: "東京都渋谷区9-9-9",
-      valid_from: "2026-09-01",
-      valid_to: "2027-08-31",
-    });
-  });
-
-  it("有効終了日が有効開始日以前の場合は登録を拒否する", async () => {
-    const user = userEvent.setup();
-    const onCreateCorporation = vi.fn().mockResolvedValue(true);
-
-    render(
-      <CorporationsWorkspace
-        currentUser={vendorMember}
-        corporations={[sampleCorporation]}
-        totalCount={1}
-        filter={{}}
-        onFilterChange={vi.fn()}
-        isLoadingCorporations={false}
-        isFetchingCorporations={false}
-        corporationsErrorMessage={null}
-        isCreatingCorporation={false}
-        createErrorMessage={null}
-        createUserFacingError={null}
-        lastCreatedCorporation={null}
-        onDismissCreatedBanner={vi.fn()}
-        onCreateCorporation={onCreateCorporation}
-        isUpdatingCorporation={false}
-        updateErrorMessage={null}
-        updateUserFacingError={null}
-        lastUpdatedCorporation={null}
-        onDismissUpdatedBanner={vi.fn()}
-        onUpdateCorporation={vi.fn()}
-        isLoggingOut={false}
-        onLogout={vi.fn()}
-      />,
+    expect(screen.getByRole("link", { name: "基本情報を編集" })).toHaveAttribute(
+      "href",
+      "/vendor/corporations/corp-1/edit",
     );
+    expect(screen.getByText("企業（テナント）を登録しました")).toBeInTheDocument();
 
-    await user.type(
-      screen.getByLabelText(/法人名（個人の場合は氏名・屋号）/, { selector: "input" }),
-      "期間不正法人",
-    );
-    await user.type(screen.getByLabelText(/代表者名/, { selector: "input" }), "代表太郎");
-    await user.type(
-      screen.getByLabelText(/有効開始日（任意）/, { selector: "input" }),
-      "2026-05-01",
-    );
-    await user.type(
-      screen.getByLabelText(/有効終了日（任意）/, { selector: "input" }),
-      "2026-05-01",
-    );
-    await user.click(screen.getByRole("button", { name: "企業（法人・個人）を登録" }));
-
-    expect(
-      screen.getByText("有効終了日は有効開始日より後の日付を指定してください。"),
-    ).toBeInTheDocument();
-    expect(onCreateCorporation).not.toHaveBeenCalled();
+    await user.click(screen.getByRole("button", { name: "登録完了メッセージを閉じる" }));
+    expect(onDismissNotice).toHaveBeenCalledTimes(1);
   });
 
   it("履歴・状態管理パネルで合併・時点照会・履歴訂正を実行できる", async () => {
@@ -238,18 +89,6 @@ describe("CorporationsWorkspace", () => {
         isLoadingCorporations={false}
         isFetchingCorporations={false}
         corporationsErrorMessage={null}
-        isCreatingCorporation={false}
-        createErrorMessage={null}
-        createUserFacingError={null}
-        lastCreatedCorporation={null}
-        onDismissCreatedBanner={vi.fn()}
-        onCreateCorporation={vi.fn().mockResolvedValue(true)}
-        isUpdatingCorporation={false}
-        updateErrorMessage={null}
-        updateUserFacingError={null}
-        lastUpdatedCorporation={null}
-        onDismissUpdatedBanner={vi.fn()}
-        onUpdateCorporation={vi.fn().mockResolvedValue(true)}
         isLoggingOut={false}
         onLogout={vi.fn()}
         selectedHistoryCorpId="corp-1"
@@ -325,18 +164,6 @@ describe("CorporationsWorkspace", () => {
         isLoadingCorporations={false}
         isFetchingCorporations={false}
         corporationsErrorMessage={null}
-        isCreatingCorporation={false}
-        createErrorMessage={null}
-        createUserFacingError={null}
-        lastCreatedCorporation={null}
-        onDismissCreatedBanner={vi.fn()}
-        onCreateCorporation={vi.fn().mockResolvedValue(true)}
-        isUpdatingCorporation={false}
-        updateErrorMessage={null}
-        updateUserFacingError={null}
-        lastUpdatedCorporation={null}
-        onDismissUpdatedBanner={vi.fn()}
-        onUpdateCorporation={vi.fn().mockResolvedValue(true)}
         isLoggingOut={false}
         onLogout={vi.fn()}
         onChangeUsageStatus={onChangeUsageStatus}
