@@ -71,6 +71,12 @@ function isEndedOrder(status: RelationPeriodStatus): number {
   return status === "ended" ? 1 : 0;
 }
 
+const parentExpansionPriority: Record<RelationPeriodStatus, number> = {
+  active: 2,
+  upcoming: 1,
+  ended: 0,
+};
+
 /** 法人一覧と法人間関係一覧から、階層ツリーと関連会社・FC/VC 一覧を構築する。 */
 export function buildCorporateRelationGraph(params: {
   corporations: readonly Corporation[];
@@ -173,15 +179,18 @@ export function buildCorporateRelationGraph(params: {
   const childrenByParent = new Map<string, CorporateRelation[]>();
   const allParentChildCorpIds = new Set<string>();
   const childCorpIds = new Set<string>();
-  const hasNonEndedParentByChild = new Set<string>();
+  const highestParentPriorityByChild = new Map<string, number>();
 
   for (const relation of parentChildRelations) {
     allParentChildCorpIds.add(relation.source_corporation_id);
     allParentChildCorpIds.add(relation.target_corporation_id);
     childCorpIds.add(relation.target_corporation_id);
-    if (getRelationPeriodStatus(relation, referenceDate) !== "ended") {
-      hasNonEndedParentByChild.add(relation.target_corporation_id);
-    }
+    const priority = parentExpansionPriority[getRelationPeriodStatus(relation, referenceDate)];
+    const childId = relation.target_corporation_id;
+    highestParentPriorityByChild.set(
+      childId,
+      Math.max(priority, highestParentPriorityByChild.get(childId) ?? priority),
+    );
 
     const list = childrenByParent.get(relation.source_corporation_id);
     if (list) {
@@ -245,11 +254,12 @@ export function buildCorporateRelationGraph(params: {
         const childStatus = getRelationPeriodStatus(childRel, referenceDate);
         const childCorpId = childRel.target_corporation_id;
         const isCycle = nextAncestors.has(childCorpId);
-        // 有効または開始予定の親が存在する子の旧親側、または既に他ルートで展開済みの法人は孫の重複展開を抑止する。
+        const priority = parentExpansionPriority[childStatus];
+        // 法人名の表示順にかかわらず、有効中・開始予定・終了の順で子孫を展開する枝を優先する。
         const shouldSuppressSubtree =
           isCycle ||
           expandedSubtreeCorpIds.has(childCorpId) ||
-          (childStatus === "ended" && hasNonEndedParentByChild.has(childCorpId));
+          priority < (highestParentPriorityByChild.get(childCorpId) ?? priority);
 
         children.push(
           createNode({
@@ -320,6 +330,11 @@ export function buildCorporateRelationGraph(params: {
           .map((rel) => rel.source_corporation_id),
       ),
     ).sort((a, b) => {
+      // 期間をまたぐ閉路でも、現行階層の起点から展開する。
+      const activeParentDiff =
+        Number(highestParentPriorityByChild.get(a) === parentExpansionPriority.active) -
+        Number(highestParentPriorityByChild.get(b) === parentExpansionPriority.active);
+      if (activeParentDiff !== 0) return activeParentDiff;
       const nameDiff = compareTextJa(getCorporationName(a), getCorporationName(b));
       return nameDiff !== 0 ? nameDiff : a.localeCompare(b);
     });

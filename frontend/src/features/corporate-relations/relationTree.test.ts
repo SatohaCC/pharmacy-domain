@@ -161,6 +161,71 @@ describe("buildCorporateRelationGraph", () => {
     expect(newRoot?.children[0]?.children[0]?.corporationId).toBe("grand");
   });
 
+  it.each([false, true])(
+    "開始予定の親と有効な親が並存しても有効な親の下で孫を展開する（期間をまたぐ閉路: %s）",
+    (hasTemporalCycle) => {
+      const corporations = [
+        makeCorp("future", "法人A"),
+        makeCorp("current", "法人Z"),
+        makeCorp("child", "法人B"),
+        makeCorp("grand", "孫法人"),
+      ];
+      const relations = [
+        makeRelation({
+          id: "future-child",
+          source_corporation_id: "future",
+          target_corporation_id: "child",
+          relation_type: "parent_child",
+          valid_from: "2026-07-01",
+        }),
+        makeRelation({
+          id: "current-child",
+          source_corporation_id: "current",
+          target_corporation_id: "child",
+          relation_type: "parent_child",
+          valid_to: "2026-07-01",
+        }),
+        makeRelation({
+          id: "child-grand",
+          source_corporation_id: "child",
+          target_corporation_id: "grand",
+          relation_type: "parent_child",
+        }),
+      ];
+      if (hasTemporalCycle) {
+        relations.push(
+          makeRelation({
+            id: "child-current",
+            source_corporation_id: "child",
+            target_corporation_id: "current",
+            relation_type: "parent_child",
+            valid_from: "2026-07-01",
+          }),
+        );
+      }
+
+      const graph = buildCorporateRelationGraph({
+        corporations,
+        relations,
+        referenceDate: "2026-06-01",
+      });
+
+      expect(graph.hierarchyRoots.map((root) => root.corporationId)).toEqual(["future", "current"]);
+      const [futureRoot, currentRoot] = graph.hierarchyRoots;
+      expect(futureRoot?.children[0]?.incomingPeriodStatus).toBe("upcoming");
+      expect(futureRoot?.children[0]?.children).toHaveLength(0);
+      expect(currentRoot?.children[0]?.incomingPeriodStatus).toBe("active");
+      expect(currentRoot?.children[0]?.children.map((node) => node.corporationId)).toContain(
+        "grand",
+      );
+      expect(
+        currentRoot?.children[0]?.children.some(
+          (node) => node.corporationId === "current" && node.hasCycleReference,
+        ),
+      ).toBe(hasTemporalCycle);
+    },
+  );
+
   it("複数の終了済み親が並存する場合でも孫ノードは重複展開されない", () => {
     const corps = [
       makeCorp("old-p1", "旧親法人A"),
@@ -235,8 +300,8 @@ describe("buildCorporateRelationGraph", () => {
     });
 
     expect(graph.hierarchyRoots).toHaveLength(1);
-    expect(graph.hierarchyRoots[0]?.corporationId).toBe("a");
-    expect(graph.hierarchyRoots[0]?.children[0]?.corporationId).toBe("b");
+    expect(graph.hierarchyRoots[0]?.corporationId).toBe("b");
+    expect(graph.hierarchyRoots[0]?.children[0]?.corporationId).toBe("a");
     expect(graph.hierarchyRoots[0]?.children[0]?.children[0]?.hasCycleReference).toBe(true);
     expect(graph.hierarchyRoots[0]?.children[0]?.children[0]?.children).toHaveLength(0);
   });
