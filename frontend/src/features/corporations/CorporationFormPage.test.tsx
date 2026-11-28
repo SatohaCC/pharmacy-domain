@@ -130,6 +130,7 @@ describe("CorporationFormPage", () => {
       "期間不正法人",
     );
     await user.type(screen.getByLabelText(/代表者名/, { selector: "input" }), "代表太郎");
+    await user.click(screen.getByText("詳細設定（有効期間・確認根拠・初期利用状態）"));
     await user.type(
       screen.getByLabelText(/有効開始日（任意）/, { selector: "input" }),
       "2026-05-01",
@@ -182,6 +183,7 @@ describe("CorporationFormPage", () => {
     const addressInput = screen.getByLabelText(/本店または主たる事務所の所在地/, {
       selector: "input",
     });
+    await user.click(screen.getByText("有効期間・確認根拠・識別情報（任意）"));
     const validFromInput = screen.getByLabelText(/変更の有効開始日（任意）/, {
       selector: "input",
     });
@@ -224,7 +226,8 @@ describe("CorporationFormPage", () => {
       />,
     );
 
-    expect(screen.getByText("利用: 未利用")).toBeInTheDocument();
+    await user.click(screen.getByRole("tab", { name: "利用状態・解散/合併" }));
+    expect(screen.getAllByText("利用: 未利用").length).toBeGreaterThan(0);
 
     // 「利用開始」クリック時はダイアログのみ開き、APIはまだ呼ばれない
     await user.click(screen.getByRole("button", { name: "利用開始" }));
@@ -258,6 +261,7 @@ describe("CorporationFormPage", () => {
       />,
     );
 
+    await user.click(screen.getByRole("tab", { name: "利用状態・解散/合併" }));
     await user.click(screen.getByRole("button", { name: "利用停止" }));
     expect(screen.getByRole("dialog", { name: "システム利用を停止しますか？" })).toBeVisible();
     await user.click(screen.getByRole("button", { name: "利用を停止する" }));
@@ -307,10 +311,9 @@ describe("CorporationFormPage", () => {
       />,
     );
 
-    expect(screen.getByText(/変更者: vendor-admin-1/)).toBeInTheDocument();
-
+    await user.click(screen.getByRole("tab", { name: "利用状態・解散/合併" }));
     await user.click(screen.getByRole("combobox", { name: "変更後の状態" }));
-    await user.click(screen.getByRole("option", { name: "吸収合併で消滅 (merged_out)" }));
+    await user.click(screen.getByRole("option", { name: "吸収合併（消滅）" }));
     await user.click(screen.getByRole("combobox", { name: "合併先の存続法人" }));
     await user.click(screen.getByRole("option", { name: "株式会社わかば薬局（代表: 鈴木 花子）" }));
     await user.type(screen.getByLabelText("効力日"), "2026-12-01");
@@ -322,7 +325,10 @@ describe("CorporationFormPage", () => {
       evidence: undefined,
     });
 
-    await user.type(screen.getByLabelText("業務時点日 (as_of)"), "2026-06-01");
+    await user.click(screen.getByRole("tab", { name: "変更履歴・訂正" }));
+    expect(screen.getByText(/変更者: vendor-admin-1/)).toBeInTheDocument();
+    await user.click(screen.getByText("過去時点の状態を照会"));
+    await user.type(screen.getByLabelText("基準日"), "2026-06-01");
     await user.click(screen.getByRole("button", { name: "時点照会" }));
     expect(onLookupSnapshot).toHaveBeenCalledWith({
       as_of: "2026-06-01",
@@ -342,7 +348,8 @@ describe("CorporationFormPage", () => {
     });
   });
 
-  it("解散済み法人の編集画面では基本情報編集を抑止しつつ履歴タイムラインを表示する", () => {
+  it("解散済み法人の編集画面では基本情報編集を抑止しつつ履歴タイムラインを表示する", async () => {
+    const user = userEvent.setup();
     render(
       <CorporationFormPage
         mode="edit"
@@ -376,7 +383,7 @@ describe("CorporationFormPage", () => {
 
     expect(screen.getByText("基本情報は編集できません")).toBeInTheDocument();
     expect(screen.queryByRole("button", { name: "基本情報を保存" })).not.toBeInTheDocument();
-    expect(screen.queryByRole("button", { name: "利用開始" })).not.toBeInTheDocument();
+    await user.click(screen.getByRole("tab", { name: "変更履歴・訂正" }));
     expect(screen.getByText("変更履歴タイムライン")).toBeInTheDocument();
   });
 });

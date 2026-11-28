@@ -189,12 +189,14 @@ test.describe
 
       await page.getByRole("link", { name: "編集・管理" }).click();
       await page.waitForURL("**/vendor/corporations/*/edit");
+      await page.getByRole("tab", { name: "利用状態・解散/合併" }).click();
       await page.getByRole("button", { name: "利用開始" }).click();
       await expect(
         page.getByRole("dialog", { name: "システム利用を開始しますか？" }),
       ).toBeVisible();
       await page.getByRole("button", { name: "利用を開始する" }).click();
-      await expect(page.getByText("利用: 利用中")).toBeVisible();
+      await expect(page.getByText("利用: 利用中").first()).toBeVisible();
+      await page.getByRole("tab", { name: "基本情報" }).click();
       await page.locator('input[name="address"]').fill("東京都渋谷区4-5-6");
       await page.getByRole("button", { name: "基本情報を保存" }).click();
 
